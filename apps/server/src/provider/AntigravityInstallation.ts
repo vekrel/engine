@@ -401,7 +401,7 @@ export const makeAntigravityInstallation = Effect.fn("AntigravityInstallation.ma
                   }),
                 )
               : spawner,
-          clientInfo: { name: "t3-code", version: "0.0.0" },
+          clientInfo: { name: "vekrel", version: "0.0.0" },
         });
         const initialized = yield* runtime.initialize();
         if (

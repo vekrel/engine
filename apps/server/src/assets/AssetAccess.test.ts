@@ -64,7 +64,7 @@ const screenshotItem = {
   ordinal: 1,
   status: "completed" as const,
   title: null,
-  toolName: "mcp__t3-code__device_screenshot",
+  toolName: "mcp__vekrel__device_screenshot",
   input: { deviceId: "phone" },
   output: {
     content: [
