@@ -127,7 +127,7 @@ export function createManagedRelaySession(input: ManagedRelaySessionInput): Mana
         try: () => readCachedClerkToken(nowMillis),
         catch: (cause) =>
           new ManagedRelaySessionError({
-            message: "Could not obtain the T3 Connect session token.",
+            message: "Could not obtain the Vekrel Connect session token.",
             cause,
           }),
       });
@@ -184,7 +184,7 @@ function readSessionClerkToken(
       (token): token is string => Boolean(token),
       () =>
         new ManagedRelaySessionError({
-          message: "The T3 Connect session token is unavailable.",
+          message: "The Vekrel Connect session token is unavailable.",
         }),
     ),
   );
@@ -199,7 +199,7 @@ export const deregisterManagedRelayMachine = Effect.fn(
   const session = registry.get(managedRelaySessionAtom);
   if (!session || session.accountId !== input.accountId) {
     return yield* new ManagedRelaySessionError({
-      message: "Sign in to T3 Connect before deregistering a machine.",
+      message: "Sign in to Vekrel Connect before deregistering a machine.",
     });
   }
   const clerkToken = yield* readSessionClerkToken(session);
@@ -215,7 +215,7 @@ function requireClerkToken(
   if (!session || session.accountId !== accountId) {
     return Effect.fail(
       new ManagedRelaySessionError({
-        message: "Sign in to T3 Connect before loading relay data.",
+        message: "Sign in to Vekrel Connect before loading relay data.",
       }),
     );
   }
@@ -290,7 +290,7 @@ export function readManagedRelaySnapshotState<A>(
         ? relayProtectedErrorMessage(cause.relayError)
         : cause instanceof Error
           ? cause.message
-          : "Could not load T3 Connect data.";
+          : "Could not load Vekrel Connect data.";
     errorTraceId = findErrorTraceId(cause);
   }
   return {

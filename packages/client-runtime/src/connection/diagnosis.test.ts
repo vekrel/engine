@@ -53,7 +53,7 @@ const results = (state: SupervisorConnectionState, via?: "relay" | "direct") =>
 describe("presentConnectionDiagnosis", () => {
   it("tells a working tunnel apart from T3 Code not answering", () => {
     expect(diagnose(backoff(unavailable("origin_unreachable")))?.headline).toBe(
-      "Tunnel works, but T3 Code on Mac mini did not answer",
+      "Tunnel works, but Vekrel on Mac mini did not answer",
     );
     expect(results(backoff(unavailable("origin_unreachable")), "direct")).toEqual([
       "device:ok",
@@ -83,7 +83,7 @@ describe("presentConnectionDiagnosis", () => {
         cause: new TypeError("Failed to fetch"),
       }),
     );
-    expect(diagnose(backoff(failure))?.headline).toBe("This device can't reach T3 Connect");
+    expect(diagnose(backoff(failure))?.headline).toBe("This device can't reach Vekrel Connect");
     expect(results(backoff(failure))).toEqual([
       "device:ok",
       "relay:failed",
@@ -101,7 +101,7 @@ describe("presentConnectionDiagnosis", () => {
       }),
     );
     const diagnosis = diagnose(backoff(failure));
-    expect(diagnosis?.headline).toBe("T3 Connect returned an error");
+    expect(diagnosis?.headline).toBe("Vekrel Connect returned an error");
     expect(diagnosis?.steps.join(" ")).not.toContain("this device");
   });
 

@@ -41,13 +41,13 @@ export function relayProtectedErrorMessage(error: RelayProtectedError): string {
       // "Not authorized" covers non-auth causes too; surface the reason so a
       // missing link does not read as a credential problem.
       if (error.reason === "machine_link_not_found") {
-        return "Relay has no active link for this machine. If it was deregistered from T3 Connect, link it again on that machine.";
+        return "Relay has no active link for this machine. If it was deregistered from Vekrel Connect, link it again on that machine.";
       }
       if (error.reason === "managed_endpoint_allocation_not_ready") {
-        return "The machine's T3 Connect tunnel is still being set up.";
+        return "The machine's Vekrel Connect tunnel is still being set up.";
       }
       if (error.reason === "endpoint_provider_not_managed") {
-        return "This machine is linked only to publish agent activity, so it cannot accept connections. On that computer, open Settings > Connections and turn T3 Connect on.";
+        return "This machine is linked only to publish agent activity, so it cannot accept connections. On that computer, open Settings > Connections and turn Vekrel Connect on.";
       }
       return error.reason
         ? `Relay rejected the machine connection request (${error.reason}).`
@@ -89,7 +89,7 @@ export function relayRequestFailureDetail(error: {
 }
 
 const RELAY_TUNNEL_RELEASED_MESSAGE =
-  "Offline for a while, so its T3 Connect tunnel was removed. Start T3 Code on that computer and update it to the latest version to reconnect.";
+  "Offline for a while, so its Vekrel Connect tunnel was removed. Start Vekrel on that computer and update it to the latest version to reconnect.";
 
 export function relayOfflineReasonMessage(
   status: Pick<RelayMachineStatusResponse, "offlineReason">,
