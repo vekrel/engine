@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vekrel/contracts";
+import type { MachineId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as PartitionedSemaphore from "effect/PartitionedSemaphore";
 import { Atom, type AtomRegistry } from "effect/reactivity";
@@ -7,7 +7,7 @@ import { safeErrorLogAttributes } from "../errors/safeLog.ts";
 import * as Persistence from "../platform/persistence.ts";
 
 export interface VcsRefsInvalidationTarget {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
 }
 
 export interface CachedVcsRefsInvalidationTarget extends VcsRefsInvalidationTarget {
@@ -19,16 +19,16 @@ export interface VcsRefsCacheState {
   readonly persistedCacheReadable: boolean;
 }
 
-const stateByEnvironment = Atom.family((environmentId: EnvironmentId) =>
+const stateByMachine = Atom.family((machineId: MachineId) =>
   Atom.make<VcsRefsCacheState>({
     revision: 0,
     persistedCacheReadable: true,
-  }).pipe(Atom.keepAlive, Atom.withLabel(`environment-data:vcs:list-refs-state:${environmentId}`)),
+  }).pipe(Atom.keepAlive, Atom.withLabel(`machine-data:vcs:list-refs-state:${machineId}`)),
 );
-const persistenceLock = PartitionedSemaphore.makeUnsafe<EnvironmentId>({ permits: 1 });
+const persistenceLock = PartitionedSemaphore.makeUnsafe<MachineId>({ permits: 1 });
 
 export function vcsRefsCacheStateAtom(target: VcsRefsInvalidationTarget) {
-  return stateByEnvironment(target.environmentId);
+  return stateByMachine(target.machineId);
 }
 
 export function invalidateVcsRefs(
@@ -43,10 +43,10 @@ export function invalidateVcsRefs(
 }
 
 export function withVcsRefsPersistenceLock<A, E, R>(
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
-  return persistenceLock.withPermit(environmentId)(effect);
+  return persistenceLock.withPermit(machineId)(effect);
 }
 
 /**
@@ -58,16 +58,16 @@ export const invalidateCachedVcsRefs = Effect.fn("VcsRefsState.invalidateCached"
   registry: AtomRegistry.AtomRegistry,
   target: CachedVcsRefsInvalidationTarget,
 ) {
-  const cache = yield* Persistence.EnvironmentCacheStore;
+  const cache = yield* Persistence.MachineCacheStore;
   yield* withVcsRefsPersistenceLock(
-    target.environmentId,
+    target.machineId,
     Effect.gen(function* () {
-      const persistedCacheReadable = yield* cache.clearVcsRefs(target.environmentId).pipe(
+      const persistedCacheReadable = yield* cache.clearVcsRefs(target.machineId).pipe(
         Effect.as(true),
         Effect.catch((error) =>
           Effect.logWarning("Could not remove invalidated cached Git refs.").pipe(
             Effect.annotateLogs({
-              environmentId: target.environmentId,
+              machineId: target.machineId,
               cwd: target.cwd,
               ...safeErrorLogAttributes(error),
             }),

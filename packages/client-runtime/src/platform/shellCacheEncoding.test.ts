@@ -1,6 +1,6 @@
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
@@ -17,7 +17,7 @@ import {
 } from "./orchestrationCache.ts";
 import { makeStoredShellSnapshotEncoder } from "./shellCacheEncoding.ts";
 
-const ENVIRONMENT_ID = EnvironmentId.make("environment-1");
+const MACHINE_ID = MachineId.make("machine-1");
 const PROJECT_ID = ProjectId.make("project-1");
 const THREAD_ID = ThreadId.make("thread-1");
 const PROVIDER_INSTANCE_ID = ProviderInstanceId.make("codex");
@@ -97,7 +97,7 @@ describe("cooperative shell cache encoding", () => {
   );
   const stored = {
     schemaVersion: ORCHESTRATION_CACHE_SCHEMA_VERSION,
-    environmentId: ENVIRONMENT_ID,
+    machineId: MACHINE_ID,
     snapshot: {
       ...SHELL_SNAPSHOT,
       projects: SHELL_SNAPSHOT.projects.map((project) => ({

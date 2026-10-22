@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ProviderInstanceId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId } from "@vekrel/contracts";
 import {
   codexAuthorizationRequest,
   codexAuthDeliveryUrl,
@@ -23,24 +23,24 @@ const authorizationUrl = () => {
 };
 const input = {
   authorizationUrl: authorizationUrl(),
-  returnUrl: "https://app.t3.codes/welcome#agents:remote-environment",
-  environmentId: EnvironmentId.make("remote-environment"),
+  returnUrl: "https://app.t3.codes/welcome#agents:remote-machine",
+  machineId: MachineId.make("remote-machine"),
   instanceId: ProviderInstanceId.make("work-codex"),
   flowId: "flow-one",
 };
 const callbackUrl = `http://127.0.0.1:54213/auth/callback?state=${"a".repeat(43)}&code=one-time-code&client_id=oaiapp_test`;
 
 describe("Codex desktop handoff", () => {
-  it("keeps the hosted return route, account, and environment with the code in a fragment", () => {
+  it("keeps the hosted return route, account, and machine with the code in a fragment", () => {
     expect(readCodexAuthHandoff(codexAuthHandoffUrl(input), false)).toEqual(input);
     const delivery = codexAuthDeliveryUrl(input, callbackUrl);
     expect(new URL(delivery).search).toBe("");
     expect(readCodexAuthDelivery(delivery)).toEqual({
       callbackUrl,
-      environmentId: input.environmentId,
+      machineId: input.machineId,
       instanceId: input.instanceId,
       flowId: input.flowId,
-      returnHash: "#agents:remote-environment",
+      returnHash: "#agents:remote-machine",
       returnUrl: input.returnUrl,
     });
   });

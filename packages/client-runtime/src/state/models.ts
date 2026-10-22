@@ -2,7 +2,7 @@ import { backgroundWorkHoldsCompletion } from "@vekrel/shared/orchestrationV2Pen
 import { threadPullRequestsOf } from "@vekrel/shared/threadPullRequests";
 import type {
   ThreadLinkedPullRequest,
-  EnvironmentId,
+  MachineId,
   MessageId,
   OrchestrationProjectShell,
   OrchestrationV2ProviderGoal,
@@ -20,8 +20,8 @@ import * as DateTime from "effect/DateTime";
 
 import { formatSubagentDisplayTitle } from "./subagentDisplay.ts";
 
-export interface EnvironmentProject extends OrchestrationProjectShell {
-  readonly environmentId: EnvironmentId;
+export interface MachineProject extends OrchestrationProjectShell {
+  readonly machineId: MachineId;
   readonly isScratch?: true;
 }
 
@@ -29,8 +29,8 @@ export interface EnvironmentProject extends OrchestrationProjectShell {
  * The projection stays nested so the server projection and all structurally
  * shared collections retain their identities.
  */
-export interface EnvironmentThread {
-  readonly environmentId: EnvironmentId;
+export interface MachineThread {
+  readonly machineId: MachineId;
   readonly projection: OrchestrationV2ThreadProjection;
 }
 
@@ -72,8 +72,8 @@ export type ThreadStructure = Omit<
   readonly visibleTurnItems: ReadonlyArray<ThreadStructureVisibleTurnItem>;
 };
 
-export interface EnvironmentThreadStructure {
-  readonly environmentId: EnvironmentId;
+export interface MachineThreadStructure {
+  readonly machineId: MachineId;
   readonly projection: ThreadStructure;
 }
 
@@ -134,8 +134,8 @@ function threadRunStatusIsActive(status: ThreadRuntimeSummary["status"]): boolea
   );
 }
 
-export interface EnvironmentThreadShell {
-  readonly environmentId: EnvironmentId;
+export interface MachineThreadShell {
+  readonly machineId: MachineId;
   readonly id: ThreadId;
   readonly projectId: ProjectId;
   readonly title: string;
@@ -181,7 +181,7 @@ export interface EnvironmentThreadShell {
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
   readonly branchPullRequest?: ThreadLinkedPullRequest | null;
   /**
-   * Server-tracked visited watermark. `undefined` means the environment's
+   * Server-tracked visited watermark. `undefined` means the machine's
    * server predates visited tracking and clients should fall back to any
    * local visited state they keep.
    */
@@ -239,19 +239,19 @@ function shellRuntime(thread: OrchestrationV2ThreadShell): ThreadRuntimeSummary 
 }
 
 export function scopeProject(
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   project: OrchestrationProjectShell,
-): EnvironmentProject {
-  return { ...project, environmentId };
+): MachineProject {
+  return { ...project, machineId };
 }
 
 export type PendingSubagentRequest = "approval" | "user_input";
 
 export function presentThreadShell(
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   thread: OrchestrationV2ThreadShell,
   pendingSubagentRequest: PendingSubagentRequest | null = null,
-): EnvironmentThreadShell {
+): MachineThreadShell {
   const updatedAt = iso(thread.updatedAt);
   const latestRun =
     thread.latestRunId === null
@@ -276,7 +276,7 @@ export function presentThreadShell(
     runtime?.status === "starting" ||
     runtime?.status === "running";
   return {
-    environmentId,
+    machineId,
     id: thread.id,
     projectId: thread.projectId,
     title:
@@ -345,16 +345,16 @@ export function presentThreadShell(
 }
 
 export function scopeThreadShell(
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   thread: OrchestrationV2ThreadShell,
-): EnvironmentThreadShell {
-  return presentThreadShell(environmentId, thread);
+): MachineThreadShell {
+  return presentThreadShell(machineId, thread);
 }
 
 const THREAD_PROVIDER_STACK_LIMIT = 3;
 
 export function resolveThreadProviderStack(
-  thread: Pick<EnvironmentThreadShell, "providerInstanceHistory" | "modelSelection" | "runtime">,
+  thread: Pick<MachineThreadShell, "providerInstanceHistory" | "modelSelection" | "runtime">,
 ): ReadonlyArray<ProviderInstanceId> {
   const current = thread.runtime?.providerInstanceId ?? thread.modelSelection.instanceId;
   const previous = thread.providerInstanceHistory.filter((instanceId) => instanceId !== current);

@@ -4,31 +4,31 @@ import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { AsyncResult, Atom } from "effect/reactivity";
 
-import * as RelayEnvironmentDiscovery from "../relay/discovery.ts";
+import * as RelayMachineDiscovery from "../relay/discovery.ts";
 import { createRuntimeCommand } from "./runtime.ts";
 
-export function createRelayEnvironmentDiscoveryAtoms<R, E>(
-  runtime: Atom.AtomRuntime<RelayEnvironmentDiscovery.RelayEnvironmentDiscovery | R, E>,
+export function createRelayMachineDiscoveryAtoms<R, E>(
+  runtime: Atom.AtomRuntime<RelayMachineDiscovery.RelayMachineDiscovery | R, E>,
 ) {
   const stateAtom = runtime.atom(
     Stream.unwrap(
-      RelayEnvironmentDiscovery.RelayEnvironmentDiscovery.pipe(
+      RelayMachineDiscovery.RelayMachineDiscovery.pipe(
         Effect.map((discovery) => SubscriptionRef.changes(discovery.state)),
       ),
     ),
-    { initialValue: RelayEnvironmentDiscovery.EMPTY_RELAY_ENVIRONMENT_DISCOVERY_STATE },
+    { initialValue: RelayMachineDiscovery.EMPTY_RELAY_MACHINE_DISCOVERY_STATE },
   );
   const stateValueAtom = Atom.make((get) =>
     Option.getOrElse(
       AsyncResult.value(get(stateAtom)),
-      () => RelayEnvironmentDiscovery.EMPTY_RELAY_ENVIRONMENT_DISCOVERY_STATE,
+      () => RelayMachineDiscovery.EMPTY_RELAY_MACHINE_DISCOVERY_STATE,
     ),
-  ).pipe(Atom.withLabel("relay-environment-discovery-value"));
+  ).pipe(Atom.withLabel("relay-machine-discovery-value"));
   const refresh = createRuntimeCommand(runtime, {
-    label: "relay-environment-discovery:refresh",
+    label: "relay-machine-discovery:refresh",
     concurrency: { mode: "singleFlight", key: () => "refresh" },
     execute: (_input: void) =>
-      RelayEnvironmentDiscovery.RelayEnvironmentDiscovery.pipe(
+      RelayMachineDiscovery.RelayMachineDiscovery.pipe(
         Effect.flatMap((discovery) => discovery.refresh),
       ),
   });

@@ -17,10 +17,10 @@ export function persistPullRequestStats(): QueryPersistence<PullRequestListStats
   const row = persistQuery(PullRequestDiffStat);
   return {
     load: Effect.fn("pullRequestStatsPersistence.load")(
-      function* (environmentId, key) {
+      function* (machineId, key) {
         const [, input] = yield* Schema.decodeEffect(requestKey)(key);
         const rows = yield* Effect.forEach(input.refs, (ref) =>
-          row.load(environmentId, statKey(ref)),
+          row.load(machineId, statKey(ref)),
         );
         const stats = rows.flatMap((value) => (Option.isSome(value) ? [value.value] : []));
         return stats.length ? Option.some({ stats }) : Option.none();
@@ -28,7 +28,7 @@ export function persistPullRequestStats(): QueryPersistence<PullRequestListStats
       Effect.orElseSucceed(() => Option.none()),
     ),
     save: Effect.fn("pullRequestStatsPersistence.save")(
-      function* (environmentId, key, result) {
+      function* (machineId, key, result) {
         const [, input] = yield* Schema.decodeEffect(requestKey)(key);
         yield* Effect.forEach(result.stats, (stat) => {
           const ref = input.refs.find(
@@ -37,10 +37,10 @@ export function persistPullRequestStats(): QueryPersistence<PullRequestListStats
               ref.repository === stat.repository &&
               ref.number === stat.number,
           );
-          return ref ? row.save(environmentId, statKey(ref), stat) : Effect.void;
+          return ref ? row.save(machineId, statKey(ref), stat) : Effect.void;
         });
       },
-      (effect, _environmentId, _key, _result) => effect.pipe(Effect.ignore),
+      (effect, _machineId, _key, _result) => effect.pipe(Effect.ignore),
     ),
   };
 }

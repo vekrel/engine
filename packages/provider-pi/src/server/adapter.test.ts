@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   CheckpointId,
-  EnvironmentId,
+  MachineId,
   NodeId,
   ProviderInstanceId,
   ProviderSessionId,
@@ -1411,7 +1411,7 @@ describe("PiAdapterV2", () => {
   it.effect("injects the T3 MCP extension and bearer when a session exists", () =>
     Effect.gen(function* () {
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
-        environmentId: EnvironmentId.make("environment-pi-mcp"),
+        machineId: MachineId.make("environment-pi-mcp"),
         threadId: THREAD_ID,
         providerSessionId: "mcp-session-pi",
         providerInstanceId: PI_INSTANCE_ID,

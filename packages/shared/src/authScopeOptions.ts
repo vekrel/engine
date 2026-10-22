@@ -2,7 +2,7 @@ import {
   AuthAccessReadScope,
   AuthAccessWriteScope,
   AuthDiagnosticsReadScope,
-  AuthEnvironmentMaintainScope,
+  AuthMachineMaintainScope,
   AuthFilesystemReadScope,
   AuthFilesystemWriteScope,
   type AuthGrantScope,
@@ -25,7 +25,7 @@ export const AUTH_SCOPE_OPTIONS: ReadonlyArray<{
 }> = [
   {
     scope: AuthOrchestrationReadScope,
-    title: "View environment",
+    title: "View machine",
     description: "Read threads, status, checkpoints, and configuration.",
   },
   {
@@ -35,8 +35,8 @@ export const AUTH_SCOPE_OPTIONS: ReadonlyArray<{
   },
   {
     scope: AuthSettingsWriteScope,
-    title: "Change environment settings",
-    description: "Edit environment preferences and keybindings.",
+    title: "Change machine settings",
+    description: "Edit machine preferences and keybindings.",
   },
   {
     scope: AuthProvidersManageScope,
@@ -44,9 +44,9 @@ export const AUTH_SCOPE_OPTIONS: ReadonlyArray<{
     description: "Configure, install, sign in to, and update providers and usage sources.",
   },
   {
-    scope: AuthEnvironmentMaintainScope,
-    title: "Maintain environment",
-    description: "Update the server and control environment processes.",
+    scope: AuthMachineMaintainScope,
+    title: "Maintain machine",
+    description: "Update the server and control machine processes.",
   },
   {
     scope: AuthPreviewOperateScope,

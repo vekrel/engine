@@ -255,7 +255,7 @@ export interface EditQueuedRunInput extends ThreadCommandInput {
   };
 }
 
-const allocateCommandId = Effect.fn("EnvironmentCommands.allocateCommandId")(function* (
+const allocateCommandId = Effect.fn("MachineCommands.allocateCommandId")(function* (
   input: CommandMetadata,
 ) {
   if (input.commandId !== undefined) return input.commandId;
@@ -270,13 +270,13 @@ const getProjection = (threadId: ThreadId) =>
   request(ORCHESTRATION_V2_WS_METHODS.getThreadProjection, { threadId });
 
 const supportsServerResolvedCommandContext = Effect.fn(
-  "EnvironmentCommands.supportsServerResolvedCommandContext",
+  "MachineCommands.supportsServerResolvedCommandContext",
 )(function* () {
   const config = yield* getInitialServerConfig();
-  return config.environment.capabilities.serverResolvedCommandContext === true;
+  return config.machine.capabilities.serverResolvedCommandContext === true;
 });
 
-const persistAttachments = Effect.fn("EnvironmentCommands.persistAttachments")(function* (
+const persistAttachments = Effect.fn("MachineCommands.persistAttachments")(function* (
   threadId: ThreadId,
   messageId: MessageId,
   attachments: ReadonlyArray<ChatAttachment | UploadChatAttachment>,
@@ -304,7 +304,7 @@ const persistAttachments = Effect.fn("EnvironmentCommands.persistAttachments")(f
   });
 });
 
-const mutateProject = Effect.fn("EnvironmentCommands.mutateProject")(function* (
+const mutateProject = Effect.fn("MachineCommands.mutateProject")(function* (
   mutation:
     | {
         readonly type: "project.create";
@@ -335,7 +335,7 @@ const mutateProject = Effect.fn("EnvironmentCommands.mutateProject")(function* (
   return yield* request(WS_METHODS.projectsMutate, mutation);
 });
 
-export const createProject = Effect.fn("EnvironmentCommands.createProject")(function* (
+export const createProject = Effect.fn("MachineCommands.createProject")(function* (
   input: CreateProjectInput,
 ) {
   return yield* mutateProject({
@@ -354,7 +354,7 @@ export const createProject = Effect.fn("EnvironmentCommands.createProject")(func
   });
 });
 
-export const updateProject = Effect.fn("EnvironmentCommands.updateProject")(function* (
+export const updateProject = Effect.fn("MachineCommands.updateProject")(function* (
   input: UpdateProjectInput,
 ) {
   return yield* mutateProject({
@@ -376,7 +376,7 @@ export const updateProject = Effect.fn("EnvironmentCommands.updateProject")(func
   });
 });
 
-export const deleteProject = Effect.fn("EnvironmentCommands.deleteProject")(function* (
+export const deleteProject = Effect.fn("MachineCommands.deleteProject")(function* (
   input: DeleteProjectInput,
 ) {
   return yield* mutateProject({
@@ -387,7 +387,7 @@ export const deleteProject = Effect.fn("EnvironmentCommands.deleteProject")(func
   });
 });
 
-export const createThread = Effect.fn("EnvironmentCommands.createThread")(function* (
+export const createThread = Effect.fn("MachineCommands.createThread")(function* (
   input: CreateThreadInput,
 ) {
   return yield* dispatch({
@@ -421,31 +421,31 @@ function simpleThreadCommand(
   );
 }
 
-export const deleteThread = Effect.fn("EnvironmentCommands.deleteThread")(function* (
+export const deleteThread = Effect.fn("MachineCommands.deleteThread")(function* (
   input: DeleteThreadInput,
 ) {
   return yield* simpleThreadCommand("thread.delete", input);
 });
 
-export const archiveThread = Effect.fn("EnvironmentCommands.archiveThread")(function* (
+export const archiveThread = Effect.fn("MachineCommands.archiveThread")(function* (
   input: ArchiveThreadInput,
 ) {
   return yield* simpleThreadCommand("thread.archive", input);
 });
 
-export const unarchiveThread = Effect.fn("EnvironmentCommands.unarchiveThread")(function* (
+export const unarchiveThread = Effect.fn("MachineCommands.unarchiveThread")(function* (
   input: UnarchiveThreadInput,
 ) {
   return yield* simpleThreadCommand("thread.unarchive", input);
 });
 
-export const settleThread = Effect.fn("EnvironmentCommands.settleThread")(function* (
+export const settleThread = Effect.fn("MachineCommands.settleThread")(function* (
   input: SettleThreadInput,
 ) {
   return yield* simpleThreadCommand("thread.settle", input);
 });
 
-export const pinThread = Effect.fn("EnvironmentCommands.pinThread")(function* (
+export const pinThread = Effect.fn("MachineCommands.pinThread")(function* (
   input: PinThreadInput,
 ) {
   const commandId = yield* allocateCommandId(input);
@@ -460,7 +460,7 @@ export const pinThread = Effect.fn("EnvironmentCommands.pinThread")(function* (
 export interface SetThreadAutoSettleInput extends ThreadCommandInput {
   readonly enabled: boolean;
 }
-export const setThreadAutoSettle = Effect.fn("EnvironmentCommands.setThreadAutoSettle")(function* (
+export const setThreadAutoSettle = Effect.fn("MachineCommands.setThreadAutoSettle")(function* (
   input: SetThreadAutoSettleInput,
 ) {
   return yield* dispatch({
@@ -471,7 +471,7 @@ export const setThreadAutoSettle = Effect.fn("EnvironmentCommands.setThreadAutoS
   });
 });
 
-export const reorderPinnedThread = Effect.fn("EnvironmentCommands.reorderPinnedThread")(function* (
+export const reorderPinnedThread = Effect.fn("MachineCommands.reorderPinnedThread")(function* (
   input: ReorderPinnedThreadInput,
 ) {
   const commandId = yield* allocateCommandId(input);
@@ -483,7 +483,7 @@ export const reorderPinnedThread = Effect.fn("EnvironmentCommands.reorderPinnedT
   });
 });
 
-export const reorderActiveThread = Effect.fn("EnvironmentCommands.reorderActiveThread")(function* (
+export const reorderActiveThread = Effect.fn("MachineCommands.reorderActiveThread")(function* (
   input: ReorderActiveThreadInput,
 ) {
   return yield* dispatch({
@@ -494,13 +494,13 @@ export const reorderActiveThread = Effect.fn("EnvironmentCommands.reorderActiveT
   });
 });
 
-export const unpinThread = Effect.fn("EnvironmentCommands.unpinThread")(function* (
+export const unpinThread = Effect.fn("MachineCommands.unpinThread")(function* (
   input: UnpinThreadInput,
 ) {
   return yield* simpleThreadCommand("thread.unpin", input);
 });
 
-export const unsettleThread = Effect.fn("EnvironmentCommands.unsettleThread")(function* (
+export const unsettleThread = Effect.fn("MachineCommands.unsettleThread")(function* (
   input: UnsettleThreadInput,
 ) {
   return yield* dispatch({
@@ -511,7 +511,7 @@ export const unsettleThread = Effect.fn("EnvironmentCommands.unsettleThread")(fu
   });
 });
 
-export const snoozeThread = Effect.fn("EnvironmentCommands.snoozeThread")(function* (
+export const snoozeThread = Effect.fn("MachineCommands.snoozeThread")(function* (
   input: SnoozeThreadInput,
 ) {
   return yield* dispatch({
@@ -522,7 +522,7 @@ export const snoozeThread = Effect.fn("EnvironmentCommands.snoozeThread")(functi
   });
 });
 
-export const unsnoozeThread = Effect.fn("EnvironmentCommands.unsnoozeThread")(function* (
+export const unsnoozeThread = Effect.fn("MachineCommands.unsnoozeThread")(function* (
   input: UnsnoozeThreadInput,
 ) {
   return yield* dispatch({
@@ -533,7 +533,7 @@ export const unsnoozeThread = Effect.fn("EnvironmentCommands.unsnoozeThread")(fu
   });
 });
 
-export const visitThread = Effect.fn("EnvironmentCommands.visitThread")(function* (
+export const visitThread = Effect.fn("MachineCommands.visitThread")(function* (
   input: VisitThreadInput,
 ) {
   return yield* dispatch({
@@ -544,7 +544,7 @@ export const visitThread = Effect.fn("EnvironmentCommands.visitThread")(function
   });
 });
 
-export const markThreadUnread = Effect.fn("EnvironmentCommands.markThreadUnread")(function* (
+export const markThreadUnread = Effect.fn("MachineCommands.markThreadUnread")(function* (
   input: MarkThreadUnreadInput,
 ) {
   return yield* dispatch({
@@ -554,7 +554,7 @@ export const markThreadUnread = Effect.fn("EnvironmentCommands.markThreadUnread"
   });
 });
 
-export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadMetadata")(
+export const updateThreadMetadata = Effect.fn("MachineCommands.updateThreadMetadata")(
   function* (input: UpdateThreadMetadataInput) {
     const commandId = yield* allocateCommandId(input);
     let result = null;
@@ -599,7 +599,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
   },
 );
 
-export const setThreadRuntimeMode = Effect.fn("EnvironmentCommands.setThreadRuntimeMode")(
+export const setThreadRuntimeMode = Effect.fn("MachineCommands.setThreadRuntimeMode")(
   function* (input: SetThreadRuntimeModeInput) {
     return yield* dispatch({
       type: "thread.runtime-mode.set",
@@ -610,7 +610,7 @@ export const setThreadRuntimeMode = Effect.fn("EnvironmentCommands.setThreadRunt
   },
 );
 
-export const setThreadInteractionMode = Effect.fn("EnvironmentCommands.setThreadInteractionMode")(
+export const setThreadInteractionMode = Effect.fn("MachineCommands.setThreadInteractionMode")(
   function* (input: SetThreadInteractionModeInput) {
     return yield* dispatch({
       type: "thread.interaction-mode.set",
@@ -621,7 +621,7 @@ export const setThreadInteractionMode = Effect.fn("EnvironmentCommands.setThread
   },
 );
 
-export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(function* (
+export const startThreadTurn = Effect.fn("MachineCommands.startThreadTurn")(function* (
   input: StartThreadTurnInput,
 ) {
   const commandId = yield* allocateCommandId(input);
@@ -770,7 +770,7 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
   });
 });
 
-export const interruptThreadTurn = Effect.fn("EnvironmentCommands.interruptThreadTurn")(function* (
+export const interruptThreadTurn = Effect.fn("MachineCommands.interruptThreadTurn")(function* (
   input: InterruptThreadTurnInput,
 ) {
   let threadId = input.threadId;
@@ -806,7 +806,7 @@ export const interruptThreadTurn = Effect.fn("EnvironmentCommands.interruptThrea
     threadId === input.threadId ? (input.runId ?? (input.turnId as RunId | undefined)) : undefined;
   if (runId === undefined) {
     const config = yield* getInitialServerConfig();
-    if (config.environment.capabilities.threadStop === true) {
+    if (config.machine.capabilities.threadStop === true) {
       // A paginated projection can omit commands still running from earlier turns.
       return yield* dispatch({
         type: "thread.stop",
@@ -865,7 +865,7 @@ export const interruptThreadTurn = Effect.fn("EnvironmentCommands.interruptThrea
   });
 });
 
-export const respondToThreadApproval = Effect.fn("EnvironmentCommands.respondToThreadApproval")(
+export const respondToThreadApproval = Effect.fn("MachineCommands.respondToThreadApproval")(
   function* (input: RespondToThreadApprovalInput) {
     return yield* dispatch({
       type: "runtime-request.respond",
@@ -877,7 +877,7 @@ export const respondToThreadApproval = Effect.fn("EnvironmentCommands.respondToT
   },
 );
 
-export const respondToThreadUserInput = Effect.fn("EnvironmentCommands.respondToThreadUserInput")(
+export const respondToThreadUserInput = Effect.fn("MachineCommands.respondToThreadUserInput")(
   function* (input: RespondToThreadUserInputInput) {
     return yield* dispatch({
       type: "runtime-request.respond",
@@ -892,7 +892,7 @@ export const respondToThreadUserInput = Effect.fn("EnvironmentCommands.respondTo
   },
 );
 
-export const dismissThreadUserInput = Effect.fn("EnvironmentCommands.dismissThreadUserInput")(
+export const dismissThreadUserInput = Effect.fn("MachineCommands.dismissThreadUserInput")(
   function* (input: DismissThreadUserInputInput) {
     return yield* dispatch({
       type: "thread.user-input.dismiss",
@@ -903,7 +903,7 @@ export const dismissThreadUserInput = Effect.fn("EnvironmentCommands.dismissThre
   },
 );
 
-export const revertThreadCheckpoint = Effect.fn("EnvironmentCommands.revertThreadCheckpoint")(
+export const revertThreadCheckpoint = Effect.fn("MachineCommands.revertThreadCheckpoint")(
   function* (input: RevertThreadCheckpointInput) {
     if (
       input.checkpointId !== undefined &&
@@ -950,7 +950,7 @@ export const revertThreadCheckpoint = Effect.fn("EnvironmentCommands.revertThrea
   },
 );
 
-export const stopThreadSession = Effect.fn("EnvironmentCommands.stopThreadSession")(function* (
+export const stopThreadSession = Effect.fn("MachineCommands.stopThreadSession")(function* (
   input: StopThreadSessionInput,
 ) {
   const projection = yield* getProjection(input.threadId);
@@ -968,7 +968,7 @@ export const stopThreadSession = Effect.fn("EnvironmentCommands.stopThreadSessio
   return result;
 });
 
-export const forkThreadFromRun = Effect.fn("EnvironmentCommands.forkThreadFromRun")(function* (
+export const forkThreadFromRun = Effect.fn("MachineCommands.forkThreadFromRun")(function* (
   input: ForkThreadFromRunInput,
 ) {
   return yield* dispatch({
@@ -983,7 +983,7 @@ export const forkThreadFromRun = Effect.fn("EnvironmentCommands.forkThreadFromRu
   });
 });
 
-export const mergeThreadBack = Effect.fn("EnvironmentCommands.mergeThreadBack")(function* (
+export const mergeThreadBack = Effect.fn("MachineCommands.mergeThreadBack")(function* (
   input: MergeThreadBackInput,
 ) {
   return yield* dispatch({
@@ -997,7 +997,7 @@ export const mergeThreadBack = Effect.fn("EnvironmentCommands.mergeThreadBack")(
   });
 });
 
-export const resumeThreadQueue = Effect.fn("EnvironmentCommands.resumeThreadQueue")(function* (
+export const resumeThreadQueue = Effect.fn("MachineCommands.resumeThreadQueue")(function* (
   input: ResumeThreadQueueInput,
 ) {
   return yield* dispatch({
@@ -1009,7 +1009,7 @@ export const resumeThreadQueue = Effect.fn("EnvironmentCommands.resumeThreadQueu
   });
 });
 
-export const reorderQueuedRun = Effect.fn("EnvironmentCommands.reorderQueuedRun")(function* (
+export const reorderQueuedRun = Effect.fn("MachineCommands.reorderQueuedRun")(function* (
   input: ReorderQueuedRunInput,
 ) {
   return yield* dispatch({
@@ -1021,7 +1021,7 @@ export const reorderQueuedRun = Effect.fn("EnvironmentCommands.reorderQueuedRun"
   });
 });
 
-export const promoteQueuedRun = Effect.fn("EnvironmentCommands.promoteQueuedRun")(function* (
+export const promoteQueuedRun = Effect.fn("MachineCommands.promoteQueuedRun")(function* (
   input: PromoteQueuedRunInput,
 ) {
   return yield* dispatch({
@@ -1033,7 +1033,7 @@ export const promoteQueuedRun = Effect.fn("EnvironmentCommands.promoteQueuedRun"
   });
 });
 
-export const cancelQueuedRun = Effect.fn("EnvironmentCommands.cancelQueuedRun")(function* (
+export const cancelQueuedRun = Effect.fn("MachineCommands.cancelQueuedRun")(function* (
   input: CancelQueuedRunInput,
 ) {
   return yield* dispatch({
@@ -1044,7 +1044,7 @@ export const cancelQueuedRun = Effect.fn("EnvironmentCommands.cancelQueuedRun")(
   });
 });
 
-export const retryWorkspacePreparation = Effect.fn("EnvironmentCommands.retryWorkspacePreparation")(
+export const retryWorkspacePreparation = Effect.fn("MachineCommands.retryWorkspacePreparation")(
   function* (input: RetryWorkspacePreparationInput) {
     return yield* dispatch({
       type: "prepared-run.retry",
@@ -1055,7 +1055,7 @@ export const retryWorkspacePreparation = Effect.fn("EnvironmentCommands.retryWor
   },
 );
 
-export const editQueuedRun = Effect.fn("EnvironmentCommands.editQueuedRun")(function* (
+export const editQueuedRun = Effect.fn("MachineCommands.editQueuedRun")(function* (
   input: EditQueuedRunInput,
 ) {
   const attachments =
@@ -1091,7 +1091,7 @@ export type UnlinkThreadPullRequestInput = Omit<
   "type" | "commandId"
 > &
   CommandMetadata;
-export const linkThreadPullRequest = Effect.fn("EnvironmentCommands.linkThreadPullRequest")(
+export const linkThreadPullRequest = Effect.fn("MachineCommands.linkThreadPullRequest")(
   function* (input: LinkThreadPullRequestInput) {
     return yield* dispatch({
       ...input,
@@ -1105,7 +1105,7 @@ export type WatchThreadPullRequestInput = Omit<
   "type" | "commandId"
 > &
   CommandMetadata;
-export const watchThreadPullRequest = Effect.fn("EnvironmentCommands.watchThreadPullRequest")(
+export const watchThreadPullRequest = Effect.fn("MachineCommands.watchThreadPullRequest")(
   function* (input: WatchThreadPullRequestInput) {
     return yield* dispatch({
       ...input,
@@ -1114,7 +1114,7 @@ export const watchThreadPullRequest = Effect.fn("EnvironmentCommands.watchThread
     });
   },
 );
-export const unlinkThreadPullRequest = Effect.fn("EnvironmentCommands.unlinkThreadPullRequest")(
+export const unlinkThreadPullRequest = Effect.fn("MachineCommands.unlinkThreadPullRequest")(
   function* (input: UnlinkThreadPullRequestInput) {
     return yield* dispatch({
       ...input,

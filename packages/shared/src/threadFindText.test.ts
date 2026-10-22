@@ -1,4 +1,4 @@
-import { EnvironmentId, MessageId, ThreadId } from "@vekrel/contracts";
+import { MachineId, MessageId, ThreadId } from "@vekrel/contracts";
 import { expect, it } from "vite-plus/test";
 import { serializeAssistantCitation } from "./assistantCitations.ts";
 import { searchableMessageSegments } from "./threadFindText.ts";
@@ -88,7 +88,7 @@ it("indexes nested disclosure summaries and bodies in rendered order", () => {
 it("indexes the citation chip label instead of its link text", () => {
   const citation = {
     version: 1 as const,
-    environmentId: EnvironmentId.make("environment"),
+    machineId: MachineId.make("machine"),
     threadId: ThreadId.make("thread"),
     messageId: MessageId.make("message"),
     text: "cited   needle",

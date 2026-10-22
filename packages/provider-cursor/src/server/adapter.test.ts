@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import type { InteractionUpdate } from "@cursor/sdk";
 import {
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   ProjectId,
@@ -58,7 +58,7 @@ describe("CursorAdapterV2", () => {
         const threadId = ThreadId.make("cursor-lifecycle-thread");
         const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
         yield* mcpSessions.set({
-          environmentId: EnvironmentId.make("cursor-lifecycle-environment"),
+          machineId: MachineId.make("cursor-lifecycle-environment"),
           threadId,
           providerSessionId: "cursor-lifecycle-session",
           providerInstanceId: instanceId,
@@ -1184,7 +1184,7 @@ describe("CursorAdapterV2", () => {
   it("injects thread-scoped MCP credentials without logging them", () => {
     const threadId = ThreadId.make("thread-cursor-mcp");
     const mcpSession = {
-      environmentId: EnvironmentId.make("environment-cursor-mcp"),
+      machineId: MachineId.make("environment-cursor-mcp"),
       threadId,
       providerSessionId: "mcp-session-cursor",
       providerInstanceId: ProviderInstanceId.make("cursor"),

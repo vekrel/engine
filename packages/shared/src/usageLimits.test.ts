@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
@@ -78,7 +78,7 @@ describe("pools", () => {
   };
   const laptop = { entry: { target: { label: "Laptop" } } };
 
-  it("merges one account reported natively on two environments and by a hub into one entry", () => {
+  it("merges one account reported natively on two machines and by a hub into one entry", () => {
     const native = provider({
       driver: claude,
       instanceId: ProviderInstanceId.make("claude"),
@@ -86,9 +86,9 @@ describe("pools", () => {
       usageLimits: { checkedAt, windows: [{ ...window, usedPercent: 40 }] },
     });
     const input = new Map([
-      [EnvironmentId.make("env-a"), { ...laptop, serverConfig: { providers: [native] } }],
+      [MachineId.make("env-a"), { ...laptop, serverConfig: { providers: [native] } }],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         {
           entry: { target: { label: "Desktop" } },
           serverConfig: {
@@ -124,10 +124,10 @@ describe("pools", () => {
     expect(accounts[0]).toMatchObject({
       key: "env-a:claude",
       sourceLabel: null,
-      redeem: { environmentId: "env-b", input: { instanceId: "claude" } },
-      environments: [
-        { environmentId: "env-a", label: "Laptop" },
-        { environmentId: "env-b", label: "Desktop" },
+      redeem: { machineId: "env-b", input: { instanceId: "claude" } },
+      machines: [
+        { machineId: "env-a", label: "Laptop" },
+        { machineId: "env-b", label: "Desktop" },
       ],
     });
     expect(accounts[0]?.limits.windows[0]?.usedPercent).toBe(55);
@@ -145,9 +145,9 @@ describe("pools", () => {
       },
     });
     const input = new Map([
-      [EnvironmentId.make("env-a"), { ...laptop, serverConfig: { providers: [go] } }],
+      [MachineId.make("env-a"), { ...laptop, serverConfig: { providers: [go] } }],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         {
           entry: { target: { label: "Desktop" } },
           serverConfig: {
@@ -167,9 +167,9 @@ describe("pools", () => {
     ]);
     const accounts = collectLimitAccounts(input);
     expect(accounts).toHaveLength(1);
-    expect(accounts[0]?.environments).toEqual([
-      { environmentId: "env-a", label: "Laptop" },
-      { environmentId: "env-b", label: "Desktop" },
+    expect(accounts[0]?.machines).toEqual([
+      { machineId: "env-a", label: "Laptop" },
+      { machineId: "env-b", label: "Desktop" },
     ]);
     expect(collectLimitPools(accounts, now)[0]?.windows[0]?.members).toHaveLength(1);
     expect(accounts[0]?.limits.windows[0]?.usedPercent).toBe(4);
@@ -178,19 +178,19 @@ describe("pools", () => {
       ...go,
       usageLimits: { ...go.usageLimits!, credentialFingerprint: "other-go-key" },
     };
-    input.set(EnvironmentId.make("env-b"), {
+    input.set(MachineId.make("env-b"), {
       entry: { target: { label: "Desktop" } },
       serverConfig: { providers: [differentKey] },
     });
     expect(collectLimitAccounts(input)).toHaveLength(2);
 
-    input.set(EnvironmentId.make("env-a"), {
+    input.set(MachineId.make("env-a"), {
       ...laptop,
       serverConfig: {
         providers: [{ ...go, auth: { status: "authenticated", email: "same@example.com" } }],
       },
     });
-    input.set(EnvironmentId.make("env-b"), {
+    input.set(MachineId.make("env-b"), {
       entry: { target: { label: "Desktop" } },
       serverConfig: {
         providers: [
@@ -214,7 +214,7 @@ describe("pools", () => {
     });
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -242,8 +242,8 @@ describe("pools", () => {
     const [account] = collectLimitAccounts(input);
     expect(account?.limits.windows[0]?.usedPercent).toBe(55);
     expect(account?.limits.resetCredits?.availableCount).toBe(2);
-    expect(account?.redeem).toEqual({ environmentId: "env-a", input: { instanceId: "claude" } });
-    expect(account?.environments).toEqual([{ environmentId: "env-a", label: "Laptop" }]);
+    expect(account?.redeem).toEqual({ machineId: "env-a", input: { instanceId: "claude" } });
+    expect(account?.machines).toEqual([{ machineId: "env-a", label: "Laptop" }]);
   });
 
   it("redeems through the hub when it holds a credit, even with a fresher native read", () => {
@@ -259,7 +259,7 @@ describe("pools", () => {
     });
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -287,13 +287,13 @@ describe("pools", () => {
     ]);
     const [account] = collectLimitAccounts(input);
     expect(account?.redeem).toEqual({
-      environmentId: "env-a",
+      machineId: "env-a",
       input: { sourceId: "hub", accountId: "claude-same@example.com.json", creditId: "hub-credit" },
     });
     expect(account?.limits.resetCredits?.availableCount).toBe(3);
   });
 
-  it("redeems on the environment whose snapshot supplied the credits on show", () => {
+  it("redeems on the machine whose snapshot supplied the credits on show", () => {
     const stale = provider({
       auth: { status: "authenticated", email: "same@example.com" },
       usageLimits: {
@@ -311,15 +311,15 @@ describe("pools", () => {
       },
     };
     const input = new Map([
-      [EnvironmentId.make("env-a"), { ...laptop, serverConfig: { providers: [stale] } }],
+      [MachineId.make("env-a"), { ...laptop, serverConfig: { providers: [stale] } }],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         { entry: { target: { label: "Desktop" } }, serverConfig: { providers: [fresh] } },
       ],
     ]);
     const [account] = collectLimitAccounts(input);
     expect(account?.limits.resetCredits?.availableCount).toBe(2);
-    expect(account?.redeem).toEqual({ environmentId: "env-b", input: { instanceId: "codex" } });
+    expect(account?.redeem).toEqual({ machineId: "env-b", input: { instanceId: "codex" } });
   });
 
   it("keeps distinct hub accounts redeemable through their own source", () => {
@@ -335,7 +335,7 @@ describe("pools", () => {
     }));
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -347,7 +347,7 @@ describe("pools", () => {
     ]);
     expect(collectLimitAccounts(input).map((account) => account.redeem)).toEqual(
       hubAccounts.map((account) => ({
-        environmentId: "env-a",
+        machineId: "env-a",
         input: { sourceId: "hub", accountId: account.id, creditId: `${account.id}-credit` },
       })),
     );
@@ -365,7 +365,7 @@ describe("pools", () => {
     ];
     const input = new Map(
       snapshots.map((usageLimits, i) => [
-        EnvironmentId.make(`env-${i}`),
+        MachineId.make(`env-${i}`),
         {
           ...laptop,
           serverConfig: {
@@ -382,7 +382,7 @@ describe("pools", () => {
     const [account] = collectLimitAccounts(input);
     expect(account?.limits.checkedAt).toBe("2026-09-03T12:00:00.000Z");
     expect(account?.limits.resetCredits?.availableCount).toBe(1);
-    expect(account?.redeem?.environmentId).toBe("env-2");
+    expect(account?.redeem?.machineId).toBe("env-2");
   });
 
   it("keeps one email in two workspaces apart while merging each workspace's duplicates", () => {
@@ -401,7 +401,7 @@ describe("pools", () => {
     });
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -413,7 +413,7 @@ describe("pools", () => {
         },
       ],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         {
           entry: { target: { label: "Desktop" } },
           serverConfig: { providers: [login("personal", "ws-plus", 26)] },
@@ -433,7 +433,7 @@ describe("pools", () => {
     };
     const sameFile = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -443,7 +443,7 @@ describe("pools", () => {
         },
       ],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         {
           ...laptop,
           serverConfig: {
@@ -457,7 +457,7 @@ describe("pools", () => {
       "hub:a.json:ws-1",
       "hub:a.json:ws-2",
     ]);
-    expect(accounts[1]?.environments.map((environment) => environment.label)).toEqual([
+    expect(accounts[1]?.machines.map((machine) => machine.label)).toEqual([
       "Laptop",
       "Desktop",
     ]);
@@ -478,7 +478,7 @@ describe("pools", () => {
     const withOther = (other: ServerProvider) =>
       new Map([
         [
-          EnvironmentId.make("env-a"),
+          MachineId.make("env-a"),
           {
             ...laptop,
             serverConfig: {
@@ -504,7 +504,7 @@ describe("pools", () => {
     ]);
   });
 
-  it("keys a hub account without an email by hub, so two environments on one hub share it", () => {
+  it("keys a hub account without an email by hub, so two machines on one hub share it", () => {
     const seat = {
       id: "claude-team-seat.json",
       driver: claude,
@@ -513,11 +513,11 @@ describe("pools", () => {
     const hub = { ...source, accounts: [seat] };
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         { ...laptop, serverConfig: { providers: [], usageLimitSources: [hub] } },
       ],
       [
-        EnvironmentId.make("env-b"),
+        MachineId.make("env-b"),
         {
           entry: { target: { label: "Desktop" } },
           serverConfig: { providers: [], usageLimitSources: [hub] },
@@ -543,7 +543,7 @@ describe("pools", () => {
         collectLimitAccounts(
           new Map([
             [
-              EnvironmentId.make("env-a"),
+              MachineId.make("env-a"),
               {
                 ...laptop,
                 serverConfig: { providers: [], usageLimitSources: [{ ...source, accounts }] },
@@ -571,7 +571,7 @@ describe("pools", () => {
   it("pools windows by id across accounts and orders resets by when they land", () => {
     const input = new Map([
       [
-        EnvironmentId.make("env-a"),
+        MachineId.make("env-a"),
         {
           ...laptop,
           serverConfig: {
@@ -665,7 +665,7 @@ describe("pools", () => {
           email: undefined,
           plan: undefined,
           accentColor: undefined,
-          environments: [],
+          machines: [],
           sourceLabel: null,
           redeem: null,
           limits: {
@@ -710,7 +710,7 @@ describe("pooled account columns", () => {
     email: undefined,
     plan: undefined,
     accentColor: undefined,
-    environments: [],
+    machines: [],
     sourceLabel: "Hub",
     redeem: null,
     limits: { checkedAt: "2026-09-03T11:00:00.000Z", windows },
@@ -1239,7 +1239,7 @@ describe("sameUsageLimitCommandCoverage", () => {
 });
 
 describe("external usage settings", () => {
-  it("deduplicates destinations across accounts and environments without inventing quota pools", () => {
+  it("deduplicates destinations across accounts and machines without inventing quota pools", () => {
     const managed = provider({
       usageLimits: {
         checkedAt: "2026-09-03T11:00:00.000Z",
@@ -1250,7 +1250,7 @@ describe("external usage settings", () => {
     });
     const presentations = new Map([
       [
-        EnvironmentId.make("a"),
+        MachineId.make("a"),
         {
           entry: { target: { label: "A" } },
           serverConfig: {
@@ -1259,7 +1259,7 @@ describe("external usage settings", () => {
         },
       ],
       [
-        EnvironmentId.make("b"),
+        MachineId.make("b"),
         { entry: { target: { label: "B" } }, serverConfig: { providers: [managed] } },
       ],
     ]);

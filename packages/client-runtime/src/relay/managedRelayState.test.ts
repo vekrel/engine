@@ -1,7 +1,7 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import {
   type RelayClientDeviceRecord,
-  type RelayClientEnvironmentRecord,
+  type RelayClientMachineRecord,
 } from "@vekrel/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -12,7 +12,7 @@ import { afterEach, vi } from "vite-plus/test";
 import * as ManagedRelay from "./managedRelay.ts";
 import {
   createManagedRelaySession,
-  deregisterManagedRelayEnvironment,
+  deregisterManagedRelayMachine,
   ManagedRelaySessionError,
   managedRelaySessionAtom,
   setManagedRelaySession,
@@ -20,16 +20,16 @@ import {
 
 let registry = AtomRegistry.make();
 
-const environment = {
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Main environment",
+const machine = {
+  machineId: MachineId.make("machine-1"),
+  label: "Main machine",
   endpoint: {
-    httpBaseUrl: "https://environment.example.test",
-    wsBaseUrl: "wss://environment.example.test",
+    httpBaseUrl: "https://machine.example.test",
+    wsBaseUrl: "wss://machine.example.test",
     providerKind: "cloudflare_tunnel",
   },
   linkedAt: "2026-06-01T00:00:00.000Z",
-} satisfies RelayClientEnvironmentRecord;
+} satisfies RelayClientMachineRecord;
 
 const device = {
   deviceId: "device-1",
@@ -58,19 +58,19 @@ function resetRegistry() {
 function createClient(overrides?: Partial<ManagedRelay.ManagedRelayClient["Service"]>) {
   return ManagedRelay.ManagedRelayClient.of({
     relayUrl: "https://relay.example.test",
-    listEnvironments: () => Effect.succeed([environment]),
+    listMachines: () => Effect.succeed([machine]),
     listDevices: () => Effect.succeed([device]),
-    createEnvironmentLinkChallenge: () => Effect.die("unused"),
-    linkEnvironment: () => Effect.die("unused"),
-    unlinkEnvironment: () => Effect.die("unused"),
-    getEnvironmentStatus: () =>
+    createMachineLinkChallenge: () => Effect.die("unused"),
+    linkMachine: () => Effect.die("unused"),
+    unlinkMachine: () => Effect.die("unused"),
+    getMachineStatus: () =>
       Effect.succeed({
-        environmentId: environment.environmentId,
-        endpoint: environment.endpoint,
+        machineId: machine.machineId,
+        endpoint: machine.endpoint,
         status: "online",
         checkedAt: "2026-06-01T00:00:00.000Z",
       }),
-    connectEnvironment: () => Effect.die("unused"),
+    connectMachine: () => Effect.die("unused"),
     registerDevice: () => Effect.die("unused"),
     unregisterDevice: () => Effect.die("unused"),
     registerLiveActivity: () => Effect.die("unused"),
@@ -98,19 +98,19 @@ describe("createManagedRelayQueryManager", () => {
 
   it.effect("rejects deregistration after the account changes", () =>
     Effect.gen(function* () {
-      const unlinkEnvironment = vi.fn(() => Effect.succeed({ ok: true }));
+      const unlinkMachine = vi.fn(() => Effect.succeed({ ok: true }));
       setSession();
 
-      const error = yield* deregisterManagedRelayEnvironment(registry, {
+      const error = yield* deregisterManagedRelayMachine(registry, {
         accountId: "previous-account",
-        environmentId: environment.environmentId,
+        machineId: machine.machineId,
       }).pipe(
-        Effect.provideService(ManagedRelay.ManagedRelayClient, createClient({ unlinkEnvironment })),
+        Effect.provideService(ManagedRelay.ManagedRelayClient, createClient({ unlinkMachine })),
         Effect.flip,
       );
 
       expect(error).toBeInstanceOf(ManagedRelaySessionError);
-      expect(unlinkEnvironment).not.toHaveBeenCalled();
+      expect(unlinkMachine).not.toHaveBeenCalled();
     }),
   );
 

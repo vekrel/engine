@@ -1,6 +1,6 @@
 import {
   ORCHESTRATION_V2_WS_METHODS,
-  type EnvironmentId,
+  type MachineId,
   type OrchestrationV2ShellSnapshot,
   type OrchestrationV2ShellStreamItem,
   type OrchestrationV2ThreadShell,
@@ -19,9 +19,9 @@ import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { AsyncResult, Atom } from "effect/reactivity";
 
-import * as EnvironmentRegistry from "../connection/registry.ts";
+import * as MachineRegistry from "../connection/registry.ts";
 import { connectionProjectionPhase } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as ConnectionWakeups from "../connection/wakeups.ts";
 import { safeErrorLogAttributes } from "../errors/safeLog.ts";
 import * as Persistence from "../platform/persistence.ts";
@@ -36,18 +36,18 @@ import {
   reuseUnchangedThreadShells,
   sameThreadPullRequests,
 } from "./shellReducer.ts";
-import { type EnvironmentCatalogState, enabledEnvironmentIds } from "./connections.ts";
-import { followStreamInEnvironment } from "./runtime.ts";
+import { type MachineCatalogState, enabledMachineIds } from "./connections.ts";
+import { followStreamInMachine } from "./runtime.ts";
 
-export type EnvironmentShellStatus = "empty" | "cached" | "synchronizing" | "live";
+export type MachineShellStatus = "empty" | "cached" | "synchronizing" | "live";
 
-export interface EnvironmentShellState {
+export interface MachineShellState {
   readonly snapshot: Option.Option<OrchestrationV2ShellSnapshot>;
-  readonly status: EnvironmentShellStatus;
+  readonly status: MachineShellStatus;
   readonly error: Option.Option<string>;
 }
 
-const EMPTY_SHELL_STATE: EnvironmentShellState = {
+const EMPTY_SHELL_STATE: MachineShellState = {
   snapshot: Option.none(),
   status: "empty",
   error: Option.none(),
@@ -55,7 +55,7 @@ const EMPTY_SHELL_STATE: EnvironmentShellState = {
 
 function shellStatusForSnapshot(
   snapshot: Option.Option<OrchestrationV2ShellSnapshot>,
-): EnvironmentShellStatus {
+): MachineShellStatus {
   return Option.isSome(snapshot) ? "cached" : "empty";
 }
 
@@ -65,19 +65,19 @@ function withoutDeferredPullRequests(value: DeferredShellSnapshot): Orchestratio
   return snapshot;
 }
 
-const SHELL_SYNCHRONIZATION_ERROR_MESSAGE = "Could not synchronize environment data.";
+const SHELL_SYNCHRONIZATION_ERROR_MESSAGE = "Could not synchronize machine data.";
 
-export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")(function* () {
-  const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
-  const cache = yield* Persistence.EnvironmentCacheStore;
+export const makeMachineShellState = Effect.fn("MachineShellState.make")(function* () {
+  const supervisor = yield* MachineSupervisor.MachineSupervisor;
+  const cache = yield* Persistence.MachineCacheStore;
   const snapshotLoader = yield* ShellSnapshotLoader.ShellSnapshotLoader;
   const wakeups = yield* Effect.serviceOption(ConnectionWakeups.ConnectionWakeups);
-  const environmentId = supervisor.target.environmentId;
-  const cached = yield* cache.loadShell(environmentId).pipe(
+  const machineId = supervisor.target.machineId;
+  const cached = yield* cache.loadShell(machineId).pipe(
     Effect.catch((error) =>
-      Effect.logWarning("Could not load cached environment shell.").pipe(
+      Effect.logWarning("Could not load cached machine shell.").pipe(
         Effect.annotateLogs({
-          environmentId,
+          machineId,
           ...safeErrorLogAttributes(error),
         }),
         Effect.as(Option.none<DeferredShellSnapshot>()),
@@ -85,7 +85,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
     ),
   );
   const cachedSnapshot = Option.map(cached, withoutDeferredPullRequests);
-  const state = yield* SubscriptionRef.make<EnvironmentShellState>({
+  const state = yield* SubscriptionRef.make<MachineShellState>({
     snapshot: cachedSnapshot,
     status: shellStatusForSnapshot(cachedSnapshot),
     error: Option.none(),
@@ -103,7 +103,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
   // Rows still waiting for their deferred pull request links, which must not be saved:
   // the cache would keep them without links until the next server refresh.
   let pendingLinkRows: ReadonlySet<OrchestrationV2ThreadShell> = new Set();
-  const persistLatest = Effect.fn("EnvironmentShellState.persistLatest")(function* (
+  const persistLatest = Effect.fn("MachineShellState.persistLatest")(function* (
     flush: boolean,
   ) {
     while (true) {
@@ -111,11 +111,11 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
       if (Option.isNone(latest) || latest.value === lastPersisted) return;
       if (latest.value.threads.some((thread) => pendingLinkRows.has(thread))) return;
       const snapshot = latest.value;
-      const saved = yield* cache.saveShell(environmentId, snapshot).pipe(
+      const saved = yield* cache.saveShell(machineId, snapshot).pipe(
         Effect.as(true),
         Effect.catch((error) =>
-          Effect.logWarning("Could not persist environment shell cache.").pipe(
-            Effect.annotateLogs({ environmentId, ...safeErrorLogAttributes(error) }),
+          Effect.logWarning("Could not persist machine shell cache.").pipe(
+            Effect.annotateLogs({ machineId, ...safeErrorLogAttributes(error) }),
             Effect.as(false),
           ),
         ),
@@ -160,9 +160,9 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
   );
   const setStreamError = (error: unknown) =>
     Ref.set(awaitingCompletion, false).pipe(
-      Effect.andThen(Effect.logWarning("Could not synchronize the environment shell.")),
+      Effect.andThen(Effect.logWarning("Could not synchronize the machine shell.")),
       Effect.annotateLogs({
-        environmentId,
+        machineId,
         ...safeErrorLogAttributes(error),
       }),
       Effect.andThen(
@@ -178,7 +178,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
   // time, so neither can overwrite what the other wrote in between.
   const snapshotWriteLock = yield* Semaphore.make(1);
 
-  const applyItems = Effect.fn("EnvironmentShellState.applyItems")(function* (
+  const applyItems = Effect.fn("MachineShellState.applyItems")(function* (
     items: ReadonlyArray<OrchestrationV2ShellStreamItem>,
     pendingLinkIds?: ReadonlySet<ThreadId>,
   ) {
@@ -276,7 +276,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
     ) {
       const filled = yield* SubscriptionRef.modify(
         state,
-        (current): [Option.Option<OrchestrationV2ShellSnapshot>, EnvironmentShellState] => {
+        (current): [Option.Option<OrchestrationV2ShellSnapshot>, MachineShellState] => {
           if (Option.isNone(current.snapshot)) return [Option.none(), current];
           const snapshot = current.snapshot.value;
           let changed = false;
@@ -319,7 +319,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
   yield* Effect.forkScoped(
     subscribeDynamic(
       ORCHESTRATION_V2_WS_METHODS.subscribeShell,
-      Effect.fn("EnvironmentShellState.makeSubscribeInput")(function* (session) {
+      Effect.fn("MachineShellState.makeSubscribeInput")(function* (session) {
         yield* Ref.set(activeSubscriptionSession, session);
         const supportsCompletionMarker = yield* session.initialConfig.pipe(
           Effect.map((config) => config.shellResumeCompletionMarker === true),
@@ -410,14 +410,14 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
   return state;
 });
 
-function shellStateChanges(environmentId: EnvironmentId) {
-  return followStreamInEnvironment(
-    environmentId,
-    Stream.unwrap(makeEnvironmentShellState().pipe(Effect.map(SubscriptionRef.changes))),
+function shellStateChanges(machineId: MachineId) {
+  return followStreamInMachine(
+    machineId,
+    Stream.unwrap(makeMachineShellState().pipe(Effect.map(SubscriptionRef.changes))),
   );
 }
 
-export interface EnvironmentShellSummary {
+export interface MachineShellSummary {
   readonly hasSnapshot: boolean;
   readonly hasSynchronizingShell: boolean;
   readonly hasCachedShell: boolean;
@@ -425,7 +425,7 @@ export interface EnvironmentShellSummary {
   readonly firstError: string | null;
 }
 
-const EMPTY_ENVIRONMENT_SHELL_SUMMARY: EnvironmentShellSummary = Object.freeze({
+const EMPTY_MACHINE_SHELL_SUMMARY: MachineShellSummary = Object.freeze({
   hasSnapshot: false,
   hasSynchronizingShell: false,
   hasCachedShell: false,
@@ -433,11 +433,11 @@ const EMPTY_ENVIRONMENT_SHELL_SUMMARY: EnvironmentShellSummary = Object.freeze({
   firstError: null,
 });
 
-const EMPTY_SERVER_CONFIGS: ReadonlyMap<EnvironmentId, ServerConfig> = new Map();
+const EMPTY_SERVER_CONFIGS: ReadonlyMap<MachineId, ServerConfig> = new Map();
 
 function shellSummariesEqual(
-  left: EnvironmentShellSummary,
-  right: EnvironmentShellSummary,
+  left: MachineShellSummary,
+  right: MachineShellSummary,
 ): boolean {
   return (
     left.hasSnapshot === right.hasSnapshot &&
@@ -460,11 +460,11 @@ function mapsEqual<K, V>(left: ReadonlyMap<K, V>, right: ReadonlyMap<K, V>): boo
   return true;
 }
 
-export function createEnvironmentShellSummaryAtom(input: {
-  readonly catalogValueAtom: Atom.Atom<EnvironmentCatalogState>;
-  readonly shellStateValueAtom: (environmentId: EnvironmentId) => Atom.Atom<EnvironmentShellState>;
+export function createMachineShellSummaryAtom(input: {
+  readonly catalogValueAtom: Atom.Atom<MachineCatalogState>;
+  readonly shellStateValueAtom: (machineId: MachineId) => Atom.Atom<MachineShellState>;
 }) {
-  let previousSummary = EMPTY_ENVIRONMENT_SHELL_SUMMARY;
+  let previousSummary = EMPTY_MACHINE_SHELL_SUMMARY;
   return Atom.make((get) => {
     let hasSnapshot = false;
     let hasSynchronizingShell = false;
@@ -472,8 +472,8 @@ export function createEnvironmentShellSummaryAtom(input: {
     let hasLiveShell = false;
     let firstError: string | null = null;
 
-    for (const environmentId of enabledEnvironmentIds(get(input.catalogValueAtom))) {
-      const state = get(input.shellStateValueAtom(environmentId));
+    for (const machineId of enabledMachineIds(get(input.catalogValueAtom))) {
+      const state = get(input.shellStateValueAtom(machineId));
       hasSynchronizingShell ||= state.status === "synchronizing";
       hasCachedShell ||= state.status === "cached";
       hasLiveShell ||= state.status === "live";
@@ -486,7 +486,7 @@ export function createEnvironmentShellSummaryAtom(input: {
       hasSnapshot = true;
     }
 
-    const next: EnvironmentShellSummary = {
+    const next: MachineShellSummary = {
       hasSnapshot,
       hasSynchronizingShell,
       hasCachedShell,
@@ -498,20 +498,20 @@ export function createEnvironmentShellSummaryAtom(input: {
     }
     previousSummary = next;
     return previousSummary;
-  }).pipe(Atom.withLabel("environment-shell-summary"));
+  }).pipe(Atom.withLabel("machine-shell-summary"));
 }
 
-export function createEnvironmentServerConfigsAtom(input: {
-  readonly catalogValueAtom: Atom.Atom<EnvironmentCatalogState>;
-  readonly serverConfigValueAtom: (environmentId: EnvironmentId) => Atom.Atom<ServerConfig | null>;
+export function createMachineServerConfigsAtom(input: {
+  readonly catalogValueAtom: Atom.Atom<MachineCatalogState>;
+  readonly serverConfigValueAtom: (machineId: MachineId) => Atom.Atom<ServerConfig | null>;
 }) {
   let previousServerConfigs = EMPTY_SERVER_CONFIGS;
   return Atom.make((get) => {
-    const next = new Map<EnvironmentId, ServerConfig>();
-    for (const environmentId of enabledEnvironmentIds(get(input.catalogValueAtom))) {
-      const config = get(input.serverConfigValueAtom(environmentId));
+    const next = new Map<MachineId, ServerConfig>();
+    for (const machineId of enabledMachineIds(get(input.catalogValueAtom))) {
+      const config = get(input.serverConfigValueAtom(machineId));
       if (config !== null) {
-        next.set(environmentId, config);
+        next.set(machineId, config);
       }
     }
     if (mapsEqual(previousServerConfigs, next)) {
@@ -519,52 +519,52 @@ export function createEnvironmentServerConfigsAtom(input: {
     }
     previousServerConfigs = next;
     return previousServerConfigs;
-  }).pipe(Atom.withLabel("environment-server-configs"));
+  }).pipe(Atom.withLabel("machine-server-configs"));
 }
 
 /**
  * Every shell push replaces the state, so views that gate on load progress read these
  * primitives instead and stay put while threads stream.
  */
-function createEnvironmentShellProgressAtoms(
-  stateValueAtom: (environmentId: EnvironmentId) => Atom.Atom<EnvironmentShellState>,
+function createMachineShellProgressAtoms(
+  stateValueAtom: (machineId: MachineId) => Atom.Atom<MachineShellState>,
 ) {
   return {
-    statusAtom: Atom.family((environmentId: EnvironmentId) =>
-      Atom.make((get) => get(stateValueAtom(environmentId)).status).pipe(
-        Atom.withLabel(`environment-shell-status:${environmentId}`),
+    statusAtom: Atom.family((machineId: MachineId) =>
+      Atom.make((get) => get(stateValueAtom(machineId)).status).pipe(
+        Atom.withLabel(`machine-shell-status:${machineId}`),
       ),
     ),
-    hasSnapshotAtom: Atom.family((environmentId: EnvironmentId) =>
-      Atom.make((get) => Option.isSome(get(stateValueAtom(environmentId)).snapshot)).pipe(
-        Atom.withLabel(`environment-shell-has-snapshot:${environmentId}`),
+    hasSnapshotAtom: Atom.family((machineId: MachineId) =>
+      Atom.make((get) => Option.isSome(get(stateValueAtom(machineId)).snapshot)).pipe(
+        Atom.withLabel(`machine-shell-has-snapshot:${machineId}`),
       ),
     ),
   };
 }
 
-export function createEnvironmentShellAtoms<R, E>(
+export function createMachineShellAtoms<R, E>(
   runtime: Atom.AtomRuntime<
-    | EnvironmentRegistry.EnvironmentRegistry
-    | Persistence.EnvironmentCacheStore
+    | MachineRegistry.MachineRegistry
+    | Persistence.MachineCacheStore
     | ShellSnapshotLoader.ShellSnapshotLoader
     | R,
     E
   >,
 ) {
-  const stateAtom = Atom.family((environmentId: EnvironmentId) =>
-    runtime.atom(shellStateChanges(environmentId), {
+  const stateAtom = Atom.family((machineId: MachineId) =>
+    runtime.atom(shellStateChanges(machineId), {
       initialValue: EMPTY_SHELL_STATE,
     }),
   );
 
-  const stateValueAtom = Atom.family((environmentId: EnvironmentId) =>
+  const stateValueAtom = Atom.family((machineId: MachineId) =>
     Atom.make((get) =>
-      Option.getOrElse(AsyncResult.value(get(stateAtom(environmentId))), () => EMPTY_SHELL_STATE),
-    ).pipe(Atom.withLabel(`environment-shell-state-value:${environmentId}`)),
+      Option.getOrElse(AsyncResult.value(get(stateAtom(machineId))), () => EMPTY_SHELL_STATE),
+    ).pipe(Atom.withLabel(`machine-shell-state-value:${machineId}`)),
   );
 
-  const { statusAtom, hasSnapshotAtom } = createEnvironmentShellProgressAtoms(stateValueAtom);
+  const { statusAtom, hasSnapshotAtom } = createMachineShellProgressAtoms(stateValueAtom);
 
   return {
     stateAtom,

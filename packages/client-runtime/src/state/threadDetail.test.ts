@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   MessageId,
   RunId,
   TurnItemId,
@@ -12,8 +12,8 @@ import * as Option from "effect/Option";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
 import { v2Now, v2Projection, v2ThreadId } from "./orchestrationV2TestFixtures.ts";
-import { createEnvironmentThreadDetailAtoms, sameThreadStructure } from "./threadDetail.ts";
-import { EMPTY_ENVIRONMENT_THREAD_STATE } from "./threadState.ts";
+import { createMachineThreadDetailAtoms, sameThreadStructure } from "./threadDetail.ts";
+import { EMPTY_MACHINE_THREAD_STATE } from "./threadState.ts";
 
 const later = DateTime.makeUnsafe("2026-06-20T00:00:01.000Z");
 
@@ -97,10 +97,10 @@ describe("lastVisitedAtAtom", () => {
   it("follows a visit mark the quiet thread holds through", () => {
     const projection = withItem(assistant);
     const state = Atom.make(
-      AsyncResult.success({ ...EMPTY_ENVIRONMENT_THREAD_STATE, data: Option.some(projection) }),
+      AsyncResult.success({ ...EMPTY_MACHINE_THREAD_STATE, data: Option.some(projection) }),
     );
-    const details = createEnvironmentThreadDetailAtoms(() => state);
-    const ref = { environmentId: EnvironmentId.make("env"), threadId: v2ThreadId };
+    const details = createMachineThreadDetailAtoms(() => state);
+    const ref = { machineId: MachineId.make("env"), threadId: v2ThreadId };
     const registry = AtomRegistry.make();
     const unmountQuiet = registry.mount(details.quietThreadAtom(ref));
     const unmountVisit = registry.mount(details.lastVisitedAtAtom(ref));
@@ -109,7 +109,7 @@ describe("lastVisitedAtAtom", () => {
     const visited = { ...projection, thread: { ...projection.thread, lastVisitedAt: later } };
     registry.set(
       state,
-      AsyncResult.success({ ...EMPTY_ENVIRONMENT_THREAD_STATE, data: Option.some(visited) }),
+      AsyncResult.success({ ...EMPTY_MACHINE_THREAD_STATE, data: Option.some(visited) }),
     );
 
     expect(registry.get(details.quietThreadAtom(ref))).toBe(quietBefore);
@@ -121,13 +121,13 @@ describe("lastVisitedAtAtom", () => {
 });
 
 describe("quietThreadAtom", () => {
-  const ref = { environmentId: EnvironmentId.make("environment-1"), threadId: v2ThreadId };
+  const ref = { machineId: MachineId.make("machine-1"), threadId: v2ThreadId };
 
   function setup(initial: OrchestrationV2ThreadProjection) {
     const stateAtom = Atom.make(
-      AsyncResult.success({ ...EMPTY_ENVIRONMENT_THREAD_STATE, data: Option.some(initial) }),
+      AsyncResult.success({ ...EMPTY_MACHINE_THREAD_STATE, data: Option.some(initial) }),
     );
-    const quietAtom = createEnvironmentThreadDetailAtoms(() => stateAtom).quietThreadAtom(ref);
+    const quietAtom = createMachineThreadDetailAtoms(() => stateAtom).quietThreadAtom(ref);
     const registry = AtomRegistry.make();
     registry.mount(quietAtom);
     return {
@@ -135,7 +135,7 @@ describe("quietThreadAtom", () => {
       push: (projection: OrchestrationV2ThreadProjection) =>
         registry.set(
           stateAtom,
-          AsyncResult.success({ ...EMPTY_ENVIRONMENT_THREAD_STATE, data: Option.some(projection) }),
+          AsyncResult.success({ ...EMPTY_MACHINE_THREAD_STATE, data: Option.some(projection) }),
         ),
     };
   }

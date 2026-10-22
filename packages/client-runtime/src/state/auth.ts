@@ -7,9 +7,9 @@ import { WS_METHODS } from "@vekrel/contracts";
 import * as Stream from "effect/Stream";
 import { Atom } from "effect/reactivity";
 
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import { subscribe } from "../rpc/client.ts";
-import { createEnvironmentSubscriptionAtomFamily } from "./runtime.ts";
+import { createMachineSubscriptionAtomFamily } from "./runtime.ts";
 
 export const EMPTY_AUTH_ACCESS_SNAPSHOT: AuthAccessSnapshot = {
   pairingLinks: [],
@@ -75,12 +75,12 @@ function projectAuthAccessSnapshot(
   return [snapshot, [projected]];
 }
 
-export function createAuthEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createAuthMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   return {
-    accessChanges: createEnvironmentSubscriptionAtomFamily(runtime, {
-      label: "environment-data:server:auth-access-changes",
+    accessChanges: createMachineSubscriptionAtomFamily(runtime, {
+      label: "machine-data:server:auth-access-changes",
       subscribe: (_input: null) =>
         subscribe(WS_METHODS.subscribeAuthAccess, {}).pipe(
           Stream.mapAccum(() => EMPTY_AUTH_ACCESS_SNAPSHOT, projectAuthAccessSnapshot),

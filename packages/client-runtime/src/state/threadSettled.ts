@@ -1,7 +1,7 @@
 // @effect-diagnostics globalDate:off -- UI snooze presets use local calendar boundaries and Intl labels.
 import * as DateTime from "effect/DateTime";
 
-import type { EnvironmentThreadShell, PendingSubagentRequest } from "./models.ts";
+import type { MachineThreadShell, PendingSubagentRequest } from "./models.ts";
 
 interface SettlementRunLike {
   readonly turnId?: unknown;
@@ -71,7 +71,7 @@ export function hasQueuedTurnStart(
 }
 
 export interface ThreadSnoozeShell extends QueuedThreadShell {
-  readonly source?: Pick<EnvironmentThreadShell["source"], "pendingRuntimeRequest">;
+  readonly source?: Pick<MachineThreadShell["source"], "pendingRuntimeRequest">;
   readonly snoozedUntil?: string | null;
   readonly snoozedAt?: string | null;
   readonly hasPendingApprovals: boolean;

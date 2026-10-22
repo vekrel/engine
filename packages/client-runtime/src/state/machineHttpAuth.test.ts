@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   ORCHESTRATION_PROTOCOL_HEADER,
   ORCHESTRATION_PROTOCOL_VERSION_TEXT,
   ProjectId,
@@ -18,7 +18,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import type { HttpClient } from "effect/http";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import {
   ConnectionTransientError,
   RelayConnectionTarget,
@@ -26,16 +26,16 @@ import {
   type PreparedHttpAuthorization,
 } from "../connection/model.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
-import { type RemoteEnvironmentRequestError } from "../rpc/http.ts";
+import { type RemoteMachineRequestError } from "../rpc/http.ts";
 import * as RpcHttp from "../rpc/http.ts";
 import * as PullRequestDiffLoader from "./pullRequestDiffHttp.ts";
-import { fetchEnvironmentSessionState } from "./session.ts";
-import { fetchEnvironmentShellSnapshot } from "./shellSnapshotHttp.ts";
+import { fetchMachineSessionState } from "./session.ts";
+import { fetchMachineShellSnapshot } from "./shellSnapshotHttp.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
-import { fetchEnvironmentThreadTranscript } from "./threadTranscriptHttp.ts";
-import { fetchEnvironmentBoundedThreadSnapshot } from "./boundedThreadSnapshotHttp.ts";
+import { fetchMachineThreadTranscript } from "./threadTranscriptHttp.ts";
+import { fetchMachineBoundedThreadSnapshot } from "./boundedThreadSnapshotHttp.ts";
 import * as BoundedThreadSnapshotHttp from "./boundedThreadSnapshotHttp.ts";
-import { fetchEnvironmentThreadHistoryPage } from "./threadHistoryHttp.ts";
+import { fetchMachineThreadHistoryPage } from "./threadHistoryHttp.ts";
 import { v2Projection } from "./orchestrationV2TestFixtures.ts";
 
 const encodeThreadSnapshot = Schema.encodeSync(OrchestrationV2ThreadDetailSnapshot);
@@ -43,11 +43,11 @@ const encodeBoundedSnapshot = Schema.encodeSync(OrchestrationV2ThreadBoundedSnap
 const encodeThreadTranscript = Schema.encodeSync(OrchestrationV2ThreadTranscript);
 
 const TARGET = new RelayConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Remote environment",
+  machineId: MachineId.make("machine-1"),
+  label: "Remote machine",
 });
 const PREPARED: PreparedConnection = {
-  environmentId: TARGET.environmentId,
+  machineId: TARGET.machineId,
   label: TARGET.label,
   httpBaseUrl: "https://previous.example.test",
   socketUrl: "wss://previous.example.test/ws",
@@ -108,7 +108,7 @@ const THREAD_HISTORY = {
 function credentialRejectedResponse(reason = "invalid_credential") {
   return Response.json(
     {
-      _tag: "EnvironmentAuthInvalidError",
+      _tag: "MachineAuthInvalidError",
       code: "auth_invalid",
       reason,
       traceId: "trace-rejected",
@@ -121,11 +121,11 @@ function makeHarness(reply: (requestNumber: number) => Response | Promise<Respon
   const calls: Array<{ readonly url: string; readonly init: RequestInit }> = [];
   const authorizations: Array<
     Parameters<
-      RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]["authorizeDpopHttp"]
+      RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]["authorizeDpopHttp"]
     >[0]
   > = [];
   const proofs: Array<ManagedRelay.ManagedRelayDpopProofInput> = [];
-  const remoteAuthorization = RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization.of({
+  const remoteAuthorization = RemoteMachineAuthorization.RemoteMachineAuthorization.of({
     authorizeBearer: () => Effect.die("Unexpected bearer connection preparation."),
     authorizeDpop: () => Effect.die("HTTP requests must not prepare a WebSocket connection."),
     authorizeDpopHttp: (input) =>
@@ -133,7 +133,7 @@ function makeHarness(reply: (requestNumber: number) => Response | Promise<Respon
         authorizations.push(input);
         const rejected = input.rejectedAccessToken !== undefined;
         return {
-          environmentId: TARGET.environmentId,
+          machineId: TARGET.machineId,
           label: TARGET.label,
           httpBaseUrl: rejected ? RENEWED_ORIGIN : CURRENT_ORIGIN,
           httpAuthorization: {
@@ -181,7 +181,7 @@ const LOADERS: ReadonlyArray<{
     input: HttpInput,
   ) => Effect.Effect<
     unknown,
-    RemoteEnvironmentRequestError | PullRequestDiffLoader.PullRequestDiffCredentialRejectedError,
+    RemoteMachineRequestError | PullRequestDiffLoader.PullRequestDiffCredentialRejectedError,
     HttpClient.HttpClient
   >;
 }> = [
@@ -192,7 +192,7 @@ const LOADERS: ReadonlyArray<{
     response: DIFF_RESULT,
     expected: DIFF_RESULT,
     load: (input: HttpInput) =>
-      PullRequestDiffLoader.fetchEnvironmentPullRequestDiff({ ...input, diff: DIFF }),
+      PullRequestDiffLoader.fetchMachinePullRequestDiff({ ...input, diff: DIFF }),
   },
   {
     name: "session permissions",
@@ -200,7 +200,7 @@ const LOADERS: ReadonlyArray<{
     path: "/api/auth/session",
     response: SESSION,
     expected: SESSION,
-    load: fetchEnvironmentSessionState,
+    load: fetchMachineSessionState,
   },
   {
     name: "shell snapshot",
@@ -209,7 +209,7 @@ const LOADERS: ReadonlyArray<{
     response: SHELL,
     expected: SHELL,
     load: (input: HttpInput) =>
-      fetchEnvironmentShellSnapshot(input).pipe(
+      fetchMachineShellSnapshot(input).pipe(
         Effect.map(({ loadPullRequests: _links, ...snapshot }) => snapshot),
       ),
   },
@@ -220,7 +220,7 @@ const LOADERS: ReadonlyArray<{
     response: encodeThreadSnapshot(THREAD),
     expected: THREAD,
     load: (input: HttpInput) =>
-      ThreadSnapshotLoader.fetchEnvironmentThreadSnapshot({
+      ThreadSnapshotLoader.fetchMachineThreadSnapshot({
         ...input,
         threadId: THREAD.projection.thread.id,
       }),
@@ -232,7 +232,7 @@ const LOADERS: ReadonlyArray<{
     response: encodeThreadTranscript(TRANSCRIPT),
     expected: TRANSCRIPT,
     load: (input: HttpInput) =>
-      fetchEnvironmentThreadTranscript({ ...input, threadId: TRANSCRIPT.threadId }),
+      fetchMachineThreadTranscript({ ...input, threadId: TRANSCRIPT.threadId }),
   },
   {
     name: "bounded thread snapshot",
@@ -241,7 +241,7 @@ const LOADERS: ReadonlyArray<{
     response: encodeBoundedSnapshot(BOUNDED_THREAD),
     expected: BOUNDED_THREAD,
     load: (input: HttpInput) =>
-      fetchEnvironmentBoundedThreadSnapshot({ ...input, threadId: THREAD.projection.thread.id }),
+      fetchMachineBoundedThreadSnapshot({ ...input, threadId: THREAD.projection.thread.id }),
   },
   {
     name: "older thread history",
@@ -250,7 +250,7 @@ const LOADERS: ReadonlyArray<{
     response: THREAD_HISTORY,
     expected: THREAD_HISTORY,
     load: (input: HttpInput) =>
-      fetchEnvironmentThreadHistoryPage({
+      fetchMachineThreadHistoryPage({
         ...input,
         threadId: THREAD.projection.thread.id,
         cursor: "older-page",
@@ -258,14 +258,14 @@ const LOADERS: ReadonlyArray<{
   },
 ];
 
-describe("authenticated environment HTTP requests", () => {
+describe("authenticated machine HTTP requests", () => {
   it.effect.each(LOADERS)("rejects an invalid $name response", (loader) =>
     Effect.gen(function* () {
       const harness = makeHarness(() => Response.json({}));
       const result = yield* loader
         .load(harness.input)
         .pipe(Effect.provide(harness.httpLayer), Effect.asVoid, Effect.flip);
-      expect(result._tag).toBe("RemoteEnvironmentAuthInvalidJsonError");
+      expect(result._tag).toBe("RemoteMachineAuthInvalidJsonError");
       expect(harness.calls).toHaveLength(1);
     }),
   );
@@ -273,12 +273,12 @@ describe("authenticated environment HTTP requests", () => {
   it.effect("keeps the status of a shell snapshot error that is not a declared error", () =>
     Effect.gen(function* () {
       const harness = makeHarness(() => Response.json({ error: "bad_gateway" }, { status: 502 }));
-      const error = yield* fetchEnvironmentShellSnapshot(harness.input).pipe(
+      const error = yield* fetchMachineShellSnapshot(harness.input).pipe(
         Effect.provide(harness.httpLayer),
         Effect.flip,
       );
       expect(error).toMatchObject({
-        _tag: "RemoteEnvironmentAuthUndeclaredStatusError",
+        _tag: "RemoteMachineAuthUndeclaredStatusError",
         status: 502,
       });
     }),
@@ -304,7 +304,7 @@ describe("authenticated environment HTTP requests", () => {
           ORCHESTRATION_PROTOCOL_VERSION_TEXT,
         );
       }
-      expect(harness.authorizations).toEqual([{ expectedEnvironmentId: TARGET.environmentId }]);
+      expect(harness.authorizations).toEqual([{ expectedMachineId: TARGET.machineId }]);
       // The proof signs exactly the URL sent; signers drop the query for `htu`.
       expect(harness.proofs).toEqual([
         { method: loader.method, url: call.url, accessToken: "current-token" },
@@ -317,7 +317,7 @@ describe("authenticated environment HTTP requests", () => {
   );
 
   // MCP-created thread ids contain ":", which the request path percent-encodes.
-  // The DPoP proof must sign the URL that is actually sent, or the environment
+  // The DPoP proof must sign the URL that is actually sent, or the machine
   // rejects it as a URL mismatch.
   const MCP_THREAD_ID = ThreadId.make("mcp:3534bc83-1c17-4a1e-9118-601c2766d355");
   const MCP_THREAD_LOADERS: ReadonlyArray<
@@ -327,25 +327,25 @@ describe("authenticated environment HTTP requests", () => {
       name: "thread transcript",
       response: encodeThreadTranscript(TRANSCRIPT),
       load: (input: HttpInput) =>
-        fetchEnvironmentThreadTranscript({ ...input, threadId: MCP_THREAD_ID }),
+        fetchMachineThreadTranscript({ ...input, threadId: MCP_THREAD_ID }),
     },
     {
       name: "thread snapshot",
       response: encodeThreadSnapshot(THREAD),
       load: (input: HttpInput) =>
-        ThreadSnapshotLoader.fetchEnvironmentThreadSnapshot({ ...input, threadId: MCP_THREAD_ID }),
+        ThreadSnapshotLoader.fetchMachineThreadSnapshot({ ...input, threadId: MCP_THREAD_ID }),
     },
     {
       name: "bounded thread snapshot",
       response: encodeBoundedSnapshot(BOUNDED_THREAD),
       load: (input: HttpInput) =>
-        fetchEnvironmentBoundedThreadSnapshot({ ...input, threadId: MCP_THREAD_ID }),
+        fetchMachineBoundedThreadSnapshot({ ...input, threadId: MCP_THREAD_ID }),
     },
     {
       name: "older thread history",
       response: THREAD_HISTORY,
       load: (input: HttpInput) =>
-        fetchEnvironmentThreadHistoryPage({
+        fetchMachineThreadHistoryPage({
           ...input,
           threadId: MCP_THREAD_ID,
           cursor: "older-page",
@@ -370,15 +370,15 @@ describe("authenticated environment HTTP requests", () => {
       const harness = makeHarness((requestNumber) =>
         requestNumber === 1 ? credentialRejectedResponse() : Response.json(DIFF_RESULT),
       );
-      const result = yield* PullRequestDiffLoader.fetchEnvironmentPullRequestDiff({
+      const result = yield* PullRequestDiffLoader.fetchMachinePullRequestDiff({
         ...harness.input,
         diff: DIFF,
       }).pipe(Effect.provide(harness.httpLayer));
 
       expect(result).toEqual(DIFF_RESULT);
       expect(harness.authorizations).toEqual([
-        { expectedEnvironmentId: TARGET.environmentId },
-        { expectedEnvironmentId: TARGET.environmentId, rejectedAccessToken: "current-token" },
+        { expectedMachineId: TARGET.machineId },
+        { expectedMachineId: TARGET.machineId, rejectedAccessToken: "current-token" },
       ]);
       expect(harness.calls.map((call) => call.url)).toEqual([
         `${CURRENT_ORIGIN}/api/pull-requests/diff`,
@@ -416,7 +416,7 @@ describe("authenticated environment HTTP requests", () => {
               Option.getOrThrow(harness.input.signer),
             ),
             Layer.succeed(
-              RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+              RemoteMachineAuthorization.RemoteMachineAuthorization,
               harness.remoteAuthorization,
             ),
           ),
@@ -445,7 +445,7 @@ describe("authenticated environment HTTP requests", () => {
   it.effect("preserves the credential rejection after the one recovery attempt fails", () =>
     Effect.gen(function* () {
       const harness = makeHarness(() => credentialRejectedResponse());
-      const error = yield* PullRequestDiffLoader.fetchEnvironmentPullRequestDiff({
+      const error = yield* PullRequestDiffLoader.fetchMachinePullRequestDiff({
         ...harness.input,
         diff: DIFF,
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip);
@@ -465,41 +465,41 @@ describe("authenticated environment HTTP requests", () => {
       reply: () =>
         Response.json(
           {
-            _tag: "EnvironmentScopeRequiredError",
+            _tag: "MachineScopeRequiredError",
             code: "insufficient_scope",
             requiredScope: "orchestration:read",
             traceId: "trace-scope",
           },
           { status: 403 },
         ),
-      errorTag: "EnvironmentScopeRequiredError",
+      errorTag: "MachineScopeRequiredError",
     },
     {
       name: "missing credential",
       reply: () => credentialRejectedResponse("missing_credential"),
-      errorTag: "EnvironmentAuthInvalidError",
+      errorTag: "MachineAuthInvalidError",
     },
     {
       name: "Cloudflare 530",
       reply: () => new Response("error code: 1033", { status: 530 }),
-      errorTag: "RemoteEnvironmentAuthUndeclaredStatusError",
+      errorTag: "RemoteMachineAuthUndeclaredStatusError",
     },
     {
       name: "network failure",
       reply: () => Promise.reject(new Error("Network unreachable")),
-      errorTag: "RemoteEnvironmentAuthFetchError",
+      errorTag: "RemoteMachineAuthFetchError",
     },
   ])("does not renew or retry on $name", ({ reply, errorTag }) =>
     Effect.gen(function* () {
       const harness = makeHarness(reply);
-      const error = yield* PullRequestDiffLoader.fetchEnvironmentPullRequestDiff({
+      const error = yield* PullRequestDiffLoader.fetchMachinePullRequestDiff({
         ...harness.input,
         diff: DIFF,
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip);
 
       expect(error._tag).toBe(errorTag);
       expect(harness.calls).toHaveLength(1);
-      expect(harness.authorizations).toEqual([{ expectedEnvironmentId: TARGET.environmentId }]);
+      expect(harness.authorizations).toEqual([{ expectedMachineId: TARGET.machineId }]);
     }),
   );
 
@@ -508,13 +508,13 @@ describe("authenticated environment HTTP requests", () => {
       const harness = makeHarness((requestNumber) =>
         Response.json(requestNumber === 1 ? UNAUTHENTICATED_SESSION : SESSION),
       );
-      const result = yield* fetchEnvironmentSessionState(harness.input).pipe(
+      const result = yield* fetchMachineSessionState(harness.input).pipe(
         Effect.provide(harness.httpLayer),
       );
 
       expect(result).toEqual(SESSION);
       expect(harness.authorizations[1]).toEqual({
-        expectedEnvironmentId: TARGET.environmentId,
+        expectedMachineId: TARGET.machineId,
         rejectedAccessToken: "current-token",
       });
       expect(harness.calls).toHaveLength(2);
@@ -524,14 +524,14 @@ describe("authenticated environment HTTP requests", () => {
   it.effect("reports persistent session rejection instead of showing missing permissions", () =>
     Effect.gen(function* () {
       const harness = makeHarness(() => Response.json(UNAUTHENTICATED_SESSION));
-      const error = yield* fetchEnvironmentSessionState(harness.input).pipe(
+      const error = yield* fetchMachineSessionState(harness.input).pipe(
         Effect.provide(harness.httpLayer),
         Effect.flip,
       );
 
       expect(error).toMatchObject({
-        _tag: "RemoteEnvironmentAuthFetchError",
-        message: "The environment rejected the renewed session authorization.",
+        _tag: "RemoteMachineAuthFetchError",
+        message: "The machine rejected the renewed session authorization.",
       });
       expect(harness.calls).toHaveLength(2);
     }),
@@ -545,7 +545,7 @@ describe("authenticated environment HTTP requests", () => {
     ({ authorization }) =>
       Effect.gen(function* () {
         const harness = makeHarness(() => Response.json(UNAUTHENTICATED_SESSION));
-        const result = yield* fetchEnvironmentSessionState({
+        const result = yield* fetchMachineSessionState({
           prepared: { ...PREPARED, httpAuthorization: authorization },
           signer: Option.none(),
         }).pipe(Effect.provide(harness.httpLayer));
@@ -569,18 +569,18 @@ describe("authenticated environment HTTP requests", () => {
         reason: "transport",
         detail: "Relay unavailable",
       });
-      const remoteAuthorization = RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization.of({
+      const remoteAuthorization = RemoteMachineAuthorization.RemoteMachineAuthorization.of({
         ...harness.remoteAuthorization,
         authorizeDpopHttp: () => Effect.fail(failure),
       });
-      const error = yield* fetchEnvironmentSessionState({
+      const error = yield* fetchMachineSessionState({
         ...harness.input,
         remoteAuthorization: Option.some(remoteAuthorization),
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip);
 
       expect(error).toMatchObject({
-        _tag: "RemoteEnvironmentAuthFetchError",
-        message: "Could not authorize the environment request.",
+        _tag: "RemoteMachineAuthFetchError",
+        message: "Could not authorize the machine request.",
         cause: failure,
       });
       expect(harness.calls).toEqual([]);
@@ -591,14 +591,14 @@ describe("authenticated environment HTTP requests", () => {
   it.effect("does not fall back to a captured DPoP token when authorization is unavailable", () =>
     Effect.gen(function* () {
       const harness = makeHarness(() => Response.json(SESSION));
-      const error = yield* fetchEnvironmentSessionState({
+      const error = yield* fetchMachineSessionState({
         prepared: PREPARED,
         signer: harness.input.signer,
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip);
 
       expect(error).toMatchObject({
-        _tag: "RemoteEnvironmentAuthFetchError",
-        message: "No relay authorization service is available for the environment request.",
+        _tag: "RemoteMachineAuthFetchError",
+        message: "No relay authorization service is available for the machine request.",
       });
       expect(harness.calls).toEqual([]);
     }),

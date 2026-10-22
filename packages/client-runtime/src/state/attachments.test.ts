@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   type AttachmentCreateUploadUrlInput,
   type AttachmentCreateUploadUrlResult,
   type AttachmentDeleteInput,
@@ -11,17 +11,17 @@ import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import type { AtomCommand } from "./runtime.ts";
 import { runAttachmentUploadCycle, verifyPersistedAttachmentUpload } from "./attachments.ts";
 
-const environmentId = EnvironmentId.make("environment-1");
+const machineId = MachineId.make("machine-1");
 const registry = {} as AtomRegistry.AtomRegistry;
 
 type CreateUploadUrlCommand = AtomCommand<
-  { readonly environmentId: EnvironmentId; readonly input: AttachmentCreateUploadUrlInput },
+  { readonly machineId: MachineId; readonly input: AttachmentCreateUploadUrlInput },
   AttachmentCreateUploadUrlResult,
   never
 >;
 
 type RemoveCommand = AtomCommand<
-  { readonly environmentId: EnvironmentId; readonly input: AttachmentDeleteInput },
+  { readonly machineId: MachineId; readonly input: AttachmentDeleteInput },
   unknown,
   never
 >;
@@ -61,9 +61,9 @@ describe("runAttachmentUploadCycle", () => {
       registry,
       createUploadUrl: makeCreateUploadUrl("pending-cancelled"),
       remove,
-      environmentId,
+      machineId,
       upload: uploadInput,
-      resolveUploadUrl: () => "https://environment.test/upload",
+      resolveUploadUrl: () => "https://machine.test/upload",
       transport: () => {
         throw new Error("transport must not run after cancel");
       },
@@ -80,9 +80,9 @@ describe("runAttachmentUploadCycle", () => {
       registry,
       createUploadUrl: makeCreateUploadUrl("pending-failed"),
       remove,
-      environmentId,
+      machineId,
       upload: uploadInput,
-      resolveUploadUrl: () => "https://environment.test/upload",
+      resolveUploadUrl: () => "https://machine.test/upload",
       transport: () => ({
         done: Promise.reject(new Error("Upload rejected (413)")),
         abort: () => {},
@@ -117,7 +117,7 @@ describe("verifyPersistedAttachmentUpload", () => {
       verifyPersistedAttachmentUpload({
         registry: liveRegistry,
         createAssetUrl: () => assetUrlAtom,
-        environmentId,
+        machineId,
         attachmentId: "pending-1",
       });
 

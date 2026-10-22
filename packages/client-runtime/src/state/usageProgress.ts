@@ -1,6 +1,6 @@
 import type { UsageProviderKind, UsageSummary } from "@vekrel/contracts";
 
-interface UsageProgressEnvironment {
+interface UsageProgressMachine {
   readonly label: string;
   readonly isConnected: boolean;
   readonly isPending: boolean;
@@ -8,15 +8,15 @@ interface UsageProgressEnvironment {
   readonly summary: UsageSummary | null;
 }
 
-export function usageEnvironmentProgress(
-  environment: UsageProgressEnvironment,
+export function usageMachineProgress(
+  machine: UsageProgressMachine,
   refreshing = false,
 ) {
-  const { summary } = environment;
-  if (!environment.isConnected || environment.error !== null) return { phase: "inactive" } as const;
+  const { summary } = machine;
+  if (!machine.isConnected || machine.error !== null) return { phase: "inactive" } as const;
   if (summary === null) return { phase: "loading" } as const;
   if (refreshing) return { phase: "stale" } as const;
-  if (!environment.isPending) return { phase: "ready" } as const;
+  if (!machine.isPending) return { phase: "ready" } as const;
   const providers = [
     ...new Set(
       summary.sources.flatMap((source) => (source.refreshing ? [source.fingerprint.provider] : [])),
@@ -37,7 +37,7 @@ export function updatingProvidersLabel(
 }
 
 export function usageProgress(
-  environments: readonly UsageProgressEnvironment[],
+  machines: readonly UsageProgressMachine[],
   {
     refreshing = false,
     providerLabel,
@@ -46,9 +46,9 @@ export function usageProgress(
     readonly providerLabel: (provider: UsageProviderKind) => string;
   },
 ) {
-  const progress = environments.map((environment) => ({
-    label: environment.label,
-    ...usageEnvironmentProgress(environment, refreshing),
+  const progress = machines.map((machine) => ({
+    label: machine.label,
+    ...usageMachineProgress(machine, refreshing),
   }));
   const waiting = progress.filter(({ phase }) => phase === "loading" || phase === "stale");
   const providers = [
@@ -62,22 +62,22 @@ export function usageProgress(
         ? providers.length === 0
           ? null
           : updatingProvidersLabel(providers, providerLabel)
-        : environments.length === 1
+        : machines.length === 1
           ? "Updating…"
           : waiting.length === 1
             ? `Updating ${waiting[0]!.label}…`
-            : `Updating ${waiting.length} environments…`,
+            : `Updating ${waiting.length} machines…`,
   };
 }
 
 export function usageLoadingState(
-  environments: readonly UsageProgressEnvironment[],
+  machines: readonly UsageProgressMachine[],
   refreshing = false,
 ) {
   const providers = new Set<UsageProviderKind>();
   let everyProvider = false;
-  for (const environment of environments) {
-    const progress = usageEnvironmentProgress(environment, refreshing);
+  for (const machine of machines) {
+    const progress = usageMachineProgress(machine, refreshing);
     if (progress.phase === "loading" || progress.phase === "stale") everyProvider = true;
     if (progress.phase === "partway")
       for (const provider of progress.providers) providers.add(provider);

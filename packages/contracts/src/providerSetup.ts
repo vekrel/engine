@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 
 import {
-  EnvironmentId,
+  MachineId,
   ForwardCompatibleArray,
   ForwardCompatibleOptional,
   IsoDateTime,
@@ -17,7 +17,7 @@ export type ProviderSetupInput = typeof ProviderSetupInput.Type;
 export const CodexAuthCallbackInput = Schema.Struct({
   authorizationUrl: Schema.String.check(Schema.isMaxLength(16_384)),
   returnUrl: Schema.String.check(Schema.isMaxLength(4_096)),
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   instanceId: ProviderInstanceId,
   flowId: TrimmedNonEmptyString.check(Schema.isMaxLength(128)),
 });
@@ -239,7 +239,7 @@ export const ChatGptImportProfileInput = Schema.Struct({
 });
 export const ChatGptHandoffInput = Schema.Struct({
   instanceId: ProviderInstanceId,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   attemptId: Schema.String.check(Schema.isMaxLength(128)),
   returnUrl: Schema.String.check(Schema.isMaxLength(4_096)),
   profile: Schema.NullOr(ChatGptReconnectProfile),

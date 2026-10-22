@@ -10,15 +10,15 @@ export function isProjectFaviconPath(path: string): boolean {
 }
 
 export function getProjectFaviconResourceKey(
-  environmentId: string,
+  machineId: string,
   workspaceRoot: string,
   faviconPath?: string | null,
 ) {
-  return JSON.stringify([environmentId, workspaceRoot, faviconPath || null]);
+  return JSON.stringify([machineId, workspaceRoot, faviconPath || null]);
 }
 
 export function getProjectFaviconCacheKey(
-  environmentId: string,
+  machineId: string,
   workspaceRoot: string,
   url: string,
 ) {
@@ -29,7 +29,7 @@ export function getProjectFaviconCacheKey(
     revision = pathname.slice(pathname.lastIndexOf("/") + 1);
   } catch {}
 
-  return JSON.stringify([environmentId, workspaceRoot, revision]);
+  return JSON.stringify([machineId, workspaceRoot, revision]);
 }
 
 export function isProjectFaviconFallbackUrl(url: string | null | undefined): boolean {

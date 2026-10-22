@@ -90,8 +90,8 @@ describe("native device stream transport", () => {
         deviceId: "test device",
         preferMjpeg: platform === "ios",
         access: {
-          httpBase: "https://environment.test/api/device-hub",
-          wsBase: "wss://environment.test/api/device-hub",
+          httpBase: "https://machine.test/api/device-hub",
+          wsBase: "wss://machine.test/api/device-hub",
           credentials: false,
           query: { wsTicket: "stream-ticket", hostId: "ssh-host" },
         },

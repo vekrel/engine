@@ -12,7 +12,7 @@ describe("composerContextClipboard", () => {
   it("preserves rich HTML while carrying context metadata", () => {
     const fragment = encodeComposerContextFragment({
       version: 1,
-      source: { environmentId: "env" as never },
+      source: { machineId: "env" as never },
       records: [],
     })!;
     const rich = '<p><strong>Important</strong> <a href="https://example.com">link</a></p>';
@@ -23,7 +23,7 @@ describe("composerContextClipboard", () => {
   it("round-trips selections larger than two million characters", () => {
     const fragment = {
       version: 1 as const,
-      source: { environmentId: "env" as never },
+      source: { machineId: "env" as never },
       records: Array.from({ length: 32 }, (_, index) => ({
         version: 1 as const,
         contextId: `terminal-${index}` as never,
@@ -52,7 +52,7 @@ describe("composerContextClipboard", () => {
   it("round-trips native/browser HTML without interpreting captured content as markup", () => {
     const raw = JSON.stringify({
       version: 1,
-      source: { environmentId: "env-1" },
+      source: { machineId: "env-1" },
       records: [
         {
           version: 1,
@@ -81,7 +81,7 @@ describe("composerContextClipboard", () => {
     // inside the character limit still produces a much longer attribute.
     const raw = JSON.stringify({
       version: 1,
-      source: { environmentId: "env-1" },
+      source: { machineId: "env-1" },
       records: [
         {
           version: 1,
@@ -105,7 +105,7 @@ describe("composerContextClipboard", () => {
   it("round-trips a fragment and drops records it cannot decode", () => {
     const encoded = encodeComposerContextFragment({
       version: 1,
-      source: { environmentId: "env-1" as never, threadId: "thread-1" as never },
+      source: { machineId: "env-1" as never, threadId: "thread-1" as never },
       records: [
         { version: 1, contextId: "ctx-1" as never, kind: "skill", label: "$x", name: "x" },
         { version: 1, contextId: "ctx-2" as never, kind: "image", label: "bad" } as never,
@@ -121,7 +121,7 @@ describe("composerContextClipboard", () => {
     expect(decodeComposerContextFragment("not json")).toBeNull();
     expect(
       decodeComposerContextFragment(
-        JSON.stringify({ version: 2, source: { environmentId: "e" }, records: [] }),
+        JSON.stringify({ version: 2, source: { machineId: "e" }, records: [] }),
       ),
     ).toBeNull();
     expect(decodeComposerContextFragment("x".repeat(2_000_001))).toBeNull();

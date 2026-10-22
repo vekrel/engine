@@ -1,7 +1,7 @@
 import {
   AuthStandardClientScopes,
-  EnvironmentId,
-  type AuthEnvironmentScope,
+  MachineId,
+  type AuthMachineScope,
   ORCHESTRATION_PROTOCOL_VERSION,
 } from "@vekrel/contracts";
 import { describe, expect, it } from "@effect/vitest";
@@ -35,7 +35,7 @@ import {
   preparePairingRegistration,
   prepareSshRegistration,
 } from "./onboarding.ts";
-import * as EnvironmentRegistry from "./registry.ts";
+import * as MachineRegistry from "./registry.ts";
 import * as ConnectionProfileStore from "./profileStore.ts";
 import * as ConnectionWakeups from "./wakeups.ts";
 
@@ -57,7 +57,7 @@ function layerPairingHttp(
     readonly failExchange?: boolean;
     readonly protocolVersion?: number;
     readonly selfUpdate?: boolean;
-    readonly grantScopes?: ReadonlyArray<AuthEnvironmentScope>;
+    readonly grantScopes?: ReadonlyArray<AuthMachineScope>;
   },
 ) {
   const grantScopes = options?.grantScopes ?? AuthStandardClientScopes;
@@ -66,7 +66,7 @@ function layerPairingHttp(
     const url = String(input);
     calls.push({ url, init });
 
-    if (url.endsWith("/.well-known/t3/environment")) {
+    if (url.endsWith("/.well-known/vekrel/machine")) {
       if (options?.failDescriptor === true) {
         return Promise.resolve(
           Response.json({ message: "descriptor unavailable" }, { status: 503 }),
@@ -74,8 +74,8 @@ function layerPairingHttp(
       }
       return Promise.resolve(
         Response.json({
-          environmentId: "environment-paired",
-          label: "Paired environment",
+          machineId: "machine-paired",
+          label: "Paired machine",
           platform: {
             os: "linux",
             arch: "x64",
@@ -95,7 +95,7 @@ function layerPairingHttp(
         return Promise.resolve(
           Response.json(
             {
-              _tag: "EnvironmentAuthInvalidError",
+              _tag: "MachineAuthInvalidError",
               code: "auth_invalid",
               reason: "invalid_credential",
               traceId: "trace-pairing-test",
@@ -112,7 +112,7 @@ function layerPairingHttp(
         return Promise.resolve(
           Response.json(
             {
-              _tag: "EnvironmentRequestInvalidError",
+              _tag: "MachineRequestInvalidError",
               code: "invalid_request",
               reason: "scope_not_granted",
               traceId: "pairing-scope-test",
@@ -166,10 +166,10 @@ function layerPairingOnboarding(options?: Parameters<typeof layerPairingHttp>[1]
       register: () => Effect.void,
       setEnabled: () => Effect.void,
     }),
-    Layer.mock(Persistence.EnvironmentCacheStore)({}),
+    Layer.mock(Persistence.MachineCacheStore)({}),
     Layer.mock(ConnectionProfileStore.ConnectionProfileStore)({}),
     Layer.mock(ConnectionCredentialStore.ConnectionCredentialStore)({}),
-    Layer.mock(ClientCapabilities.SshEnvironmentGateway)({}),
+    Layer.mock(ClientCapabilities.SshMachineGateway)({}),
     Layer.succeed(
       Connectivity.Connectivity,
       Connectivity.Connectivity.of({ status: Effect.succeed("online"), changes: Stream.never }),
@@ -181,16 +181,16 @@ function layerPairingOnboarding(options?: Parameters<typeof layerPairingHttp>[1]
     ),
   );
   return Onboarding.layer.pipe(
-    Layer.provideMerge(EnvironmentRegistry.layer.pipe(Layer.provideMerge(dependencies))),
+    Layer.provideMerge(MachineRegistry.layer.pipe(Layer.provideMerge(dependencies))),
   );
 }
 
-const PAIRED_ENVIRONMENT_ID = EnvironmentId.make("environment-paired");
+const PAIRED_MACHINE_ID = MachineId.make("machine-paired");
 const PAIRING_INPUT = { host: "remote.example.test", pairingCode: "pairing-token" };
 const PAIRED_PROFILE = new BearerConnectionProfile({
-  connectionId: "bearer:environment-paired:https://remote.example.test",
-  environmentId: PAIRED_ENVIRONMENT_ID,
-  label: "Paired environment",
+  connectionId: "bearer:machine-paired:https://remote.example.test",
+  machineId: PAIRED_MACHINE_ID,
+  label: "Paired machine",
   httpBaseUrl: "https://remote.example.test/",
   wsBaseUrl: "wss://remote.example.test/",
 });
@@ -199,11 +199,11 @@ const UNSUPPORTED_ERROR = new ConnectionBlockedError({
   detail: "The saved server used an incompatible orchestration protocol.",
 });
 
-const registerSwitchedOffEnvironment = Effect.gen(function* () {
-  const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+const registerSwitchedOffMachine = Effect.gen(function* () {
+  const registry = yield* MachineRegistry.MachineRegistry;
   const registration = new BearerConnectionRegistration({
     target: new BearerConnectionTarget({
-      environmentId: PAIRED_ENVIRONMENT_ID,
+      machineId: PAIRED_MACHINE_ID,
       connectionId: PAIRED_PROFILE.connectionId,
       label: "Old label",
     }),
@@ -211,10 +211,10 @@ const registerSwitchedOffEnvironment = Effect.gen(function* () {
     credential: new BearerConnectionCredential({ token: "old-token" }),
   });
   yield* registry.register(registration);
-  yield* registry.setEnabled(PAIRED_ENVIRONMENT_ID, false);
-  yield* registry.setCompatibility(PAIRED_ENVIRONMENT_ID, UNSUPPORTED_ERROR);
+  yield* registry.setEnabled(PAIRED_MACHINE_ID, false);
+  yield* registry.setCompatibility(PAIRED_MACHINE_ID, UNSUPPORTED_ERROR);
   const entries = yield* SubscriptionRef.get(registry.entries);
-  expect(entries.get(PAIRED_ENVIRONMENT_ID)).toEqual({
+  expect(entries.get(PAIRED_MACHINE_ID)).toEqual({
     target: registration.target,
     profile: Option.some(registration.profile),
     enabled: false,
@@ -235,14 +235,14 @@ describe("connection onboarding", () => {
       expect(registration).toMatchObject({
         _tag: "BearerConnectionRegistration",
         target: {
-          environmentId: "environment-paired",
-          label: "Paired environment",
-          connectionId: "bearer:environment-paired:https://remote.example.test",
+          machineId: "machine-paired",
+          label: "Paired machine",
+          connectionId: "bearer:machine-paired:https://remote.example.test",
         },
         profile: {
-          environmentId: "environment-paired",
-          label: "Paired environment",
-          connectionId: "bearer:environment-paired:https://remote.example.test",
+          machineId: "machine-paired",
+          label: "Paired machine",
+          connectionId: "bearer:machine-paired:https://remote.example.test",
           httpBaseUrl: "https://remote.example.test/",
           wsBaseUrl: "wss://remote.example.test/",
         },
@@ -251,7 +251,7 @@ describe("connection onboarding", () => {
         },
       });
       expect(calls.map((call) => call.url)).toEqual([
-        "https://remote.example.test/.well-known/t3/environment",
+        "https://remote.example.test/.well-known/vekrel/machine",
         "https://remote.example.test/oauth/token",
       ]);
 
@@ -269,24 +269,24 @@ describe("connection onboarding", () => {
     }),
   );
 
-  it.effect("turns a switched-off environment back on when it is paired again", () =>
+  it.effect("turns a switched-off machine back on when it is paired again", () =>
     Effect.gen(function* () {
-      const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+      const registry = yield* MachineRegistry.MachineRegistry;
       const onboarding = yield* Onboarding.ConnectionOnboarding;
-      yield* registerSwitchedOffEnvironment;
+      yield* registerSwitchedOffMachine;
 
-      const environmentId = yield* onboarding.registerPairing(PAIRING_INPUT);
+      const machineId = yield* onboarding.registerPairing(PAIRING_INPUT);
 
-      expect(environmentId).toBe(PAIRED_ENVIRONMENT_ID);
+      expect(machineId).toBe(PAIRED_MACHINE_ID);
       const entries = yield* SubscriptionRef.get(registry.entries);
-      const entry = entries.get(environmentId);
+      const entry = entries.get(machineId);
       expect(entries.size).toBe(1);
       expect(entry?.enabled).toBe(true);
       expect(entry?.unsupportedReason).toBeUndefined();
       expect(entry?.profile).toEqual(Option.some(PAIRED_PROFILE));
       expect(entry?.target).toEqual(
         new BearerConnectionTarget({
-          environmentId,
+          machineId,
           connectionId: PAIRED_PROFILE.connectionId,
           label: PAIRED_PROFILE.label,
         }),
@@ -295,14 +295,14 @@ describe("connection onboarding", () => {
   );
 
   it.effect(
-    "re-pairs an outdated self-updatable environment so its connection can be rechecked",
+    "re-pairs an outdated self-updatable machine so its connection can be rechecked",
     () =>
       Effect.gen(function* () {
-        const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+        const registry = yield* MachineRegistry.MachineRegistry;
         const onboarding = yield* Onboarding.ConnectionOnboarding;
-        yield* registerSwitchedOffEnvironment;
+        yield* registerSwitchedOffMachine;
         yield* registry.setCompatibility(
-          PAIRED_ENVIRONMENT_ID,
+          PAIRED_MACHINE_ID,
           new ConnectionBlockedError({
             reason: "unsupported",
             detail: "The saved server needs an update.",
@@ -310,16 +310,16 @@ describe("connection onboarding", () => {
           }),
         );
         expect(
-          (yield* SubscriptionRef.get(registry.entries)).get(PAIRED_ENVIRONMENT_ID),
+          (yield* SubscriptionRef.get(registry.entries)).get(PAIRED_MACHINE_ID),
         ).toMatchObject({
           enabled: false,
           serverUpdateRequired: true,
         });
 
-        const environmentId = yield* onboarding.registerPairing(PAIRING_INPUT);
+        const machineId = yield* onboarding.registerPairing(PAIRING_INPUT);
 
-        expect(environmentId).toBe(PAIRED_ENVIRONMENT_ID);
-        const entry = (yield* SubscriptionRef.get(registry.entries)).get(environmentId);
+        expect(machineId).toBe(PAIRED_MACHINE_ID);
+        const entry = (yield* SubscriptionRef.get(registry.entries)).get(machineId);
         expect(entry?.enabled).toBe(true);
         expect(entry?.unsupportedReason).toBeUndefined();
         expect(entry?.serverUpdateRequired).toBeUndefined();
@@ -334,41 +334,41 @@ describe("connection onboarding", () => {
       ),
   );
 
-  it.effect("leaves a platform-managed environment untouched when its id is paired", () =>
+  it.effect("leaves a platform-managed machine untouched when its id is paired", () =>
     Effect.gen(function* () {
-      const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+      const registry = yield* MachineRegistry.MachineRegistry;
       const onboarding = yield* Onboarding.ConnectionOnboarding;
       yield* registry.registerPlatform(
         new PrimaryConnectionRegistration({
           target: new PrimaryConnectionTarget({
-            environmentId: PAIRED_ENVIRONMENT_ID,
-            label: "Host environment",
+            machineId: PAIRED_MACHINE_ID,
+            label: "Host machine",
             httpBaseUrl: "http://127.0.0.1:3773",
             wsBaseUrl: "ws://127.0.0.1:3773",
           }),
         }),
       );
-      yield* registry.setCompatibility(PAIRED_ENVIRONMENT_ID, UNSUPPORTED_ERROR);
+      yield* registry.setCompatibility(PAIRED_MACHINE_ID, UNSUPPORTED_ERROR);
       const before = yield* SubscriptionRef.get(registry.entries);
-      expect(before.get(PAIRED_ENVIRONMENT_ID)).toMatchObject({
+      expect(before.get(PAIRED_MACHINE_ID)).toMatchObject({
         enabled: true,
         unsupportedReason: UNSUPPORTED_ERROR.message,
       });
 
-      const environmentId = yield* onboarding.registerPairing(PAIRING_INPUT);
+      const machineId = yield* onboarding.registerPairing(PAIRING_INPUT);
 
-      expect(environmentId).toBe(PAIRED_ENVIRONMENT_ID);
+      expect(machineId).toBe(PAIRED_MACHINE_ID);
       const after = yield* SubscriptionRef.get(registry.entries);
       expect(after).toEqual(before);
-      expect(after.get(PAIRED_ENVIRONMENT_ID)?.unsupportedReason).toBe(UNSUPPORTED_ERROR.message);
+      expect(after.get(PAIRED_MACHINE_ID)?.unsupportedReason).toBe(UNSUPPORTED_ERROR.message);
     }).pipe(Effect.provide(layerPairingOnboarding())),
   );
 
-  it.effect("leaves a switched-off environment unchanged when the pairing exchange fails", () =>
+  it.effect("leaves a switched-off machine unchanged when the pairing exchange fails", () =>
     Effect.gen(function* () {
-      const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+      const registry = yield* MachineRegistry.MachineRegistry;
       const onboarding = yield* Onboarding.ConnectionOnboarding;
-      const before = yield* registerSwitchedOffEnvironment;
+      const before = yield* registerSwitchedOffMachine;
 
       const error = yield* onboarding.registerPairing(PAIRING_INPUT).pipe(Effect.flip);
 
@@ -379,8 +379,8 @@ describe("connection onboarding", () => {
       });
       const after = yield* SubscriptionRef.get(registry.entries);
       expect(after).toEqual(before);
-      expect(after.get(PAIRED_ENVIRONMENT_ID)?.enabled).toBe(false);
-      expect(after.get(PAIRED_ENVIRONMENT_ID)?.unsupportedReason).toBe(UNSUPPORTED_ERROR.message);
+      expect(after.get(PAIRED_MACHINE_ID)?.enabled).toBe(false);
+      expect(after.get(PAIRED_MACHINE_ID)?.unsupportedReason).toBe(UNSUPPORTED_ERROR.message);
     }).pipe(Effect.provide(layerPairingOnboarding({ failExchange: true }))),
   );
 
@@ -401,14 +401,14 @@ describe("connection onboarding", () => {
       );
       expect(error).toMatchObject({ reason: "unsupported" });
       expect(calls.map((call) => call.url)).toEqual([
-        "https://remote.example.test/.well-known/t3/environment",
+        "https://remote.example.test/.well-known/vekrel/machine",
       ]);
     }),
   );
   it.effect.each([
     { label: "read-only", scopes: ["orchestration:read"] },
     { label: "default", scopes: AuthStandardClientScopes },
-  ] as const)("preserves the $label grant when pairing a remote environment", ({ scopes }) =>
+  ] as const)("preserves the $label grant when pairing a remote machine", ({ scopes }) =>
     Effect.gen(function* () {
       const calls: Array<{ readonly url: string; readonly init: RequestInit }> = [];
       const httpLayer = layerPairingHttp(calls, { grantScopes: scopes });
@@ -433,7 +433,7 @@ describe("connection onboarding", () => {
       const error = yield* preparePairingRegistration({
         host: "remote.example.test",
         pairingCode: "pairing-token",
-        expectedEnvironmentId: EnvironmentId.make("some-other-machine"),
+        expectedMachineId: MachineId.make("some-other-machine"),
       }).pipe(
         Effect.provide(Layer.mergeAll(layerClientPresentation, layerPairingHttp(calls))),
         Effect.flip,
@@ -441,7 +441,7 @@ describe("connection onboarding", () => {
       expect(error).toMatchObject({ reason: "configuration" });
       expect(error.message).toContain("different machine");
       expect(calls.map((call) => call.url)).toEqual([
-        "https://remote.example.test/.well-known/t3/environment",
+        "https://remote.example.test/.well-known/vekrel/machine",
       ]);
     }),
   );
@@ -464,7 +464,7 @@ describe("connection onboarding", () => {
       expect(error).toMatchObject({ reason: "unsupported" });
       expect(error).not.toHaveProperty("serverUpdateRequired");
       expect(calls.map((call) => call.url)).toEqual([
-        "https://remote.example.test/.well-known/t3/environment",
+        "https://remote.example.test/.well-known/vekrel/machine",
       ]);
     }),
   );
@@ -487,30 +487,30 @@ describe("connection onboarding", () => {
       );
 
       expect(calls.map((call) => call.url)).toEqual([
-        "https://remote.example.test/.well-known/t3/environment",
+        "https://remote.example.test/.well-known/vekrel/machine",
       ]);
     }),
   );
 
   it.effect("updates bearer metadata while preserving the credential and identity", () =>
     Effect.gen(function* () {
-      const environmentId = EnvironmentId.make("environment-paired");
+      const machineId = MachineId.make("machine-paired");
       const registration = yield* prepareBearerConnectionUpdate({
         input: {
-          environmentId,
-          label: "  Renamed environment  ",
+          machineId,
+          label: "  Renamed machine  ",
           httpBaseUrl: "http://100.65.180.100:3773/path",
         },
         entry: Option.some({
           target: new BearerConnectionTarget({
-            environmentId,
+            machineId,
             label: "Old label",
-            connectionId: "bearer:environment-paired",
+            connectionId: "bearer:machine-paired",
           }),
           profile: Option.some(
             new BearerConnectionProfile({
-              connectionId: "bearer:environment-paired",
-              environmentId,
+              connectionId: "bearer:machine-paired",
+              machineId,
               label: "Old label",
               httpBaseUrl: "http://old.example.test/",
               wsBaseUrl: "ws://old.example.test/",
@@ -523,13 +523,13 @@ describe("connection onboarding", () => {
 
       expect(registration).toMatchObject({
         target: {
-          environmentId,
-          label: "Renamed environment",
-          connectionId: "bearer:environment-paired",
+          machineId,
+          label: "Renamed machine",
+          connectionId: "bearer:machine-paired",
         },
         profile: {
-          environmentId,
-          label: "Renamed environment",
+          machineId,
+          label: "Renamed machine",
           httpBaseUrl: "http://100.65.180.100:3773/",
           wsBaseUrl: "ws://100.65.180.100:3773/",
         },
@@ -538,7 +538,7 @@ describe("connection onboarding", () => {
     }),
   );
 
-  it.effect("prepares an SSH registration from the provisioned platform environment", () =>
+  it.effect("prepares an SSH registration from the provisioned platform machine", () =>
     Effect.gen(function* () {
       const target = {
         alias: "devbox",
@@ -550,11 +550,11 @@ describe("connection onboarding", () => {
         target,
       }).pipe(
         Effect.provideService(
-          ClientCapabilities.SshEnvironmentGateway,
-          ClientCapabilities.SshEnvironmentGateway.of({
+          ClientCapabilities.SshMachineGateway,
+          ClientCapabilities.SshMachineGateway.of({
             provision: () =>
               Effect.succeed({
-                environmentId: EnvironmentId.make("environment-ssh"),
+                machineId: MachineId.make("machine-ssh"),
                 label: "Remote development box",
                 bootstrap: {
                   target,
@@ -573,14 +573,14 @@ describe("connection onboarding", () => {
       expect(registration).toMatchObject({
         _tag: "SshConnectionRegistration",
         target: {
-          environmentId: "environment-ssh",
+          machineId: "machine-ssh",
           label: "Remote development box",
-          connectionId: 'ssh:environment-ssh:["devbox","devbox.example.test","developer",22]',
+          connectionId: 'ssh:machine-ssh:["devbox","devbox.example.test","developer",22]',
         },
         profile: {
-          environmentId: "environment-ssh",
+          machineId: "machine-ssh",
           label: "Remote development box",
-          connectionId: 'ssh:environment-ssh:["devbox","devbox.example.test","developer",22]',
+          connectionId: 'ssh:machine-ssh:["devbox","devbox.example.test","developer",22]',
           target,
         },
         // Saved so the first connect reuses this pairing instead of adding another.

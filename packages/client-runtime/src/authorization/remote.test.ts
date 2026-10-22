@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { EnvironmentAuthInvalidError } from "@vekrel/contracts";
+import { MachineAuthInvalidError } from "@vekrel/contracts";
 import { hashTelemetryId } from "@vekrel/shared/telemetryId";
 import {
   bootstrapRemoteBearerSession,
@@ -15,7 +15,7 @@ import {
 import * as ClientCapabilities from "../platform/capabilities.ts";
 import * as RpcHttp from "../rpc/http.ts";
 
-const isEnvironmentAuthInvalidError = Schema.is(EnvironmentAuthInvalidError);
+const isMachineAuthInvalidError = Schema.is(MachineAuthInvalidError);
 
 type FetchCall = readonly [input: RequestInfo | URL, init: RequestInit];
 
@@ -74,7 +74,7 @@ const expectFetchCall = (
   }
 };
 
-describe("remote environment authorization", () => {
+describe("remote machine authorization", () => {
   it.effect("exchanges managed credentials and admits websocket requests with DPoP", () =>
     Effect.gen(function* () {
       const fetch = recordedFetch(
@@ -111,7 +111,7 @@ describe("remote environment authorization", () => {
         url: "https://remote.example.com/oauth/token",
         method: "POST",
         headers: { dpop: "token-proof", "content-type": "application/x-www-form-urlencoded" },
-        body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=one-time-credential&subject_token_type=urn%3At3%3Aparams%3Aoauth%3Atoken-type%3Aenvironment-bootstrap&requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&client_label=T3+Code+Mobile&client_device_type=mobile&client_os=iOS",
+        body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=one-time-credential&subject_token_type=urn%3At3%3Aparams%3Aoauth%3Atoken-type%3Amachine-bootstrap&requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&client_label=T3+Code+Mobile&client_device_type=mobile&client_os=iOS",
       });
       expectFetchCall(fetch.calls, 2, {
         url: "https://remote.example.com/api/auth/websocket-ticket",
@@ -148,7 +148,7 @@ describe("remote environment authorization", () => {
       expectFetchCall(fetch.calls, 1, {
         url: "https://remote.example.com/oauth/token",
         method: "POST",
-        body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=pairing-token&subject_token_type=urn%3At3%3Aparams%3Aoauth%3Atoken-type%3Aenvironment-bootstrap&requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&scope=orchestration%3Aread",
+        body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&subject_token=pairing-token&subject_token_type=urn%3At3%3Aparams%3Aoauth%3Atoken-type%3Amachine-bootstrap&requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&scope=orchestration%3Aread",
       });
     }),
   );
@@ -158,7 +158,7 @@ describe("remote environment authorization", () => {
       const fetch = recordedFetch(
         Response.json(
           {
-            _tag: "EnvironmentAuthInvalidError",
+            _tag: "MachineAuthInvalidError",
             code: "auth_invalid",
             reason: "missing_credential",
             traceId: "trace-auth-test",
@@ -172,8 +172,8 @@ describe("remote environment authorization", () => {
         bearerToken: "expired-token",
       }).pipe(provideRemoteHttp(fetch.fetchFn), Effect.flip);
 
-      expect(isEnvironmentAuthInvalidError(error)).toBe(true);
-      if (isEnvironmentAuthInvalidError(error)) {
+      expect(isMachineAuthInvalidError(error)).toBe(true);
+      if (isMachineAuthInvalidError(error)) {
         expect(error.reason).toBe("missing_credential");
         expect(error.traceId).toBe("trace-auth-test");
       }

@@ -373,7 +373,7 @@ layer("AzureDevOpsPullRequestCli.layer", (it) => {
         );
       const provider = yield* AzureDevOpsPullRequestProvider.make;
 
-      assert.strictEqual(provider.capabilities.viewedFiles, "environment");
+      assert.strictEqual(provider.capabilities.viewedFiles, "machine");
       assert.isDefined(provider.getFileRevisions);
       const answer = yield* provider.getFileRevisions({
         cwd: "/w",

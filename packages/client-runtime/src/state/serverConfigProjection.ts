@@ -11,11 +11,11 @@ export interface ServerConfigProjection {
  * Published themes and usage-limit sources are current machine state, so a
  * cache could restore a set the machine no longer reports.
  */
-export function withoutEnvironmentThemes(config: ServerConfig): ServerConfig {
-  if (config.environmentThemes === undefined && config.usageLimitSources === undefined) {
+export function withoutMachineThemes(config: ServerConfig): ServerConfig {
+  if (config.machineThemes === undefined && config.usageLimitSources === undefined) {
     return config;
   }
-  const { environmentThemes: _themes, usageLimitSources: _sources, ...rest } = config;
+  const { machineThemes: _themes, usageLimitSources: _sources, ...rest } = config;
   return rest;
 }
 
@@ -71,10 +71,10 @@ export function applyServerConfigProjection(
       // Wire snapshots never contain published themes. Keep the previous set
       // until a capable server sends its authoritative theme event. A legacy
       // server cannot send a later removal, so a downgrade must clear the set.
-      const capabilities = event.config.environment.capabilities;
+      const capabilities = event.config.machine.capabilities;
       const carriedThemes =
-        capabilities.environmentThemes === true && Option.isSome(current)
-          ? current.value.config.environmentThemes
+        capabilities.machineThemes === true && Option.isSome(current)
+          ? current.value.config.machineThemes
           : undefined;
       const carriedSources =
         capabilities.usageLimitSources === true && Option.isSome(current)
@@ -82,7 +82,7 @@ export function applyServerConfigProjection(
           : undefined;
       const config: ServerConfig = {
         ...event.config,
-        ...(carriedThemes === undefined ? {} : { environmentThemes: carriedThemes }),
+        ...(carriedThemes === undefined ? {} : { machineThemes: carriedThemes }),
         ...(carriedSources === undefined ? {} : { usageLimitSources: carriedSources }),
       };
       return Option.some({
@@ -120,11 +120,11 @@ export function applyServerConfigProjection(
         latestEvent: event,
         source: "live",
       }));
-    case "environmentThemesUpdated":
+    case "machineThemesUpdated":
       return Option.map(current, (projection) => ({
         config: {
           ...projection.config,
-          environmentThemes: event.payload.themes.length > 0 ? event.payload.themes : undefined,
+          machineThemes: event.payload.themes.length > 0 ? event.payload.themes : undefined,
         },
         latestEvent: event,
         source: "live",

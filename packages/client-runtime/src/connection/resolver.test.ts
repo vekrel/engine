@@ -1,7 +1,7 @@
 import {
-  EnvironmentId,
+  MachineId,
   ORCHESTRATION_PROTOCOL_VERSION,
-  type DesktopSshEnvironmentTarget,
+  type DesktopSshMachineTarget,
 } from "@vekrel/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -11,7 +11,7 @@ import * as Ref from "effect/Ref";
 
 import * as ConnectionResolver from "./resolver.ts";
 import * as ClientCapabilities from "../platform/capabilities.ts";
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import {
   BearerConnectionCredential,
   type ConnectionCatalogEntry,
@@ -34,12 +34,12 @@ import {
   makeGitHubRoutingPermissions,
 } from "./githubRoutingPermissions.ts";
 
-const ENVIRONMENT_ID = EnvironmentId.make("environment-1");
+const MACHINE_ID = MachineId.make("machine-1");
 const ENDPOINT = {
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 };
-const SSH_TARGET: DesktopSshEnvironmentTarget = {
+const SSH_TARGET: DesktopSshMachineTarget = {
   alias: "development",
   hostname: "development.example.test",
   username: "developer",
@@ -57,10 +57,10 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
   readonly profiles?: ReadonlyArray<ConnectionProfile>;
   readonly profileStore?: ConnectionProfileStore.ConnectionProfileStore["Service"];
   readonly credentials?: ReadonlyArray<readonly [string, ConnectionCredential]>;
-  readonly authorizeBearer?: RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]["authorizeBearer"];
-  readonly authorizeDpop?: RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]["authorizeDpop"];
+  readonly authorizeBearer?: RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]["authorizeBearer"];
+  readonly authorizeDpop?: RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]["authorizeDpop"];
   readonly primaryBearerToken?: string;
-  readonly prepareSsh?: ClientCapabilities.SshEnvironmentGateway["Service"]["prepare"];
+  readonly prepareSsh?: ClientCapabilities.SshMachineGateway["Service"]["prepare"];
   readonly descriptorProtocolVersion?: number | null | undefined;
 }) => {
   const profiles = new Map(
@@ -79,13 +79,13 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
       Effect.sync(() => void credentials.set(connectionId, credential)),
     remove: (connectionId) => Effect.sync(() => void credentials.delete(connectionId)),
   });
-  const remote = RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization.of({
+  const remote = RemoteMachineAuthorization.RemoteMachineAuthorization.of({
     authorizeBearer:
       options?.authorizeBearer ??
       ((input) =>
         Effect.succeed({
-          environmentId: input.expectedEnvironmentId,
-          label: "Authorized bearer environment",
+          machineId: input.expectedMachineId,
+          label: "Authorized bearer machine",
           httpBaseUrl: input.httpBaseUrl,
           socketUrl: "wss://authorized.example.test/ws?wsTicket=bearer",
           httpAuthorization: {
@@ -97,8 +97,8 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
       options?.authorizeDpop ??
       ((input) =>
         Effect.succeed({
-          environmentId: input.expectedEnvironmentId,
-          label: "Authorized relay environment",
+          machineId: input.expectedMachineId,
+          label: "Authorized relay machine",
           httpBaseUrl: ENDPOINT.httpBaseUrl,
           socketUrl: "wss://authorized.example.test/ws?wsTicket=dpop",
           httpAuthorization: {
@@ -109,7 +109,7 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
         })),
     authorizeDpopHttp: () => Effect.die("unused"),
   });
-  const ssh = ClientCapabilities.SshEnvironmentGateway.of({
+  const ssh = ClientCapabilities.SshMachineGateway.of({
     provision: () => Effect.die("unused"),
     prepare:
       options?.prepareSsh ??
@@ -130,8 +130,8 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
     RpcHttp.layerRemoteHttpClient((() =>
       Promise.resolve(
         Response.json({
-          environmentId: ENVIRONMENT_ID,
-          label: "Compatible environment",
+          machineId: MACHINE_ID,
+          label: "Compatible machine",
           platform: { os: "linux", arch: "x64" },
           serverVersion: "0.0.0-test",
           ...(options?.descriptorProtocolVersion === undefined
@@ -148,8 +148,8 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
     ),
     Layer.succeed(ConnectionCredentialStore.ConnectionCredentialStore, credentialStore),
     Layer.succeed(
-      ClientCapabilities.PrimaryEnvironmentAuth,
-      ClientCapabilities.PrimaryEnvironmentAuth.of({
+      ClientCapabilities.PrimaryMachineAuth,
+      ClientCapabilities.PrimaryMachineAuth.of({
         bearerToken: Effect.succeed(Option.fromNullishOr(options?.primaryBearerToken)),
       }),
     ),
@@ -159,8 +159,8 @@ const makeDependencies = Effect.fn("TestConnectionResolver.makeDependencies")((o
         metadata: { label: "Test Client", deviceType: "desktop", surface: "web" },
       }),
     ),
-    Layer.succeed(RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization, remote),
-    Layer.succeed(ClientCapabilities.SshEnvironmentGateway, ssh),
+    Layer.succeed(RemoteMachineAuthorization.RemoteMachineAuthorization, remote),
+    Layer.succeed(ClientCapabilities.SshMachineGateway, ssh),
   );
 
   return Effect.succeed(ConnectionResolver.layer.pipe(Layer.provide(layerDependencies)));
@@ -172,7 +172,7 @@ describe("ConnectionResolver", () => {
       const layerBroker = yield* makeDependencies({ descriptorProtocolVersion: null });
       const broker = yield* ConnectionResolver.ConnectionResolver.pipe(Effect.provide(layerBroker));
       const target = new PrimaryConnectionTarget({
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "Primary",
         httpBaseUrl: "http://127.0.0.1:3777",
         wsBaseUrl: "ws://127.0.0.1:3777",
@@ -181,23 +181,23 @@ describe("ConnectionResolver", () => {
       const error = yield* Effect.flip(broker.prepare(catalogEntry(target)));
 
       expect(error).toMatchObject({ reason: "unsupported" });
-      expect(error.message).toContain("Update T3 Code on Compatible environment");
+      expect(error.message).toContain("Update T3 Code on Compatible machine");
     }),
   );
 
-  it.effect("prepares a primary environment without remote capabilities", () =>
+  it.effect("prepares a primary machine without remote capabilities", () =>
     Effect.gen(function* () {
       const layerBroker = yield* makeDependencies();
       const broker = yield* ConnectionResolver.ConnectionResolver.pipe(Effect.provide(layerBroker));
       const target = new PrimaryConnectionTarget({
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "Primary",
         httpBaseUrl: "http://127.0.0.1:3777",
         wsBaseUrl: "ws://127.0.0.1:3777",
       });
 
       expect(yield* broker.prepare(catalogEntry(target))).toEqual({
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "Primary",
         httpBaseUrl: "http://127.0.0.1:3777",
         socketUrl:
@@ -212,13 +212,13 @@ describe("ConnectionResolver", () => {
     Effect.gen(function* () {
       const offeredTokens = yield* Ref.make<ReadonlyArray<string | undefined>>([]);
       const target = new SshConnectionTarget({
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "SSH",
         connectionId: "ssh-1",
       });
       const profile = new SshConnectionProfile({
         connectionId: "ssh-1",
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "SSH",
         target: SSH_TARGET,
       });
@@ -256,13 +256,13 @@ describe("ConnectionResolver", () => {
       Effect.gen(function* () {
         const calls: string[] = [];
         const target = new SshConnectionTarget({
-          environmentId: ENVIRONMENT_ID,
+          machineId: MACHINE_ID,
           label: "SSH",
           connectionId: "ssh-1",
         });
         const profile = new SshConnectionProfile({
           connectionId: target.connectionId,
-          environmentId: ENVIRONMENT_ID,
+          machineId: MACHINE_ID,
           label: "SSH",
           target: SSH_TARGET,
         });
@@ -278,7 +278,7 @@ describe("ConnectionResolver", () => {
         const permissions = yield* makeGitHubRoutingPermissions({
           read: Effect.succeed([
             {
-              environmentId: ENVIRONMENT_ID,
+              machineId: MACHINE_ID,
               connectionKey: gitHubRoutingConnectionKey(entry)!,
               permission: "read-write",
             },
@@ -315,7 +315,7 @@ describe("ConnectionResolver", () => {
             Effect.sync(() => {
               calls.push("authorize");
               return {
-                environmentId: input.expectedEnvironmentId,
+                machineId: input.expectedMachineId,
                 label: "SSH",
                 httpBaseUrl: input.httpBaseUrl,
                 socketUrl: "ws://127.0.0.1:4010/ws?wsTicket=ssh",

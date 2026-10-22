@@ -1,35 +1,35 @@
 import { describe, expect, it } from "@effect/vitest";
-import { EnvironmentId, ProjectId } from "@vekrel/contracts";
+import { MachineId, ProjectId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { EnvironmentQueryStore, persistQuery } from "./queryPersistence.ts";
+import { MachineQueryStore, persistQuery } from "./queryPersistence.ts";
 
 import { persistPullRequestStats } from "./pullRequestStatsPersistence.ts";
 
-const env = EnvironmentId.make("one");
-const other = EnvironmentId.make("two");
+const env = MachineId.make("one");
+const other = MachineId.make("two");
 const persisted = persistQuery(Schema.Struct({ title: Schema.String }));
 
 function store(records = new Map<string, string>()) {
   return {
-    load: (environmentId: EnvironmentId, key: string) =>
-      Effect.sync(() => Option.fromUndefinedOr(records.get(`${environmentId}:${key}`))),
-    save: (environmentId: EnvironmentId, key: string, payload: string) =>
+    load: (machineId: MachineId, key: string) =>
+      Effect.sync(() => Option.fromUndefinedOr(records.get(`${machineId}:${key}`))),
+    save: (machineId: MachineId, key: string, payload: string) =>
       Effect.sync(() => {
-        records.set(`${environmentId}:${key}`, payload);
+        records.set(`${machineId}:${key}`, payload);
       }),
   };
 }
 
 describe("query persistence", () => {
-  it.effect("round trips responses without mixing environments or query scopes", () =>
+  it.effect("round trips responses without mixing machines or query scopes", () =>
     Effect.gen(function* () {
       yield* persisted.save(env, "open", { title: "saved" });
       expect(yield* persisted.load(env, "open")).toEqual(Option.some({ title: "saved" }));
       expect(yield* persisted.load(other, "open")).toEqual(Option.none());
       expect(yield* persisted.load(env, "closed")).toEqual(Option.none());
-    }).pipe(Effect.provideService(EnvironmentQueryStore, store())),
+    }).pipe(Effect.provideService(MachineQueryStore, store())),
   );
 
   it.effect("ignores corrupt or incompatible records", () =>
@@ -38,7 +38,7 @@ describe("query persistence", () => {
       expect(yield* persisted.load(env, "incompatible")).toEqual(Option.none());
     }).pipe(
       Effect.provideService(
-        EnvironmentQueryStore,
+        MachineQueryStore,
         store(
           new Map([
             ["one:broken", "not json"],
@@ -60,5 +60,5 @@ it.effect("restores line counts when visible PR batches change", () =>
     const key = JSON.stringify(["stats", { refs: [first] }]);
     expect(yield* cache.load(env, key)).toEqual(Option.some({ stats: [stat] }));
     expect(yield* cache.load(other, key)).toEqual(Option.none());
-  }).pipe(Effect.provideService(EnvironmentQueryStore, store())),
+  }).pipe(Effect.provideService(MachineQueryStore, store())),
 );

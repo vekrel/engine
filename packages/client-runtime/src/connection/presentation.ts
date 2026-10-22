@@ -5,7 +5,7 @@ import type { ConnectionCatalogEntry } from "./catalog.ts";
 import type { ConnectionTarget, SupervisorConnectionState } from "./model.ts";
 import { connectionRouteId, connectionRoutes, routeHttpBaseUrl } from "./routes.ts";
 
-export type EnvironmentConnectionPhase =
+export type MachineConnectionPhase =
   | "available"
   | "offline"
   | "connecting"
@@ -14,28 +14,28 @@ export type EnvironmentConnectionPhase =
   | "error"
   | "unsupported";
 
-export interface EnvironmentConnectionPresentation {
-  readonly phase: EnvironmentConnectionPhase;
+export interface MachineConnectionPresentation {
+  readonly phase: MachineConnectionPhase;
   readonly error: string | null;
   readonly traceId: string | null;
 }
 
 /**
  * Provider statuses are pushed every few minutes with fresh `checkedAt` stamps, and every root
- * coordinator reads environment presentations. Leaving them out keeps a presentation stable
+ * coordinator reads machine presentations. Leaving them out keeps a presentation stable
  * across those pushes; provider readers subscribe to the server's providers atom instead.
  */
-export type EnvironmentServerConfig = Omit<ServerConfig, "providers">;
+export type MachineServerConfig = Omit<ServerConfig, "providers">;
 
-export interface EnvironmentPresentation {
+export interface MachinePresentation {
   readonly entry: ConnectionCatalogEntry;
-  readonly connection: EnvironmentConnectionPresentation;
-  readonly serverConfig: EnvironmentServerConfig | null;
+  readonly connection: MachineConnectionPresentation;
+  readonly serverConfig: MachineServerConfig | null;
 }
 
 export function presentConnectionState(
   state: SupervisorConnectionState,
-): EnvironmentConnectionPresentation {
+): MachineConnectionPresentation {
   switch (state.phase) {
     case "available":
       return { phase: "available", error: null, traceId: null };
@@ -64,7 +64,7 @@ export function presentConnectionState(
   }
 }
 
-export function connectionStatusText(connection: EnvironmentConnectionPresentation): string {
+export function connectionStatusText(connection: MachineConnectionPresentation): string {
   switch (connection.phase) {
     case "available":
       return "Available";
@@ -87,16 +87,16 @@ export function connectionStatusText(connection: EnvironmentConnectionPresentati
   }
 }
 
-export function connectionStatusTitle(connection: EnvironmentConnectionPresentation): string {
+export function connectionStatusTitle(connection: MachineConnectionPresentation): string {
   if (connection.phase === "reconnecting" && connection.error) {
     return "Failed to connect. Reconnecting...";
   }
   return connectionStatusText({ ...connection, error: null });
 }
 
-export function presentEnvironmentConnection(
+export function presentMachineConnection(
   state: SupervisorConnectionState,
-): EnvironmentConnectionPresentation {
+): MachineConnectionPresentation {
   return presentConnectionState(state);
 }
 
@@ -104,7 +104,7 @@ export function presentEnvironmentConnection(
  * SSH connections ride a local forward that disappears with the client, so they have no stable
  * address.
  */
-export function environmentMcpUrl(input: {
+export function machineMcpUrl(input: {
   readonly entry: ConnectionCatalogEntry;
   readonly relayHttpBaseUrl?: string | undefined;
   readonly connectedTarget?: ConnectionTarget | null | undefined;

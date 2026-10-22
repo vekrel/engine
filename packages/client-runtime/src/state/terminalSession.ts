@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   TerminalAttachStreamEvent,
   TerminalMetadataStreamEvent,
   TerminalSessionSnapshot,
@@ -45,7 +45,7 @@ export interface TerminalBufferState {
 }
 
 export interface KnownTerminalSessionTarget {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
   readonly terminalId: string;
 }

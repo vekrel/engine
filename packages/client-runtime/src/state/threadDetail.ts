@@ -19,14 +19,14 @@ import {
   type ThreadCheckpointSummary,
 } from "./threadCheckpoints.ts";
 import type {
-  EnvironmentThread,
-  EnvironmentThreadStructure,
+  MachineThread,
+  MachineThreadStructure,
   ThreadStructure,
   ThreadStructureThread,
   ThreadStructureTurnItem,
   ThreadStructureVisibleTurnItem,
 } from "./models.ts";
-import { EMPTY_ENVIRONMENT_THREAD_STATE, type EnvironmentThreadState } from "./threadState.ts";
+import { EMPTY_MACHINE_THREAD_STATE, type MachineThreadState } from "./threadState.ts";
 import {
   createQuestionHistoryProjector,
   derivePendingThreadRequests,
@@ -184,33 +184,33 @@ export function sameThreadStructure(
   return true;
 }
 
-export function createEnvironmentThreadDetailAtoms<E>(
+export function createMachineThreadDetailAtoms<E>(
   threadStateAtom: (
-    environmentId: ScopedThreadRef["environmentId"],
+    machineId: ScopedThreadRef["machineId"],
     threadId: ScopedThreadRef["threadId"],
-  ) => Atom.Atom<AsyncResult.AsyncResult<EnvironmentThreadState, E>>,
+  ) => Atom.Atom<AsyncResult.AsyncResult<MachineThreadState, E>>,
 ) {
   const threadStateValueAtomFamily = Atom.family((key: string) => {
     const ref = parseThreadKey(key);
     return Atom.make((get) =>
       Option.getOrElse(
-        AsyncResult.value(get(threadStateAtom(ref.environmentId, ref.threadId))),
-        () => EMPTY_ENVIRONMENT_THREAD_STATE,
+        AsyncResult.value(get(threadStateAtom(ref.machineId, ref.threadId))),
+        () => EMPTY_MACHINE_THREAD_STATE,
       ),
-    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-state-value:${key}`));
+    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-state-value:${key}`));
   });
 
   const threadAtomFamily = Atom.family((key: string) => {
     const ref = parseThreadKey(key);
     let previousProjection: OrchestrationV2ThreadProjection | null = null;
-    let previousValue: EnvironmentThread | null = null;
+    let previousValue: MachineThread | null = null;
     return Atom.make((get) => {
       const projection = Option.getOrNull(get(threadStateValueAtomFamily(key)).data);
       if (projection === previousProjection) return previousValue;
       previousProjection = projection;
-      previousValue = projection === null ? null : { environmentId: ref.environmentId, projection };
+      previousValue = projection === null ? null : { machineId: ref.machineId, projection };
       return previousValue;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread:${key}`));
   });
 
   // Streamed assistant and reasoning text replaces an item several times a
@@ -218,7 +218,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
   // exist and their status) keep the previous value through those updates.
   const quietThreadAtomFamily = Atom.family((key: string) => {
     let previousProjection: OrchestrationV2ThreadProjection | null = null;
-    let previous: EnvironmentThreadStructure | null = null;
+    let previous: MachineThreadStructure | null = null;
     return Atom.make((get) => {
       const next = get(threadAtomFamily(key));
       if (next === null) {
@@ -229,14 +229,14 @@ export function createEnvironmentThreadDetailAtoms<E>(
         !sameThreadStructure(previousProjection, next.projection)
       ) {
         previous = {
-          environmentId: next.environmentId,
+          machineId: next.machineId,
           projection: toThreadStructure(next.projection),
         };
       }
       // Compared against the latest projection, a delta only compares the item it replaced.
       previousProjection = next?.projection ?? null;
       return previous;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-quiet-thread:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-quiet-thread:${key}`));
   });
 
   const visibleTurnItemsAtomFamily = Atom.family((key: string) => {
@@ -244,7 +244,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
     return Atom.make((get): OrchestrationV2ThreadProjection["visibleTurnItems"] => {
       const projection = Option.getOrNull(get(threadStateValueAtomFamily(key)).data);
       return projection === null ? EMPTY_VISIBLE_TURN_ITEMS : projectQuestionHistory(projection);
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-visible-turn-items:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-visible-turn-items:${key}`));
   });
 
   const quietVisibleTurnItemsAtomFamily = Atom.family((key: string) => {
@@ -256,7 +256,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
         : projectQuestionHistory(thread.projection);
     }).pipe(
       Atom.setIdleTTL(0),
-      Atom.withLabel(`environment-quiet-thread-visible-turn-items:${key}`),
+      Atom.withLabel(`machine-quiet-thread-visible-turn-items:${key}`),
     );
   });
 
@@ -286,7 +286,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
         previous = { thread, runs, messages, providerThreads, providerSessions, providerTurns };
       }
       return value;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-queue:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-queue:${key}`));
   });
   const queuedCountAtomFamily = Atom.family((key: string) => {
     let previous: Pick<OrchestrationV2ThreadProjection, "runs" | "messages"> | null = null;
@@ -302,7 +302,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
         count = getUserQueuedThreadRuns(previous).length;
       }
       return count;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-queue-count:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-queue-count:${key}`));
   });
 
   const turnSubagentsAtomFamily = Atom.family((key: string) => {
@@ -322,7 +322,7 @@ export function createEnvironmentThreadDetailAtoms<E>(
         value = deriveThreadTurnSubagents(previous);
       }
       return value;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-turn-subagents:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-turn-subagents:${key}`));
   });
 
   const checkpointSummariesAtomFamily = Atom.family((key: string) => {
@@ -342,25 +342,25 @@ export function createEnvironmentThreadDetailAtoms<E>(
         value = deriveThreadCheckpointSummaries(previous);
       }
       return value;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-checkpoint-summaries:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-checkpoint-summaries:${key}`));
   });
 
   const lastVisitedAtAtomFamily = Atom.family((key: string) =>
     Atom.make(
       (get) =>
         Option.getOrNull(get(threadStateValueAtomFamily(key)).data)?.thread.lastVisitedAt ?? null,
-    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-last-visited:${key}`)),
+    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-last-visited:${key}`)),
   );
   const updatedAtAtomFamily = Atom.family((key: string) =>
     Atom.make(
       (get) => Option.getOrNull(get(threadStateValueAtomFamily(key)).data)?.updatedAt ?? null,
-    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-updated-at:${key}`)),
+    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-updated-at:${key}`)),
   );
   const worktreePathAtomFamily = Atom.family((key: string) =>
     Atom.make(
       (get) =>
         Option.getOrNull(get(threadStateValueAtomFamily(key)).data)?.thread.worktreePath ?? null,
-    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-worktree:${key}`)),
+    ).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-worktree:${key}`)),
   );
   const pendingRequestsAtomFamily = Atom.family((key: string) => {
     let previous: Pick<OrchestrationV2ThreadProjection, "runtimeRequests" | "turnItems"> | null =
@@ -394,25 +394,25 @@ export function createEnvironmentThreadDetailAtoms<E>(
         value = derivePendingThreadRequests(previous);
       }
       return value;
-    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-pending-requests:${key}`));
+    }).pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-pending-requests:${key}`));
   });
 
   const statusAtomFamily = Atom.family((key: string) =>
     Atom.make((get) => get(threadStateValueAtomFamily(key)).status).pipe(
       Atom.setIdleTTL(0),
-      Atom.withLabel(`environment-thread-status:${key}`),
+      Atom.withLabel(`machine-thread-status:${key}`),
     ),
   );
   const errorAtomFamily = Atom.family((key: string) =>
     Atom.make((get) => Option.getOrNull(get(threadStateValueAtomFamily(key)).error)).pipe(
       Atom.setIdleTTL(0),
-      Atom.withLabel(`environment-thread-error:${key}`),
+      Atom.withLabel(`machine-thread-error:${key}`),
     ),
   );
   const historyAtomFamily = Atom.family((key: string) =>
     Atom.make((get) => get(threadStateValueAtomFamily(key)).history).pipe(
       Atom.setIdleTTL(0),
-      Atom.withLabel(`environment-thread-history:${key}`),
+      Atom.withLabel(`machine-thread-history:${key}`),
     ),
   );
 

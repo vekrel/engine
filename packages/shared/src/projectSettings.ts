@@ -173,7 +173,7 @@ function resolveProjectOverrides(
 }
 
 /**
- * A project the environment made from just a name (a folder directly inside
+ * A project the machine made from just a name (a folder directly inside
  * `ServerConfig.newProjectsRoot`) has only its first commit, so until it has a
  * thread, a new thread works in the project checkout even when the environment
  * default is a new worktree.

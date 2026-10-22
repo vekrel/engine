@@ -282,9 +282,9 @@ describe("ServerSettings.sourceControlWritingStyle", () => {
   });
 });
 
-describe("ServerSettings environment icon", () => {
+describe("ServerSettings machine icon", () => {
   it("decodes a kind from a newer server as null instead of failing the snapshot", () => {
-    expect(decodeServerSettings({ environmentIcon: "toaster" }).environmentIcon).toBeNull();
+    expect(decodeServerSettings({ machineIcon: "toaster" }).machineIcon).toBeNull();
   });
 });
 

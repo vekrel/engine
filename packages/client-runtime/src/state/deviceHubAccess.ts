@@ -7,12 +7,12 @@
 import * as Effect from "effect/Effect";
 import type { HttpClient } from "effect/http";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import type { PreparedConnection } from "../connection/model.ts";
-import { environmentEndpointUrl } from "../environment/endpoint.ts";
+import { machineEndpointUrl } from "../machine/endpoint.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
-import type { RemoteEnvironmentRequestError } from "../rpc/http.ts";
-import { executeAuthenticatedEnvironmentHttpRequest } from "./environmentHttpAuth.ts";
+import type { RemoteMachineRequestError } from "../rpc/http.ts";
+import { executeAuthenticatedMachineHttpRequest } from "./machineHttpAuth.ts";
 import type { DeviceHubAccess } from "../device/hubAccess.ts";
 
 export { type DeviceHubAccess, withDeviceHubQuery } from "../device/hubAccess.ts";
@@ -23,17 +23,17 @@ export const resolveDeviceHubAccess = Effect.fn("clientRuntime.state.resolveDevi
   function* (input: {
     readonly prepared: PreparedConnection;
     readonly hubBasePath: string;
-  }): Effect.fn.Return<DeviceHubAccess, RemoteEnvironmentRequestError, HttpClient.HttpClient> {
-    const httpBase = environmentEndpointUrl(input.prepared.httpBaseUrl, input.hubBasePath);
+  }): Effect.fn.Return<DeviceHubAccess, RemoteMachineRequestError, HttpClient.HttpClient> {
+    const httpBase = machineEndpointUrl(input.prepared.httpBaseUrl, input.hubBasePath);
     const wsBase = httpBase.replace(/^http/, "ws");
     if (input.prepared.httpAuthorization === null) {
       return { httpBase, wsBase, query: {}, credentials: true };
     }
     const signer = yield* Effect.serviceOption(ManagedRelay.ManagedRelayDpopSigner);
     const remoteAuthorization = yield* Effect.serviceOption(
-      RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+      RemoteMachineAuthorization.RemoteMachineAuthorization,
     );
-    const ticket = yield* executeAuthenticatedEnvironmentHttpRequest({
+    const ticket = yield* executeAuthenticatedMachineHttpRequest({
       prepared: input.prepared,
       signer,
       remoteAuthorization,

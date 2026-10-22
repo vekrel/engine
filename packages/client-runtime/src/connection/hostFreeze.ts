@@ -7,7 +7,7 @@ export interface HostFreezeNotice {
 
 /**
  * Says why a host stopped answering, from the recent stall it reports on
- * connect. Web shows it as a toast, mobile in the environment's connection row.
+ * connect. Web shows it as a toast, mobile in the machine's connection row.
  */
 export function hostFreezeNotice(
   hostLabel: string,

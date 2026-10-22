@@ -3,7 +3,7 @@ import * as Schema from "effect/Schema";
 import { ThreadId, TrimmedNonEmptyString, TurnItemId } from "./baseSchemas.ts";
 
 /**
- * Each names the tool call that produced the app; the environment resolves the
+ * Each names the tool call that produced the app; the machine resolves the
  * app's server from that item, so an app can only reach the server it came from.
  */
 const McpAppTarget = {

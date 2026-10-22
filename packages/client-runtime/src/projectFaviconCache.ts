@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { mediaMimeType } from "@vekrel/shared/filePreview";
 import {
   getProjectFaviconCacheKey,
@@ -16,7 +16,7 @@ export const PROJECT_FAVICON_CACHE_MAX_BYTES = 1024 * 1024;
 export const PROJECT_FAVICON_CACHE_MAX_ENTRIES = 128;
 
 export interface ProjectFaviconTarget {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly cwd: string;
   readonly faviconPath?: string | null | undefined;
 }
@@ -28,7 +28,7 @@ const ImageDataUrl = Schema.String.check(
   ),
 );
 const Entry = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   cwd: Schema.String,
   faviconPath: Schema.NullOr(Schema.String),
   revision: Schema.String,
@@ -39,7 +39,7 @@ const decodeEntry = Schema.decodeUnknownOption(Entry);
 const isImageDataUrl = Schema.is(ImageDataUrl);
 
 function keyFor(target: ProjectFaviconTarget) {
-  return getProjectFaviconResourceKey(target.environmentId, target.cwd, target.faviconPath);
+  return getProjectFaviconResourceKey(target.machineId, target.cwd, target.faviconPath);
 }
 
 export interface ProjectFaviconStorage {
@@ -119,7 +119,7 @@ export function createProjectFaviconCache(input: {
   readonly load: (url: string, signal: AbortSignal) => Promise<string>;
 }) {
   const entries = new Map<string, ProjectFaviconEntry>();
-  const environmentRevisions = new Map<EnvironmentId, number>();
+  const machineRevisions = new Map<MachineId, number>();
   let generation = 0;
   let hydration: Promise<void> | undefined;
   let clearing: Promise<void> | undefined;
@@ -173,7 +173,7 @@ export function createProjectFaviconCache(input: {
   ): Promise<string | null> => {
     await clearing;
     const startGeneration = generation;
-    const startRevision = environmentRevisions.get(target.environmentId) ?? 0;
+    const startRevision = machineRevisions.get(target.machineId) ?? 0;
     await hydrate();
     if (signal.aborted || url === null) return peek(target);
     const key = keyFor(target);
@@ -181,7 +181,7 @@ export function createProjectFaviconCache(input: {
       remove(key);
       return null;
     }
-    const revision = getProjectFaviconCacheKey(target.environmentId, target.cwd, url);
+    const revision = getProjectFaviconCacheKey(target.machineId, target.cwd, url);
     const cached = entries.get(key);
     if (cached) {
       entries.delete(key);
@@ -193,13 +193,13 @@ export function createProjectFaviconCache(input: {
       if (
         signal.aborted ||
         startGeneration !== generation ||
-        startRevision !== (environmentRevisions.get(target.environmentId) ?? 0)
+        startRevision !== (machineRevisions.get(target.machineId) ?? 0)
       ) {
         return peek(target);
       }
       if (isImageDataUrl(dataUrl)) {
         const entry = {
-          environmentId: target.environmentId,
+          machineId: target.machineId,
           cwd: target.cwd,
           faviconPath: target.faviconPath || null,
           revision,
@@ -220,16 +220,16 @@ export function createProjectFaviconCache(input: {
 
   // A download that started before the clear sees the revision change and is discarded;
   // one that starts during the clear waits for it, so it cannot repopulate storage.
-  const clear = async (environmentId?: EnvironmentId) => {
-    if (environmentId === undefined) generation += 1;
+  const clear = async (machineId?: MachineId) => {
+    if (machineId === undefined) generation += 1;
     else
-      environmentRevisions.set(environmentId, (environmentRevisions.get(environmentId) ?? 0) + 1);
+      machineRevisions.set(machineId, (machineRevisions.get(machineId) ?? 0) + 1);
     const previous = clearing;
     const task = (async () => {
       await previous;
       await hydrate();
       for (const [key, entry] of entries) {
-        if (environmentId === undefined || entry.environmentId === environmentId) remove(key);
+        if (machineId === undefined || entry.machineId === machineId) remove(key);
       }
       await flush();
     })().finally(() => {
@@ -243,7 +243,7 @@ export function createProjectFaviconCache(input: {
     hydrate,
     peek,
     resolve,
-    clearEnvironment: (environmentId: EnvironmentId) => clear(environmentId),
+    clearMachine: (machineId: MachineId) => clear(machineId),
     clearAll: () => clear(),
     flush,
   };

@@ -267,12 +267,12 @@ describe("sortActiveThreadsByOrderKey", () => {
     ]);
   });
 
-  it("breaks equal order keys and timestamps by thread then environment", () => {
+  it("breaks equal order keys and timestamps by thread then machine", () => {
     for (const activeOrderKey of [null, "m"]) {
       const threads = [
-        { id: "thread-b", environmentId: "env-a" },
-        { id: "thread-a", environmentId: "env-b" },
-        { id: "thread-a", environmentId: "env-a" },
+        { id: "thread-b", machineId: "env-a" },
+        { id: "thread-a", machineId: "env-b" },
+        { id: "thread-a", machineId: "env-a" },
       ].map((thread) => ({
         ...thread,
         createdAt: "2026-03-09T10:00:00.000Z",
@@ -280,7 +280,7 @@ describe("sortActiveThreadsByOrderKey", () => {
       }));
       expect(
         sortActiveThreadsByOrderKey(threads).map(
-          (thread) => `${thread.id}:${thread.environmentId}`,
+          (thread) => `${thread.id}:${thread.machineId}`,
         ),
       ).toEqual(["thread-a:env-a", "thread-a:env-b", "thread-b:env-a"]);
     }

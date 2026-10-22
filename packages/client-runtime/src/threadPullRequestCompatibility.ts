@@ -1,5 +1,5 @@
 import type {
-  ExecutionEnvironmentCapabilities,
+  ExecutionMachineCapabilities,
   ProjectId,
   ThreadId,
   ThreadPullRequestKey,
@@ -7,7 +7,7 @@ import type {
 import { normalizeThreadPullRequestKey } from "@vekrel/shared/threadPullRequests";
 
 type LinkingCapabilities = Pick<
-  ExecutionEnvironmentCapabilities,
+  ExecutionMachineCapabilities,
   "threadPullRequests" | "threadPullRequestLinking"
 >;
 

@@ -39,9 +39,9 @@ import {
 import {
   applyServerConfigProjection,
   type ServerConfigProjection,
-  withoutEnvironmentThemes,
+  withoutMachineThemes,
 } from "../state/serverConfigProjection.ts";
-import { environmentMismatchError } from "../connection/errors.ts";
+import { machineMismatchError } from "../connection/errors.ts";
 
 const SOCKET_OPEN_TIMEOUT = "15 seconds";
 
@@ -57,7 +57,7 @@ export interface RpcSession {
 }
 
 export interface RpcSessionOptions {
-  readonly environmentThemes?: boolean;
+  readonly machineThemes?: boolean;
   readonly usageLimitSources?: boolean;
   readonly usageLimitsCommand?: boolean;
 }
@@ -85,9 +85,9 @@ type ServerConfigSubscription = Stream.Stream<
 type ServerConfigSubscriptionInput = Parameters<
   WsRpcProtocolClient[typeof WS_METHODS.subscribeServerConfig]
 >[0];
-type EnvironmentThemesUpdatedEvent = Extract<
+type MachineThemesUpdatedEvent = Extract<
   ServerConfigStreamEvent,
-  { readonly type: "environmentThemesUpdated" }
+  { readonly type: "machineThemesUpdated" }
 >;
 type UsageLimitSourcesUpdatedEvent = Extract<
   ServerConfigStreamEvent,
@@ -97,7 +97,7 @@ type UsageLimitSourcesUpdatedEvent = Extract<
 interface ServerConfigReplayState {
   readonly projection: ServerConfigProjection;
   readonly revision: number;
-  readonly themesEvent: EnvironmentThemesUpdatedEvent | undefined;
+  readonly themesEvent: MachineThemesUpdatedEvent | undefined;
   readonly sourcesEvent: UsageLimitSourcesUpdatedEvent | undefined;
 }
 
@@ -113,7 +113,7 @@ function serverConfigReplayEvents(
   const snapshot = {
     version: 1 as const,
     type: "snapshot" as const,
-    config: withoutEnvironmentThemes(state.projection.config),
+    config: withoutMachineThemes(state.projection.config),
   };
   return [
     snapshot,
@@ -131,7 +131,7 @@ function mapSessionRpcError(
   via: "relay" | "direct",
 ): ConnectionAttemptError {
   switch (error._tag) {
-    case "EnvironmentAuthorizationError":
+    case "MachineAuthorizationError":
       return new ConnectionBlockedError({
         reason: "permission",
         detail: error.message,
@@ -166,7 +166,7 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
 ) {
   const webSocketConstructor = yield* Socket.WebSocketConstructor;
   const serverConfigInput: ServerConfigSubscriptionInput = {
-    ...(options.environmentThemes === true ? { environmentThemes: true } : {}),
+    ...(options.machineThemes === true ? { machineThemes: true } : {}),
     ...(options.usageLimitSources === true ? { usageLimitSources: true } : {}),
     ...(options.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
   };
@@ -177,7 +177,7 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
     const mapRpcError = (error: Parameters<typeof mapSessionRpcError>[0]) =>
       mapSessionRpcError(error, networkHint, via);
     yield* Effect.annotateCurrentSpan({
-      "connection.environment.id": connection.environmentId,
+      "connection.machine.id": connection.machineId,
     });
 
     const connected = yield* Deferred.make<void>();
@@ -227,13 +227,13 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
       ),
     );
     const protocolContext = yield* Layer.build(layerProtocol).pipe(
-      Effect.withSpan("environment.websocket.connect"),
+      Effect.withSpan("machine.websocket.connect"),
     );
     // Building the protocol only starts the socket; this span times the
     // handshake up to the first open, without making `connect` wait for it.
     yield* Deferred.await(connected).pipe(
       Effect.raceFirst(Deferred.await(disconnected)),
-      Effect.withSpan("environment.websocket.open"),
+      Effect.withSpan("machine.websocket.open"),
       Effect.ignore,
       Effect.forkScoped,
     );
@@ -267,17 +267,17 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
                 onSome: (state) => state.revision + 1,
               }),
               themesEvent:
-                event.type === "environmentThemesUpdated"
+                event.type === "machineThemesUpdated"
                   ? event
                   : event.type === "snapshot" &&
-                      event.config.environment.capabilities.environmentThemes !== true
+                      event.config.machine.capabilities.machineThemes !== true
                     ? undefined
                     : Option.getOrUndefined(current)?.themesEvent,
               sourcesEvent:
                 event.type === "usageLimitSourcesUpdated"
                   ? event
                   : event.type === "snapshot" &&
-                      event.config.environment.capabilities.usageLimitSources !== true
+                      event.config.machine.capabilities.usageLimitSources !== true
                     ? undefined
                     : Option.getOrUndefined(current)?.sourcesEvent,
             } satisfies ServerConfigReplayState;
@@ -319,14 +319,14 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
       ),
     ).pipe(
       Effect.filterOrElse(
-        (config) => config.environment.environmentId === connection.environmentId,
+        (config) => config.machine.machineId === connection.machineId,
         (config) =>
-          environmentMismatchError({
-            expected: connection.environmentId,
-            actual: config.environment.environmentId,
+          machineMismatchError({
+            expected: connection.machineId,
+            actual: config.machine.machineId,
           }),
       ),
-      Effect.withSpan("environment.initialSync"),
+      Effect.withSpan("machine.initialSync"),
     );
     const serverConfigEvents = Stream.unwrap(
       Effect.gen(function* () {
@@ -393,7 +393,7 @@ export const make = Effect.fn("RpcSessionFactory.make")(function* (
       );
     const probe = initialConfig.pipe(
       Effect.flatMap((config) =>
-        (config.environment.capabilities.connectionProbe === true
+        (config.machine.capabilities.connectionProbe === true
           ? protocolClient[WS_METHODS.serverProbe]({})
           : protocolClient[WS_METHODS.serverGetConfig]({})
         ).pipe(Effect.mapError(mapRpcError)),

@@ -36,7 +36,7 @@ function preparedTranscription(
 
 function draft(overrides: Partial<VoiceDraftSnapshot> = {}): VoiceDraftSnapshot {
   return {
-    ownerKey: "environment:thread",
+    ownerKey: "machine:thread",
     text: "hello world",
     selection: { start: 6, end: 11 },
     revision: 1,
@@ -147,7 +147,7 @@ describe("VoiceInputController", () => {
         errorAction: failure === "permission" ? "settings" : "retry",
       });
 
-      harness.setDraft(draft({ ownerKey: "environment:other-thread" }));
+      harness.setDraft(draft({ ownerKey: "machine:other-thread" }));
       harness.controller.ownerChanged();
 
       expect(harness.controller.currentState).toEqual({
@@ -269,7 +269,7 @@ describe("VoiceInputController", () => {
       const signal = await transcriptionEntered.promise;
       expect(signal.aborted).toBe(false);
       if (action === "ownerChanged") {
-        harness.setDraft(draft({ ownerKey: "environment:other-thread" }));
+        harness.setDraft(draft({ ownerKey: "machine:other-thread" }));
       }
       harness.controller[action]();
       expect(signal.aborted).toBe(true);
@@ -338,7 +338,7 @@ describe("VoiceInputController", () => {
     await harness.controller.start();
     const stopping = harness.controller.stop();
     await transcriptionEntered.promise;
-    harness.setDraft(draft({ ownerKey: "environment:other-thread" }));
+    harness.setDraft(draft({ ownerKey: "machine:other-thread" }));
     transcription.resolve("late text");
     await stopping;
 
@@ -474,7 +474,7 @@ describe("VoiceInputController", () => {
     });
     const starting = harness.controller.start();
     await preparationEntered.promise;
-    harness.setDraft(draft({ ownerKey: "environment:other-thread", text: "other draft" }));
+    harness.setDraft(draft({ ownerKey: "machine:other-thread", text: "other draft" }));
     preparation.resolve(preparedTranscription());
     await starting;
 

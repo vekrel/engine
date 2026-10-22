@@ -1,7 +1,7 @@
 import {
-  EnvironmentId,
+  MachineId,
   ORCHESTRATION_PROTOCOL_VERSION,
-  type ExecutionEnvironmentDescriptor,
+  type ExecutionMachineDescriptor,
 } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -10,8 +10,8 @@ import {
   orchestrationProtocolCompatibilityError,
 } from "./compatibility.ts";
 
-const descriptor = (orchestrationProtocolVersion?: number): ExecutionEnvironmentDescriptor => ({
-  environmentId: EnvironmentId.make("environment-remote"),
+const descriptor = (orchestrationProtocolVersion?: number): ExecutionMachineDescriptor => ({
+  machineId: MachineId.make("machine-remote"),
   label: "Build Mac",
   platform: { os: "darwin", arch: "arm64" },
   serverVersion: "9.0.0",
@@ -55,7 +55,7 @@ describe("orchestration protocol compatibility", () => {
 
   it("offers a remote update only for an older host that can update itself", () => {
     const older = descriptor(ORCHESTRATION_PROTOCOL_VERSION - 1);
-    const withCapabilities = (capabilities: ExecutionEnvironmentDescriptor["capabilities"]) =>
+    const withCapabilities = (capabilities: ExecutionMachineDescriptor["capabilities"]) =>
       orchestrationProtocolCompatibilityError({ ...older, capabilities });
 
     expect(

@@ -40,7 +40,7 @@ const isForgejoCliError = Schema.is(ForgejoCli.ForgejoCliError);
 
 const CAPABILITIES: PullRequestCapabilities = {
   diff: true,
-  viewedFiles: "environment",
+  viewedFiles: "machine",
   comment: true,
   actions: [...definition.changeRequestActions],
   mergeMethods: ["merge", "squash", "rebase"],

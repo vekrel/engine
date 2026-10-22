@@ -1,10 +1,10 @@
-import type { EnvironmentId, ThreadId } from "@vekrel/contracts";
+import type { MachineId, ThreadId } from "@vekrel/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 
 import * as ThreadHistoryController from "./threadHistoryController.ts";
 
-const ENV = "env-history" as EnvironmentId;
+const ENV = "env-history" as MachineId;
 const THREAD = "thread-history" as ThreadId;
 
 function handler(

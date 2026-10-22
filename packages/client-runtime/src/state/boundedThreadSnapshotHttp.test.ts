@@ -9,14 +9,14 @@ import * as BoundedThreadSnapshotHttp from "./boundedThreadSnapshotHttp.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: "environment-bounded" as never,
+  machineId: "machine-bounded" as never,
   label: "Bounded",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 
 const PREPARED: PreparedConnection = {
-  environmentId: TARGET.environmentId,
+  machineId: TARGET.machineId,
   label: TARGET.label,
   httpBaseUrl: TARGET.httpBaseUrl,
   socketUrl: TARGET.wsBaseUrl,
@@ -191,14 +191,14 @@ describe("boundedThreadSnapshotLoader", () => {
     );
   });
 
-  it.effect("treats structured EnvironmentResourceNotFoundError from bounded as missing", () => {
+  it.effect("treats structured MachineResourceNotFoundError from bounded as missing", () => {
     const fetchFn = ((input: RequestInfo | URL) => {
       const url = String(input);
       expect(url).toContain(`/api/orchestration/threads/${THREAD_ID}/bounded`);
       return Promise.resolve(
         Response.json(
           {
-            _tag: "EnvironmentResourceNotFoundError",
+            _tag: "MachineResourceNotFoundError",
             code: "not_found",
             reason: "thread_not_found",
             traceId: "trace-bounded-missing",

@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
@@ -24,7 +24,7 @@ export const ConnectionCatalogDocument = Schema.Struct({
   credentials: Schema.Array(StoredConnectionCredential),
   remoteDpopTokens: Schema.Array(TokenStore.RemoteDpopAccessToken),
   githubRoutingPermissions: Schema.optionalKey(Schema.Array(StoredGitHubRoutingPermission)),
-  disabledEnvironmentIds: Schema.Array(EnvironmentId).pipe(
+  disabledMachineIds: Schema.Array(MachineId).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
 });
@@ -36,7 +36,7 @@ export const EMPTY_CONNECTION_CATALOG_DOCUMENT: ConnectionCatalogDocument = Obje
   profiles: [],
   credentials: [],
   remoteDpopTokens: [],
-  disabledEnvironmentIds: [],
+  disabledMachineIds: [],
 });
 
 export function replaceCatalogValue<A>(
@@ -77,44 +77,44 @@ function removeRouteMetadata(
 ): ConnectionCatalogDocument {
   const connectionIds = new Set(removed.flatMap((target) => connectionIdOf(target) ?? []));
   const relayRemoved = removed.some((target) => target._tag === "RelayConnectionTarget");
-  const environmentIds = new Set(removed.map((target) => target.environmentId));
+  const machineIds = new Set(removed.map((target) => target.machineId));
   return {
     ...document,
     profiles: document.profiles.filter((value) => !connectionIds.has(value.connectionId)),
     credentials: document.credentials.filter((value) => !connectionIds.has(value.connectionId)),
     remoteDpopTokens: relayRemoved
-      ? document.remoteDpopTokens.filter((value) => !environmentIds.has(value.environmentId))
+      ? document.remoteDpopTokens.filter((value) => !machineIds.has(value.machineId))
       : document.remoteDpopTokens,
   };
 }
 
 export function catalogRoutes(
   document: ConnectionCatalogDocument,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
 ): ReadonlyArray<PersistedConnectionTarget> {
-  return document.targets.filter((target) => target.environmentId === environmentId);
+  return document.targets.filter((target) => target.machineId === machineId);
 }
 
 /**
- * Records owned by a dropped route go with it; the environment keeps its
- * position in the catalog. An empty list leaves the environment's other records
- * in place; use `removeConnectionFromCatalog` to forget the environment.
+ * Records owned by a dropped route go with it; the machine keeps its
+ * position in the catalog. An empty list leaves the machine's other records
+ * in place; use `removeConnectionFromCatalog` to forget the machine.
  */
 export function setRoutesInCatalog(
   document: ConnectionCatalogDocument,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   routes: ReadonlyArray<PersistedConnectionTarget>,
 ): ConnectionCatalogDocument {
   const kept = new Set(routes.map(routeKey));
-  const dropped = catalogRoutes(document, environmentId).filter(
+  const dropped = catalogRoutes(document, machineId).filter(
     (target) => !kept.has(routeKey(target)),
   );
-  const firstIndex = document.targets.findIndex((target) => target.environmentId === environmentId);
-  const others = document.targets.filter((target) => target.environmentId !== environmentId);
+  const firstIndex = document.targets.findIndex((target) => target.machineId === machineId);
+  const others = document.targets.filter((target) => target.machineId !== machineId);
   const insertAt =
     firstIndex === -1
       ? others.length
-      : document.targets.slice(0, firstIndex).filter((t) => t.environmentId !== environmentId)
+      : document.targets.slice(0, firstIndex).filter((t) => t.machineId !== machineId)
           .length;
   return {
     ...removeRouteMetadata(document, dropped),
@@ -127,7 +127,7 @@ export function registerConnectionInCatalog(
   registration: ConnectionRegistration,
   routes: ReadonlyArray<PersistedConnectionTarget> = [registration.target],
 ): ConnectionCatalogDocument {
-  const next = setRoutesInCatalog(document, registration.target.environmentId, routes);
+  const next = setRoutesInCatalog(document, registration.target.machineId, routes);
 
   switch (registration._tag) {
     case "RelayConnectionRegistration":
@@ -151,26 +151,26 @@ export function registerConnectionInCatalog(
 
 export function removeConnectionFromCatalog(
   document: ConnectionCatalogDocument,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
 ): ConnectionCatalogDocument {
-  const next = setRoutesInCatalog(document, environmentId, []);
+  const next = setRoutesInCatalog(document, machineId, []);
   return {
     ...next,
     remoteDpopTokens: removeCatalogValue(
       next.remoteDpopTokens,
-      (value) => value.environmentId,
-      environmentId,
+      (value) => value.machineId,
+      machineId,
     ),
-    disabledEnvironmentIds: removeCatalogValue(
-      next.disabledEnvironmentIds,
+    disabledMachineIds: removeCatalogValue(
+      next.disabledMachineIds,
       (value) => value,
-      environmentId,
+      machineId,
     ),
     ...(next.githubRoutingPermissions === undefined
       ? {}
       : {
           githubRoutingPermissions: next.githubRoutingPermissions.filter(
-            (permission) => permission.environmentId !== environmentId,
+            (permission) => permission.machineId !== machineId,
           ),
         }),
   };
@@ -178,18 +178,18 @@ export function removeConnectionFromCatalog(
 
 export function setConnectionEnabledInCatalog(
   document: ConnectionCatalogDocument,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   enabled: boolean,
 ): ConnectionCatalogDocument {
-  const registered = document.targets.some((target) => target.environmentId === environmentId);
+  const registered = document.targets.some((target) => target.machineId === machineId);
   const without = removeCatalogValue(
-    document.disabledEnvironmentIds,
+    document.disabledMachineIds,
     (value) => value,
-    environmentId,
+    machineId,
   );
   return {
     ...document,
-    disabledEnvironmentIds: registered && !enabled ? [...without, environmentId] : without,
+    disabledMachineIds: registered && !enabled ? [...without, machineId] : without,
   };
 }
 
@@ -199,7 +199,7 @@ export function putRemoteDpopTokenInCatalog(
 ): ConnectionCatalogDocument {
   const registered = document.targets.some(
     (target) =>
-      target._tag === "RelayConnectionTarget" && target.environmentId === token.environmentId,
+      target._tag === "RelayConnectionTarget" && target.machineId === token.machineId,
   );
   if (!registered) {
     return document;
@@ -208,7 +208,7 @@ export function putRemoteDpopTokenInCatalog(
     ...document,
     remoteDpopTokens: replaceCatalogValue(
       document.remoteDpopTokens,
-      (value) => value.environmentId,
+      (value) => value.machineId,
       token,
     ),
   };

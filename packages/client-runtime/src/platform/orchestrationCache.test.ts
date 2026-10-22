@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { EnvironmentId, EventId, TurnItemId } from "@vekrel/contracts";
+import { MachineId, EventId, TurnItemId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -20,7 +20,7 @@ import {
 
 import { applyOrchestrationV2ProjectionEvent } from "../state/orchestrationV2Projection.ts";
 
-const environmentId = EnvironmentId.make("environment-cache-test");
+const machineId = MachineId.make("machine-cache-test");
 const StoredThreadSnapshotJson = Schema.fromJsonString(StoredOrchestrationThreadSnapshot);
 const encodeStoredShellSnapshot = Schema.encodeSync(StoredOrchestrationShellSnapshot);
 const decodeStoredShellSnapshotSync = Schema.decodeUnknownSync(StoredOrchestrationShellSnapshot);
@@ -65,7 +65,7 @@ describe("orchestration cache envelopes", () => {
     if (projection === null) throw new Error("Expected live notice projection");
     const encoded = encodeStoredThreadSnapshotJson({
       schemaVersion: ORCHESTRATION_THREAD_CACHE_SCHEMA_VERSION,
-      environmentId,
+      machineId,
       threadId: v2ThreadId,
       snapshot: { snapshotSequence: 5, projection },
     });
@@ -77,14 +77,14 @@ describe("orchestration cache envelopes", () => {
   it("rejects thread snapshots saved before queued-run items were kept, but not shells", () => {
     const staleThread = encodeStoredThreadSnapshotJson({
       schemaVersion: ORCHESTRATION_THREAD_CACHE_SCHEMA_VERSION,
-      environmentId,
+      machineId,
       threadId: v2ThreadId,
       snapshot: { snapshotSequence: 4, projection: v2Projection },
     }).replace(`"schemaVersion":${ORCHESTRATION_THREAD_CACHE_SCHEMA_VERSION}`, `"schemaVersion":3`);
     expect(() => decodeStoredThreadSnapshotJson(staleThread)).toThrow();
     const shell = encodeStoredShellSnapshot({
       schemaVersion: ORCHESTRATION_CACHE_SCHEMA_VERSION,
-      environmentId,
+      machineId,
       snapshot: v2ShellSnapshot,
     });
     expect(decodeStoredShellSnapshotSync(shell).schemaVersion).toBe(3);
@@ -95,7 +95,7 @@ describe("orchestration cache envelopes", () => {
       let discardCount = 0;
       const encodedShell = encodeStoredShellSnapshot({
         schemaVersion: ORCHESTRATION_CACHE_SCHEMA_VERSION,
-        environmentId,
+        machineId,
         snapshot: v2ShellSnapshot,
       });
       const decoded = Effect.try({

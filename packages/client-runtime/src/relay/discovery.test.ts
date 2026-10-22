@@ -1,7 +1,7 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import type {
-  RelayClientEnvironmentRecord,
-  RelayEnvironmentStatusResponse,
+  RelayClientMachineRecord,
+  RelayMachineStatusResponse,
 } from "@vekrel/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
@@ -18,13 +18,13 @@ import * as ClientCapabilities from "../platform/capabilities.ts";
 import * as Connectivity from "../connection/connectivity.ts";
 import { ConnectionBlockedError, type NetworkStatus } from "../connection/model.ts";
 import * as ConnectionWakeups from "../connection/wakeups.ts";
-import * as RelayEnvironmentDiscovery from "./discovery.ts";
+import * as RelayMachineDiscovery from "./discovery.ts";
 import { NETWORK_BLOCKING_HINT } from "../errors/network.ts";
 
-const environments = [
+const machines = [
   {
-    environmentId: EnvironmentId.make("environment-1"),
-    label: "Environment One",
+    machineId: MachineId.make("machine-1"),
+    label: "Machine One",
     endpoint: {
       httpBaseUrl: "https://one.example.test",
       wsBaseUrl: "wss://one.example.test",
@@ -33,8 +33,8 @@ const environments = [
     linkedAt: "2026-06-01T00:00:00.000Z",
   },
   {
-    environmentId: EnvironmentId.make("environment-2"),
-    label: "Environment Two",
+    machineId: MachineId.make("machine-2"),
+    label: "Machine Two",
     endpoint: {
       httpBaseUrl: "https://two.example.test",
       wsBaseUrl: "wss://two.example.test",
@@ -42,15 +42,15 @@ const environments = [
     },
     linkedAt: "2026-06-01T00:00:00.000Z",
   },
-] satisfies ReadonlyArray<RelayClientEnvironmentRecord>;
+] satisfies ReadonlyArray<RelayClientMachineRecord>;
 
 function status(
-  environment: RelayClientEnvironmentRecord,
+  machine: RelayClientMachineRecord,
   value: "online" | "offline",
-): RelayEnvironmentStatusResponse {
+): RelayMachineStatusResponse {
   return {
-    environmentId: environment.environmentId,
-    endpoint: environment.endpoint,
+    machineId: machine.machineId,
+    endpoint: machine.endpoint,
     status: value,
     checkedAt: "2026-06-01T00:00:00.000Z",
   };
@@ -73,24 +73,24 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
   const statusRequests = yield* Ref.make(
     new Map<
       string,
-      Deferred.Deferred<RelayEnvironmentStatusResponse, ManagedRelay.ManagedRelayClientError>
+      Deferred.Deferred<RelayMachineStatusResponse, ManagedRelay.ManagedRelayClientError>
     >(),
   );
-  for (const environment of environments) {
+  for (const machine of machines) {
     const request = yield* Deferred.make<
-      RelayEnvironmentStatusResponse,
+      RelayMachineStatusResponse,
       ManagedRelay.ManagedRelayClientError
     >();
     yield* Ref.update(statusRequests, (current) => {
       const next = new Map(current);
-      next.set(environment.environmentId, request);
+      next.set(machine.machineId, request);
       return next;
     });
   }
 
   const client = ManagedRelay.ManagedRelayClient.of({
     relayUrl: "https://relay.example.test",
-    listEnvironments: () =>
+    listMachines: () =>
       Effect.gen(function* () {
         const count = yield* Ref.updateAndGet(listCalls, (current) => current + 1);
         if (count >= 2) {
@@ -100,17 +100,17 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
         if (failure) {
           return yield* failure;
         }
-        return environments;
+        return machines;
       }),
-    getEnvironmentStatus: ({ environmentId }) =>
+    getMachineStatus: ({ machineId }) =>
       Ref.get(statusRequests).pipe(
-        Effect.flatMap((requests) => Deferred.await(requests.get(environmentId)!)),
+        Effect.flatMap((requests) => Deferred.await(requests.get(machineId)!)),
       ),
     listDevices: () => Effect.die("unused"),
-    createEnvironmentLinkChallenge: () => Effect.die("unused"),
-    linkEnvironment: () => Effect.die("unused"),
-    unlinkEnvironment: () => Effect.die("unused"),
-    connectEnvironment: () => Effect.die("unused"),
+    createMachineLinkChallenge: () => Effect.die("unused"),
+    linkMachine: () => Effect.die("unused"),
+    unlinkMachine: () => Effect.die("unused"),
+    connectMachine: () => Effect.die("unused"),
     registerDevice: () => Effect.die("unused"),
     unregisterDevice: () => Effect.die("unused"),
     registerLiveActivity: () => Effect.die("unused"),
@@ -121,7 +121,7 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
     status: SubscriptionRef.get(networkStatus),
     changes: SubscriptionRef.changes(networkStatus),
   });
-  const layer = RelayEnvironmentDiscovery.layer.pipe(
+  const layer = RelayMachineDiscovery.layer.pipe(
     Layer.provide(
       Layer.mergeAll(
         Layer.succeed(ManagedRelay.ManagedRelayClient, client),
@@ -175,49 +175,49 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
   };
 });
 
-describe("RelayEnvironmentDiscovery", () => {
-  it.effect("publishes each environment status as soon as that lookup completes", () =>
+describe("RelayMachineDiscovery", () => {
+  it.effect("publishes each machine status as soon as that lookup completes", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         const refreshFiber = yield* Effect.forkChild(discovery.refresh);
 
         const checking = yield* SubscriptionRef.changes(discovery.state).pipe(
-          Stream.filter((state) => state.environments.size === 2),
+          Stream.filter((state) => state.machines.size === 2),
           Stream.runHead,
           Effect.map(Option.getOrThrow),
         );
         expect(
-          [...checking.environments.values()].every((entry) => entry.availability === "checking"),
+          [...checking.machines.values()].every((entry) => entry.availability === "checking"),
         ).toBe(true);
 
         const requests = yield* Ref.get(harness.statusRequests);
         yield* Deferred.succeed(
-          requests.get(environments[1]!.environmentId)!,
-          status(environments[1]!, "online"),
+          requests.get(machines[1]!.machineId)!,
+          status(machines[1]!, "online"),
         );
 
         const partiallyResolved = yield* SubscriptionRef.changes(discovery.state).pipe(
           Stream.filter(
             (state) =>
-              state.environments.get(environments[1]!.environmentId)?.availability === "online",
+              state.machines.get(machines[1]!.machineId)?.availability === "online",
           ),
           Stream.runHead,
           Effect.map(Option.getOrThrow),
         );
         expect(
-          partiallyResolved.environments.get(environments[0]!.environmentId)?.availability,
+          partiallyResolved.machines.get(machines[0]!.machineId)?.availability,
         ).toBe("checking");
 
         yield* Deferred.succeed(
-          requests.get(environments[0]!.environmentId)!,
-          status(environments[0]!, "offline"),
+          requests.get(machines[0]!.machineId)!,
+          status(machines[0]!, "offline"),
         );
         yield* Fiber.join(refreshFiber);
 
         const complete = yield* SubscriptionRef.get(discovery.state);
-        expect(complete.environments.get(environments[0]!.environmentId)?.availability).toBe(
+        expect(complete.machines.get(machines[0]!.machineId)?.availability).toBe(
           "offline",
         );
         expect(complete.refreshing).toBe(false);
@@ -231,12 +231,12 @@ describe("RelayEnvironmentDiscovery", () => {
       Effect.gen(function* () {
         const harness = yield* makeHarness();
         yield* Effect.gen(function* () {
-          const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+          const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
           const requests = yield* Ref.get(harness.statusRequests);
-          for (const environment of environments) {
+          for (const machine of machines) {
             yield* Deferred.succeed(
-              requests.get(environment.environmentId)!,
-              status(environment, "online"),
+              requests.get(machine.machineId)!,
+              status(machine, "online"),
             );
           }
           yield* discovery.refresh;
@@ -248,7 +248,7 @@ describe("RelayEnvironmentDiscovery", () => {
           );
           yield* SubscriptionRef.set(harness.networkStatus, "offline");
           yield* Fiber.join(offlineFiber);
-          expect((yield* SubscriptionRef.get(discovery.state)).environments.size).toBe(2);
+          expect((yield* SubscriptionRef.get(discovery.state)).machines.size).toBe(2);
 
           yield* SubscriptionRef.set(harness.networkStatus, "online");
           yield* Deferred.await(harness.secondListCall);
@@ -262,27 +262,27 @@ describe("RelayEnvironmentDiscovery", () => {
       const networkStatus = yield* SubscriptionRef.make<NetworkStatus>("online");
       const client = ManagedRelay.ManagedRelayClient.of({
         relayUrl: "https://relay.example.test",
-        listEnvironments: () =>
+        listMachines: () =>
           Effect.fail(
             new ManagedRelay.ManagedRelayRequestTimeoutError({
-              activity: "Relay environment listing",
+              activity: "Relay machine listing",
               timeoutMs: ManagedRelay.MANAGED_RELAY_REQUEST_TIMEOUT_MS,
               traceId: null,
             }),
           ),
-        getEnvironmentStatus: () => Effect.die("unused"),
+        getMachineStatus: () => Effect.die("unused"),
         listDevices: () => Effect.die("unused"),
-        createEnvironmentLinkChallenge: () => Effect.die("unused"),
-        linkEnvironment: () => Effect.die("unused"),
-        unlinkEnvironment: () => Effect.die("unused"),
-        connectEnvironment: () => Effect.die("unused"),
+        createMachineLinkChallenge: () => Effect.die("unused"),
+        linkMachine: () => Effect.die("unused"),
+        unlinkMachine: () => Effect.die("unused"),
+        connectMachine: () => Effect.die("unused"),
         registerDevice: () => Effect.die("unused"),
         unregisterDevice: () => Effect.die("unused"),
         registerLiveActivity: () => Effect.die("unused"),
         getAgentActivitySnapshot: () => Effect.die("unused"),
         resetTokenCache: Effect.void,
       } satisfies ManagedRelay.ManagedRelayClient["Service"]);
-      const layer = RelayEnvironmentDiscovery.layer.pipe(
+      const layer = RelayMachineDiscovery.layer.pipe(
         Layer.provide(
           Layer.mergeAll(
             Layer.succeed(ManagedRelay.ManagedRelayClient, client),
@@ -303,7 +303,7 @@ describe("RelayEnvironmentDiscovery", () => {
       );
 
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         yield* discovery.refresh;
 
         const state = yield* SubscriptionRef.get(discovery.state);
@@ -311,7 +311,7 @@ describe("RelayEnvironmentDiscovery", () => {
         expect(Option.getOrThrow(state.error)).toMatchObject({
           _tag: "ConnectionTransientError",
           reason: "timeout",
-          message: `Relay environment listing timed out. ${NETWORK_BLOCKING_HINT}`,
+          message: `Relay machine listing timed out. ${NETWORK_BLOCKING_HINT}`,
         });
       }).pipe(Effect.provide(layer));
     }),
@@ -321,28 +321,28 @@ describe("RelayEnvironmentDiscovery", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         const requests = yield* Ref.get(harness.statusRequests);
-        for (const environment of environments) {
+        for (const machine of machines) {
           yield* Deferred.succeed(
-            requests.get(environment.environmentId)!,
-            status(environment, "online"),
+            requests.get(machine.machineId)!,
+            status(machine, "online"),
           );
         }
         yield* discovery.refresh;
-        expect((yield* SubscriptionRef.get(discovery.state)).environments.size).toBe(2);
+        expect((yield* SubscriptionRef.get(discovery.state)).machines.size).toBe(2);
 
         yield* Ref.set(
           harness.listFailure,
           new ManagedRelay.ManagedRelayRequestFailedError({
-            action: "list relay-managed environments",
+            action: "list relay-managed machines",
             cause: new Error("Relay request failed."),
           }),
         );
         yield* discovery.refresh;
 
         const failed = yield* SubscriptionRef.get(discovery.state);
-        expect(failed.environments.size).toBe(0);
+        expect(failed.machines.size).toBe(0);
         expect(Option.isSome(failed.error)).toBe(true);
       }).pipe(Effect.provide(harness.layer));
     }),
@@ -352,12 +352,12 @@ describe("RelayEnvironmentDiscovery", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         const requests = yield* Ref.get(harness.statusRequests);
-        for (const environment of environments) {
+        for (const machine of machines) {
           yield* Deferred.succeed(
-            requests.get(environment.environmentId)!,
-            status(environment, "online"),
+            requests.get(machine.machineId)!,
+            status(machine, "online"),
           );
         }
 
@@ -368,7 +368,7 @@ describe("RelayEnvironmentDiscovery", () => {
         yield* harness.wake("credentials-changed");
         const populated = yield* SubscriptionRef.changes(discovery.state).pipe(
           Stream.filter(
-            (state) => state.environments.size === environments.length && !state.refreshing,
+            (state) => state.machines.size === machines.length && !state.refreshing,
           ),
           Stream.runHead,
           Effect.map(Option.getOrThrow),
@@ -383,12 +383,12 @@ describe("RelayEnvironmentDiscovery", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         yield* Ref.set(harness.clerkToken, null);
         yield* discovery.refresh;
 
         const state = yield* SubscriptionRef.get(discovery.state);
-        expect(state.environments.size).toBe(0);
+        expect(state.machines.size).toBe(0);
         expect(state.refreshing).toBe(false);
         expect(Option.isNone(state.error)).toBe(true);
       }).pipe(Effect.provide(harness.layer));
@@ -399,31 +399,31 @@ describe("RelayEnvironmentDiscovery", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         const refreshFiber = yield* Effect.forkChild(discovery.refresh);
         yield* SubscriptionRef.changes(discovery.state).pipe(
-          Stream.filter((state) => state.environments.size === environments.length),
+          Stream.filter((state) => state.machines.size === machines.length),
           Stream.runHead,
         );
 
         yield* Ref.set(harness.clerkToken, null);
         yield* harness.wake("credentials-changed");
         yield* SubscriptionRef.changes(discovery.state).pipe(
-          Stream.filter((state) => state.environments.size === 0),
+          Stream.filter((state) => state.machines.size === 0),
           Stream.runHead,
         );
 
         const requests = yield* Ref.get(harness.statusRequests);
-        for (const environment of environments) {
+        for (const machine of machines) {
           yield* Deferred.succeed(
-            requests.get(environment.environmentId)!,
-            status(environment, "online"),
+            requests.get(machine.machineId)!,
+            status(machine, "online"),
           );
         }
         yield* Fiber.join(refreshFiber);
         yield* Effect.yieldNow;
 
-        expect((yield* SubscriptionRef.get(discovery.state)).environments.size).toBe(0);
+        expect((yield* SubscriptionRef.get(discovery.state)).machines.size).toBe(0);
       }).pipe(Effect.provide(harness.layer), Effect.scoped);
     }),
   );

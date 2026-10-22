@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   ServerProvider,
   UsageSummary,
   UsageSummaryInput,
@@ -7,12 +7,12 @@ import type {
 import * as Schema from "effect/Schema";
 import type { AtomRegistry } from "effect/reactivity";
 
-import { EnvironmentRpcUnavailableError } from "../rpc/client.ts";
-import type { createEnvironmentPresentationAtoms } from "./presentation.ts";
+import { MachineRpcUnavailableError } from "../rpc/client.ts";
+import type { createMachinePresentationAtoms } from "./presentation.ts";
 import { executeAtomQuery, runAtomCommand, squashAtomCommandFailure } from "./runtime.ts";
-import type { createServerEnvironmentAtoms } from "./server.ts";
+import type { createServerMachineAtoms } from "./server.ts";
 
-const isEnvironmentRpcUnavailable = Schema.is(EnvironmentRpcUnavailableError);
+const isMachineRpcUnavailable = Schema.is(MachineRpcUnavailableError);
 
 export function needsCursorKeychainAccess(
   summary: UsageSummary | null,
@@ -26,53 +26,53 @@ export function needsCursorKeychainAccess(
 }
 
 /**
- * Any environment reading a Cursor account already reports that account's
+ * Any machine reading a Cursor account already reports that account's
  * history from every machine, so the prompt only adds duplicates there.
  */
-export function cursorKeychainAccessEnvironments<
+export function cursorKeychainAccessMachines<
   E extends { readonly summary: UsageSummary | null; readonly needsCursorKeychainAccess: boolean },
->(environments: readonly E[]): readonly E[] {
-  const hasCursorAccount = environments.some((environment) =>
-    environment.summary?.sources.some(
+>(machines: readonly E[]): readonly E[] {
+  const hasCursorAccount = machines.some((machine) =>
+    machine.summary?.sources.some(
       (source) =>
         source.fingerprint.provider === "cursor" && source.fingerprint.hostId === "cursor.com",
     ),
   );
   return hasCursorAccount
     ? []
-    : environments.filter((environment) => environment.needsCursorKeychainAccess);
+    : machines.filter((machine) => machine.needsCursorKeychainAccess);
 }
 
-const limitsRefreshAfter = new Map<EnvironmentId, number>();
-const limitsRefreshes = new Map<EnvironmentId, Promise<unknown>>();
+const limitsRefreshAfter = new Map<MachineId, number>();
+const limitsRefreshes = new Map<MachineId, Promise<unknown>>();
 
 export async function refreshUsageLimits<A>(
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   refresh: () => Promise<A>,
   automatic = false,
   afterPending = false,
 ): Promise<A | undefined> {
-  const pending = limitsRefreshes.get(environmentId);
+  const pending = limitsRefreshes.get(machineId);
   if (pending !== undefined) {
     if (afterPending) {
       try {
         await pending;
       } catch {}
-      return refreshUsageLimits(environmentId, refresh, false, true);
+      return refreshUsageLimits(machineId, refresh, false, true);
     }
     return automatic ? undefined : ((await pending) as A);
   }
-  const refreshAfter = limitsRefreshAfter.get(environmentId) ?? 0;
+  const refreshAfter = limitsRefreshAfter.get(machineId) ?? 0;
   // @effect-diagnostics-next-line globalDate:off
   if (automatic && Date.now() < refreshAfter) return;
   const current = Promise.resolve()
     .then(refresh)
     .finally(() => {
-      limitsRefreshes.delete(environmentId);
+      limitsRefreshes.delete(machineId);
       // @effect-diagnostics-next-line globalDate:off
-      limitsRefreshAfter.set(environmentId, Date.now() + 5 * 60_000);
+      limitsRefreshAfter.set(machineId, Date.now() + 5 * 60_000);
     });
-  limitsRefreshes.set(environmentId, current);
+  limitsRefreshes.set(machineId, current);
   return await current;
 }
 
@@ -80,22 +80,22 @@ export async function refreshUsage({
   registry,
   server,
   presentations,
-  environmentIds,
+  machineIds,
   input,
 }: {
   registry: AtomRegistry.AtomRegistry;
   server: Pick<
-    ReturnType<typeof createServerEnvironmentAtoms>,
+    ReturnType<typeof createServerMachineAtoms>,
     "usageSummary" | "refreshUsageRates"
   >;
-  presentations: Pick<ReturnType<typeof createEnvironmentPresentationAtoms>, "presentationAtom">;
-  environmentIds: readonly EnvironmentId[];
+  presentations: Pick<ReturnType<typeof createMachinePresentationAtoms>, "presentationAtom">;
+  machineIds: readonly MachineId[];
   input: UsageSummaryInput;
 }): Promise<void> {
   await Promise.all(
-    environmentIds.map(async (environmentId) => {
-      const query = server.usageSummary({ environmentId, input });
-      const presentation = presentations.presentationAtom(environmentId);
+    machineIds.map(async (machineId) => {
+      const query = server.usageSummary({ machineId, input });
+      const presentation = presentations.presentationAtom(machineId);
       const controller = new AbortController();
       const abortWhenDisconnected = () => {
         if (registry.get(presentation)?.connection.phase !== "connected") controller.abort();
@@ -106,12 +106,12 @@ export async function refreshUsage({
         const ratesResult = await runAtomCommand(
           registry,
           server.refreshUsageRates,
-          { environmentId, input: {} },
+          { machineId, input: {} },
           { reportFailure: false },
         );
         const sessionUnavailable =
           ratesResult._tag === "Failure" &&
-          isEnvironmentRpcUnavailable(squashAtomCommandFailure(ratesResult));
+          isMachineRpcUnavailable(squashAtomCommandFailure(ratesResult));
         registry.refresh(query);
         if (sessionUnavailable || controller.signal.aborted) return;
         await executeAtomQuery(registry, query, {

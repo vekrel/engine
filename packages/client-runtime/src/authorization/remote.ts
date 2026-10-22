@@ -1,25 +1,25 @@
 import {
   AuthAccessTokenType,
   type AuthClientPresentationMetadata,
-  AuthEnvironmentBootstrapTokenType,
+  AuthMachineBootstrapTokenType,
   AuthTokenExchangeGrantType,
   type ClientConnectionMethod,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
 } from "@vekrel/contracts";
 import { encodeOAuthScope } from "@vekrel/shared/oauthScope";
 import { hashTelemetryId } from "@vekrel/shared/telemetryId";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { environmentEndpointUrl } from "../environment/endpoint.ts";
+import { machineEndpointUrl } from "../machine/endpoint.ts";
 import * as ClientCapabilities from "../platform/capabilities.ts";
 import {
-  executeEnvironmentHttpRequest,
-  makeEnvironmentHttpApiGroupClient,
-  type RemoteEnvironmentRequestError,
+  executeMachineHttpRequest,
+  makeMachineHttpApiGroupClient,
+  type RemoteMachineRequestError,
 } from "../rpc/http.ts";
 
-export { RemoteEnvironmentAuthUndeclaredStatusError } from "../rpc/http.ts";
-export type RemoteEnvironmentAuthError = RemoteEnvironmentRequestError;
+export { RemoteMachineAuthUndeclaredStatusError } from "../rpc/http.ts";
+export type RemoteMachineAuthError = RemoteMachineRequestError;
 
 const DEFAULT_REMOTE_REQUEST_TIMEOUT_MS = 10_000;
 
@@ -43,8 +43,8 @@ export interface ClientOwnerParams {
 }
 
 /**
- * Tells the environment, for analytics, which T3 Connect account and device
- * are connecting, so it can count the environment as theirs.
+ * Tells the machine, for analytics, which T3 Connect account and device
+ * are connecting, so it can count the machine as theirs.
  */
 export const readClientOwnerParams = Effect.gen(function* () {
   const session = yield* Effect.serviceOption(ClientCapabilities.CloudSession);
@@ -112,21 +112,21 @@ export const exchangeRemoteDpopAccessToken = Effect.fn(
 )(function* (input: {
   readonly httpBaseUrl: string;
   readonly credential: string;
-  readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes?: ReadonlyArray<AuthMachineScope>;
   readonly clientMetadata?: AuthClientPresentationMetadata;
   readonly dpopProof: string;
   readonly timeoutMs?: number;
 }) {
-  const client = yield* makeEnvironmentHttpApiGroupClient(input.httpBaseUrl, "auth");
-  const response = yield* executeEnvironmentHttpRequest(
-    environmentEndpointUrl(input.httpBaseUrl, "/oauth/token"),
+  const client = yield* makeMachineHttpApiGroupClient(input.httpBaseUrl, "auth");
+  const response = yield* executeMachineHttpRequest(
+    machineEndpointUrl(input.httpBaseUrl, "/oauth/token"),
     input.timeoutMs ?? DEFAULT_REMOTE_REQUEST_TIMEOUT_MS,
     client.token({
       headers: { dpop: input.dpopProof },
       payload: {
         grant_type: AuthTokenExchangeGrantType,
         subject_token: input.credential,
-        subject_token_type: AuthEnvironmentBootstrapTokenType,
+        subject_token_type: AuthMachineBootstrapTokenType,
         requested_token_type: AuthAccessTokenType,
         ...(input.scopes ? { scope: encodeOAuthScope(input.scopes) } : {}),
         ...clientMetadataTokenExchangeFields(input.clientMetadata),
@@ -141,20 +141,20 @@ export const bootstrapRemoteBearerSession = Effect.fn(
 )(function* (input: {
   readonly httpBaseUrl: string;
   readonly credential: string;
-  readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes?: ReadonlyArray<AuthMachineScope>;
   readonly clientMetadata?: AuthClientPresentationMetadata;
   readonly timeoutMs?: number;
 }) {
-  const client = yield* makeEnvironmentHttpApiGroupClient(input.httpBaseUrl, "auth");
-  return yield* executeEnvironmentHttpRequest(
-    environmentEndpointUrl(input.httpBaseUrl, "/oauth/token"),
+  const client = yield* makeMachineHttpApiGroupClient(input.httpBaseUrl, "auth");
+  return yield* executeMachineHttpRequest(
+    machineEndpointUrl(input.httpBaseUrl, "/oauth/token"),
     input.timeoutMs ?? DEFAULT_REMOTE_REQUEST_TIMEOUT_MS,
     client.token({
       headers: {},
       payload: {
         grant_type: AuthTokenExchangeGrantType,
         subject_token: input.credential,
-        subject_token_type: AuthEnvironmentBootstrapTokenType,
+        subject_token_type: AuthMachineBootstrapTokenType,
         requested_token_type: AuthAccessTokenType,
         ...(input.scopes ? { scope: encodeOAuthScope(input.scopes) } : {}),
         ...clientMetadataTokenExchangeFields(input.clientMetadata),
@@ -170,9 +170,9 @@ export const fetchRemoteSessionState = Effect.fn(
   readonly bearerToken: string;
   readonly timeoutMs?: number;
 }) {
-  const client = yield* makeEnvironmentHttpApiGroupClient(input.httpBaseUrl, "auth");
-  return yield* executeEnvironmentHttpRequest(
-    environmentEndpointUrl(input.httpBaseUrl, "/api/auth/session"),
+  const client = yield* makeMachineHttpApiGroupClient(input.httpBaseUrl, "auth");
+  return yield* executeMachineHttpRequest(
+    machineEndpointUrl(input.httpBaseUrl, "/api/auth/session"),
     input.timeoutMs ?? DEFAULT_REMOTE_REQUEST_TIMEOUT_MS,
     client.session({
       headers: {
@@ -189,9 +189,9 @@ export const issueRemoteWebSocketTicket = Effect.fn(
   readonly bearerToken: string;
   readonly timeoutMs?: number;
 }) {
-  const client = yield* makeEnvironmentHttpApiGroupClient(input.httpBaseUrl, "auth");
-  return yield* executeEnvironmentHttpRequest(
-    environmentEndpointUrl(input.httpBaseUrl, "/api/auth/websocket-ticket"),
+  const client = yield* makeMachineHttpApiGroupClient(input.httpBaseUrl, "auth");
+  return yield* executeMachineHttpRequest(
+    machineEndpointUrl(input.httpBaseUrl, "/api/auth/websocket-ticket"),
     input.timeoutMs ?? DEFAULT_REMOTE_REQUEST_TIMEOUT_MS,
     client.webSocketTicket({
       headers: {
@@ -209,9 +209,9 @@ export const issueRemoteDpopWebSocketTicket = Effect.fn(
   readonly dpopProof: string;
   readonly timeoutMs?: number;
 }) {
-  const client = yield* makeEnvironmentHttpApiGroupClient(input.httpBaseUrl, "auth");
-  return yield* executeEnvironmentHttpRequest(
-    environmentEndpointUrl(input.httpBaseUrl, "/api/auth/websocket-ticket"),
+  const client = yield* makeMachineHttpApiGroupClient(input.httpBaseUrl, "auth");
+  return yield* executeMachineHttpRequest(
+    machineEndpointUrl(input.httpBaseUrl, "/api/auth/websocket-ticket"),
     input.timeoutMs ?? DEFAULT_REMOTE_REQUEST_TIMEOUT_MS,
     client.webSocketTicket({
       headers: {

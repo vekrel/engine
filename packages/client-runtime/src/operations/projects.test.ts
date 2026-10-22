@@ -1,6 +1,6 @@
 import { SourceControlProviderKind } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ProjectId } from "@vekrel/contracts";
+import { MachineId, ProjectId } from "@vekrel/contracts";
 
 import {
   findExistingAddProject,
@@ -8,7 +8,7 @@ import {
   getDefaultCloneUrl,
   normalizePastedCloneUrl,
 } from "./projects.ts";
-import type { EnvironmentProject } from "../state/models.ts";
+import type { MachineProject } from "../state/models.ts";
 
 describe("add project shared logic", () => {
   it("routes owner/repository shorthand to GitHub over HTTPS", () => {
@@ -69,12 +69,12 @@ describe("add project shared logic", () => {
     expect(getCloneDirectoryName("git@github.com:acme/123.git")).toBe("123");
   });
 
-  it("finds existing projects by normalized path in the target environment", () => {
-    const env = EnvironmentId.make("env");
-    const other = EnvironmentId.make("other");
-    const projects: EnvironmentProject[] = [
+  it("finds existing projects by normalized path in the target machine", () => {
+    const env = MachineId.make("env");
+    const other = MachineId.make("other");
+    const projects: MachineProject[] = [
       {
-        environmentId: other,
+        machineId: other,
         id: ProjectId.make("same-path-other-env"),
         title: "Other",
         workspaceRoot: "/repo",
@@ -85,7 +85,7 @@ describe("add project shared logic", () => {
         scripts: [],
       },
       {
-        environmentId: env,
+        machineId: env,
         id: ProjectId.make("project"),
         title: "Repo",
         workspaceRoot: "/repo/",
@@ -97,7 +97,7 @@ describe("add project shared logic", () => {
       },
     ];
 
-    expect(findExistingAddProject({ projects, environmentId: env, path: "/repo" })?.id).toBe(
+    expect(findExistingAddProject({ projects, machineId: env, path: "/repo" })?.id).toBe(
       "project",
     );
   });

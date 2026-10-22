@@ -435,7 +435,7 @@ export interface PullRequestProviderApi {
   ) => Effect.Effect<void, PullRequestProviderError>;
 
   /**
-   * Required of a host whose `capabilities.viewedFiles` is `"environment"`, and unused by one
+   * Required of a host whose `capabilities.viewedFiles` is `"machine"`, and unused by one
    * that keeps the marks itself: the marks live here, but only the host can say whether what a
    * reader cleared last week is still what is in front of them.
    */

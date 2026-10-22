@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -13,14 +13,14 @@ import { ConnectionBlockedError, type ConnectionAttemptError } from "./model.ts"
 export const GitHubRoutingPermission = Schema.Literals(["off", "read", "read-write"]);
 export type GitHubRoutingPermission = typeof GitHubRoutingPermission.Type;
 export const StoredGitHubRoutingPermission = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   connectionKey: Schema.String,
   permission: GitHubRoutingPermission,
 });
 export type StoredGitHubRoutingPermission = typeof StoredGitHubRoutingPermission.Type;
 
 /**
- * Trust belongs to the saved endpoints, never to an environment id advertised
+ * Trust belongs to the saved endpoints, never to a machine id advertised
  * by a server alone. With several routes the key covers all of them, sorted so
  * reordering keeps trust but adding or changing an address revokes it.
  */
@@ -43,12 +43,12 @@ function routeConnectionKey(
 ): string | null {
   const entry = { profile: routeProfile };
   if (target._tag === "RelayConnectionTarget")
-    return JSON.stringify([target._tag, target.environmentId]);
+    return JSON.stringify([target._tag, target.machineId]);
   const profile = Option.getOrNull(entry.profile);
   if (target._tag === "SshConnectionTarget") {
     if (profile?._tag !== "SshConnectionProfile") return null;
     const { alias, hostname, username, port } = profile.target;
-    return JSON.stringify([target._tag, target.environmentId, alias, hostname, username, port]);
+    return JSON.stringify([target._tag, target.machineId, alias, hostname, username, port]);
   }
   const baseUrls =
     target._tag === "PrimaryConnectionTarget"
@@ -67,7 +67,7 @@ function routeConnectionKey(
       return null;
     return JSON.stringify([
       target._tag,
-      target.environmentId,
+      target.machineId,
       ...urls.map((url) => url.href.replace(/\/+$/, "")),
     ]);
   } catch {
@@ -92,7 +92,7 @@ export class GitHubRoutingPermissions extends Context.Reference<{
     entry: ConnectionCatalogEntry,
     permission: GitHubRoutingPermission,
   ) => Effect.Effect<void, ConnectionAttemptError>;
-  readonly forget: (environmentId: EnvironmentId) => Effect.Effect<void, ConnectionAttemptError>;
+  readonly forget: (machineId: MachineId) => Effect.Effect<void, ConnectionAttemptError>;
 }>("@vekrel/client-runtime/connection/GitHubRoutingPermissions", {
   defaultValue: () => ({
     get: () => Effect.succeed("off"),
@@ -146,20 +146,20 @@ export const makeGitHubRoutingPermissions = Effect.fn("makeGitHubRoutingPermissi
           return Effect.fail(
             new ConnectionBlockedError({
               reason: "configuration",
-              detail: "This environment does not have a saved connection endpoint.",
+              detail: "This machine does not have a saved connection endpoint.",
             }),
           );
         return update((current) => [
-          ...current.filter((value) => value.environmentId !== entry.target.environmentId),
+          ...current.filter((value) => value.machineId !== entry.target.machineId),
           ...(permission === "off"
             ? []
-            : [{ environmentId: entry.target.environmentId, connectionKey, permission }]),
+            : [{ machineId: entry.target.machineId, connectionKey, permission }]),
         ]);
       },
-      forget: (environmentId) =>
+      forget: (machineId) =>
         update((current) =>
-          current.some((permission) => permission.environmentId === environmentId)
-            ? current.filter((permission) => permission.environmentId !== environmentId)
+          current.some((permission) => permission.machineId === machineId)
+            ? current.filter((permission) => permission.machineId !== machineId)
             : current,
         ),
     });

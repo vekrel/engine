@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ThreadId } from "@vekrel/contracts";
 
 import {
   formatThreadLink,
@@ -8,8 +8,8 @@ import {
   resolveThreadLinkRef,
 } from "./threadLinks.ts";
 
-const ref = (environmentId: string, threadId = "chat-1") => ({
-  environmentId: EnvironmentId.make(environmentId),
+const ref = (machineId: string, threadId = "chat-1") => ({
+  machineId: MachineId.make(machineId),
   threadId: ThreadId.make(threadId),
 });
 
@@ -22,7 +22,7 @@ describe("thread link destinations", () => {
     expect(resolveThreadLinkRef(source, [remote, decoded])).toEqual(decoded);
   });
 
-  it("opens the unique matching chat in another environment", () => {
+  it("opens the unique matching chat in another machine", () => {
     const destination = ref("remote");
     expect(resolveThreadLinkRef(ref("local"), [ref("local", "other-chat"), destination])).toEqual(
       destination,

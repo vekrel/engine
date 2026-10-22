@@ -51,7 +51,7 @@ describe("resolvePathLinkTarget", () => {
       String.raw`\\server\share\project\.\src\index.ts:12`,
     ],
     ["src/index.ts:12", "/home/jane/project", "/home/jane/project/src/index.ts:12"],
-  ])("resolves %s using the connected environment cwd %s", (path, cwd, expected) => {
+  ])("resolves %s using the connected machine cwd %s", (path, cwd, expected) => {
     expect(resolvePathLinkTarget(path, cwd)).toBe(expected);
   });
 

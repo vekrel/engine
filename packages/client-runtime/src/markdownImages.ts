@@ -42,7 +42,7 @@ function hostFileSource(
 }
 
 /**
- * Filesystem paths belong to the environment host and must never reach a
+ * Filesystem paths belong to the machine host and must never reach a
  * browser or native image component without first becoming a signed asset URL.
  */
 export function classifyMarkdownImageSource(

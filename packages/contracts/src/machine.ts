@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import {
-  EnvironmentId,
+  MachineId,
   ForwardCompatibleOptional,
   ProjectId,
   ThreadId,
@@ -14,18 +14,18 @@ export const ORCHESTRATION_PROTOCOL_VERSION_TEXT = "2";
 export const ORCHESTRATION_PROTOCOL_QUERY_PARAM = "orchestrationProtocol";
 export const ORCHESTRATION_PROTOCOL_HEADER = "x-t3-orchestration-protocol";
 
-export const ExecutionEnvironmentPlatformOs = Schema.Literals([
+export const ExecutionMachinePlatformOs = Schema.Literals([
   "darwin",
   "linux",
   "windows",
   "unknown",
 ]);
-export type ExecutionEnvironmentPlatformOs = typeof ExecutionEnvironmentPlatformOs.Type;
+export type ExecutionMachinePlatformOs = typeof ExecutionMachinePlatformOs.Type;
 
-export const ExecutionEnvironmentPlatformArch = Schema.Literals(["arm64", "x64", "other"]);
-export type ExecutionEnvironmentPlatformArch = typeof ExecutionEnvironmentPlatformArch.Type;
+export const ExecutionMachinePlatformArch = Schema.Literals(["arm64", "x64", "other"]);
+export type ExecutionMachinePlatformArch = typeof ExecutionMachinePlatformArch.Type;
 
-export const ENVIRONMENT_MACHINE_KINDS = [
+export const MACHINE_KINDS = [
   "server",
   "cloud",
   "linux",
@@ -34,14 +34,14 @@ export const ENVIRONMENT_MACHINE_KINDS = [
   "mac-mini",
   "mac-studio",
 ] as const;
-export const EnvironmentMachineKind = Schema.Literals(ENVIRONMENT_MACHINE_KINDS);
-export type EnvironmentMachineKind = typeof EnvironmentMachineKind.Type;
-export const isEnvironmentMachineKind = Schema.is(EnvironmentMachineKind);
+export const MachineKind = Schema.Literals(MACHINE_KINDS);
+export type MachineKind = typeof MachineKind.Type;
+export const isMachineKind = Schema.is(MachineKind);
 
-export const ExecutionEnvironmentPlatform = Schema.Struct({
-  os: ExecutionEnvironmentPlatformOs,
-  arch: ExecutionEnvironmentPlatformArch,
-  machine: ForwardCompatibleOptional(EnvironmentMachineKind),
+export const ExecutionMachinePlatform = Schema.Struct({
+  os: ExecutionMachinePlatformOs,
+  arch: ExecutionMachinePlatformArch,
+  machine: ForwardCompatibleOptional(MachineKind),
 });
 
 /**
@@ -53,7 +53,7 @@ export type ThreadEnvMode = typeof ThreadEnvMode.Type;
 
 export const WorktreeSubmodules = Schema.Literals(["recursive", "top-level", "none"]);
 export type WorktreeSubmodules = typeof WorktreeSubmodules.Type;
-export type ExecutionEnvironmentPlatform = typeof ExecutionEnvironmentPlatform.Type;
+export type ExecutionMachinePlatform = typeof ExecutionMachinePlatform.Type;
 
 export const ServerSelfUpdateMethod = Schema.Literals(["boot-service", "respawn", "desktop-app"]);
 export type ServerSelfUpdateMethod = typeof ServerSelfUpdateMethod.Type;
@@ -71,7 +71,7 @@ export const ServerSelfUpdateCapability = Schema.Literals([
 ]);
 export type ServerSelfUpdateCapability = typeof ServerSelfUpdateCapability.Type;
 
-export const ExecutionEnvironmentCapabilities = Schema.Struct({
+export const ExecutionMachineCapabilities = Schema.Struct({
   repositoryIdentity: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   connectionProbe: Schema.optionalKey(Schema.Boolean),
   attachmentUploads: Schema.optionalKey(Schema.Boolean),
@@ -110,10 +110,10 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   projectProviderInstanceOverrides: Schema.optionalKey(Schema.Boolean),
   threadSnooze: Schema.optionalKey(Schema.Boolean),
   /** Absent on servers from
-      before environment themes shipped, which never emit the events -- so a
+      before machine themes shipped, which never emit the events -- so a
       client reconnecting to one must drop published themes rather than keep
       showing a set nothing will ever update. */
-  environmentThemes: Schema.optionalKey(Schema.Boolean),
+  machineThemes: Schema.optionalKey(Schema.Boolean),
   usageLimitSources: Schema.optionalKey(Schema.Boolean),
   usagePriceOverrides: Schema.optionalKey(Schema.Boolean),
   usageModelAliases: Schema.optionalKey(Schema.Boolean),
@@ -143,7 +143,7 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   projectCloneTracking: Schema.optionalKey(Schema.Boolean),
   /** Server answers projects.listIgnoredFiles. */
   ignoredFileListing: Schema.optionalKey(Schema.Boolean),
-  environmentIcon: Schema.optionalKey(Schema.Boolean),
+  machineIcon: Schema.optionalKey(Schema.Boolean),
   desktopAppUpdate: Schema.optionalKey(Schema.Boolean),
   /** Server answers orchestration.subscribeCommandOutput. Absent on older servers,
       which never send command output, so clients must not subscribe. */
@@ -153,17 +153,17 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
       without a local browser runtime open server tabs here. */
   serverBrowser: Schema.optionalKey(Schema.Boolean),
 });
-export type ExecutionEnvironmentCapabilities = typeof ExecutionEnvironmentCapabilities.Type;
+export type ExecutionMachineCapabilities = typeof ExecutionMachineCapabilities.Type;
 
-export const ExecutionEnvironmentDescriptor = Schema.Struct({
-  environmentId: EnvironmentId,
+export const ExecutionMachineDescriptor = Schema.Struct({
+  machineId: MachineId,
   label: TrimmedNonEmptyString,
-  platform: ExecutionEnvironmentPlatform,
+  platform: ExecutionMachinePlatform,
   serverVersion: TrimmedNonEmptyString,
   orchestrationProtocolVersion: Schema.optionalKey(Schema.Int),
-  capabilities: ExecutionEnvironmentCapabilities,
+  capabilities: ExecutionMachineCapabilities,
 });
-export type ExecutionEnvironmentDescriptor = typeof ExecutionEnvironmentDescriptor.Type;
+export type ExecutionMachineDescriptor = typeof ExecutionMachineDescriptor.Type;
 
 export const RepositoryIdentityLocator = Schema.Struct({
   source: Schema.Literal("git-remote"),
@@ -204,13 +204,13 @@ export function repositoryGroupingDisplayNameOf(identity: RepositoryIdentity): s
 }
 
 export const ScopedProjectRef = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   projectId: ProjectId,
 });
 export type ScopedProjectRef = typeof ScopedProjectRef.Type;
 
 export const ScopedThreadRef = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   threadId: ThreadId,
 });
 export type ScopedThreadRef = typeof ScopedThreadRef.Type;

@@ -1,6 +1,6 @@
 import {
-  EnvironmentId,
-  type EnvironmentId as EnvironmentIdType,
+  MachineId,
+  type MachineId as MachineIdType,
   GitActionProgressPhase,
   type GitActionProgressEvent,
   type GitRunStackedActionInput,
@@ -17,12 +17,12 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import * as Persistence from "../platform/persistence.ts";
 import { runStreamGuarded, RpcPermissionGuard } from "../rpc/client.ts";
 import {
   createRuntimeCommand,
-  runStreamInEnvironment,
+  runStreamInMachine,
   type AtomCommand,
   type AtomCommandResult,
 } from "./runtime.ts";
@@ -58,12 +58,12 @@ export interface VcsActionState {
 }
 
 export interface VcsActionTarget {
-  readonly environmentId: EnvironmentIdType | null;
+  readonly machineId: MachineIdType | null;
   readonly cwd: string | null;
 }
 
 export interface ResolvedVcsActionTarget {
-  readonly environmentId: EnvironmentIdType;
+  readonly machineId: MachineIdType;
   readonly cwd: string;
 }
 
@@ -88,7 +88,7 @@ export class VcsActionUnavailableError extends Schema.TaggedError<VcsActionUnava
   "VcsActionUnavailableError",
   {
     operation: VcsActionOperation,
-    environmentId: Schema.NullOr(EnvironmentId),
+    machineId: Schema.NullOr(MachineId),
     cwd: Schema.NullOr(Schema.String),
   },
 ) {
@@ -103,7 +103,7 @@ export class VcsActionRemoteFailureError extends Schema.TaggedError<VcsActionRem
     actionId: Schema.String,
     transportActionId: Schema.String,
     action: GitStackedAction,
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     cwd: Schema.String,
     phase: Schema.NullOr(GitActionProgressPhase),
     remoteMessageLength: Schema.Number,
@@ -121,7 +121,7 @@ export class VcsActionMissingTerminalEventError extends Schema.TaggedError<VcsAc
     actionId: Schema.String,
     transportActionId: Schema.String,
     action: GitStackedAction,
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     cwd: Schema.String,
   },
 ) {
@@ -165,7 +165,7 @@ export const EMPTY_VCS_ACTION_STATE = Object.freeze<VcsActionState>({
 const nowMs = (): number => DateTime.toEpochMillis(DateTime.nowUnsafe());
 let nextLocalActionId = 0;
 const decodeVcsActionTargetKey = Schema.decodeUnknownSync(
-  Schema.Tuple([EnvironmentId, Schema.String]),
+  Schema.Tuple([MachineId, Schema.String]),
 );
 
 const vcsActionStateAtom = Atom.family((key: string) => {
@@ -181,16 +181,16 @@ const EMPTY_VCS_ACTION_ATOM = Atom.make(EMPTY_VCS_ACTION_STATE).pipe(
 );
 
 function getVcsActionTargetKey(target: VcsActionTarget): string | null {
-  if (target.environmentId === null || target.cwd === null) {
+  if (target.machineId === null || target.cwd === null) {
     return null;
   }
-  return JSON.stringify([target.environmentId, target.cwd]);
+  return JSON.stringify([target.machineId, target.cwd]);
 }
 
 export function parseVcsActionTargetKey(key: string): ResolvedVcsActionTarget {
   try {
-    const [environmentId, cwd] = decodeVcsActionTargetKey(JSON.parse(key));
-    return { environmentId, cwd };
+    const [machineId, cwd] = decodeVcsActionTargetKey(JSON.parse(key));
+    return { machineId, cwd };
   } catch (cause) {
     throw new VcsActionTargetKeyParseError({ keyLength: key.length, cause });
   }
@@ -239,7 +239,7 @@ export function createVcsActionTransportId(
   target: ResolvedVcsActionTarget,
   actionId: string,
 ): string {
-  const targetKey = JSON.stringify([target.environmentId, target.cwd]);
+  const targetKey = JSON.stringify([target.machineId, target.cwd]);
   return `${targetKey.length}:${targetKey}${actionId}`;
 }
 
@@ -296,7 +296,7 @@ export function consumeVcsActionProgress<E, R>(
               actionId: input.actionId,
               transportActionId: input.transportActionId,
               action: terminalEvent.action,
-              environmentId: input.target.environmentId,
+              machineId: input.target.machineId,
               cwd: input.target.cwd,
               phase: terminalEvent.phase,
               remoteMessageLength: terminalEvent.message.length,
@@ -308,7 +308,7 @@ export function consumeVcsActionProgress<E, R>(
             actionId: input.actionId,
             transportActionId: input.transportActionId,
             action: input.action,
-            environmentId: input.target.environmentId,
+            machineId: input.target.machineId,
             cwd: input.target.cwd,
           }),
         );
@@ -413,7 +413,7 @@ export function applyVcsActionProgressEvent(
 }
 
 export function createVcsActionManager<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | Persistence.EnvironmentCacheStore | R, E>,
+  runtime: Atom.AtomRuntime<MachineRegistry | Persistence.MachineCacheStore | R, E>,
 ) {
   const runStackedActionCommands = new Map<
     string,
@@ -425,7 +425,7 @@ export function createVcsActionManager<R, E>(
       targetKey ??
       JSON.stringify([
         "vcs-action-target:unavailable",
-        requestedTarget.environmentId,
+        requestedTarget.machineId,
         requestedTarget.cwd,
       ]);
     const existing = runStackedActionCommands.get(commandKey);
@@ -435,7 +435,7 @@ export function createVcsActionManager<R, E>(
     const target = targetKey === null ? null : parseVcsActionTargetKey(targetKey);
     const stateAtom = targetKey === null ? EMPTY_VCS_ACTION_ATOM : vcsActionStateAtom(targetKey);
     const command = createRuntimeCommand<
-      EnvironmentRegistry | Persistence.EnvironmentCacheStore | R,
+      MachineRegistry | Persistence.MachineCacheStore | R,
       E,
       RunVcsStackedActionInput,
       GitRunStackedActionResult,
@@ -449,7 +449,7 @@ export function createVcsActionManager<R, E>(
           return Effect.fail(
             new VcsActionUnavailableError({
               operation: "run_change_request",
-              environmentId: requestedTarget.environmentId,
+              machineId: requestedTarget.machineId,
               cwd: requestedTarget.cwd,
             }),
           );
@@ -481,8 +481,8 @@ export function createVcsActionManager<R, E>(
           }
         });
         return consumeVcsActionProgress(
-          runStreamInEnvironment(
-            target.environmentId,
+          runStreamInMachine(
+            target.machineId,
             runStreamGuarded(WS_METHODS.gitRunStackedAction, rpcInput),
           ),
           {
@@ -558,7 +558,7 @@ export function createVcsActionManager<R, E>(
           Cause.fail(
             new VcsActionUnavailableError({
               operation: input.operation,
-              environmentId: target.environmentId,
+              machineId: target.machineId,
               cwd: target.cwd,
             }),
           ),

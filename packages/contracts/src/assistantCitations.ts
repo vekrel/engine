@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { EnvironmentId, MessageId, NonNegativeInt, ThreadId } from "./baseSchemas.ts";
+import { MachineId, MessageId, NonNegativeInt, ThreadId } from "./baseSchemas.ts";
 
 export const ASSISTANT_CITATION_MAX_TEXT_LENGTH = 8_000;
 export const ASSISTANT_CITATION_MAX_COMMENT_LENGTH = 8_000;
@@ -10,7 +10,7 @@ export const ASSISTANT_CITATION_CONTEXT_LENGTH = 32;
  */
 export const AssistantCitation = Schema.Struct({
   version: Schema.Literal(1),
-  environmentId: EnvironmentId.check(Schema.isMaxLength(512)),
+  machineId: MachineId.check(Schema.isMaxLength(512)),
   threadId: ThreadId.check(Schema.isMaxLength(512)),
   messageId: MessageId.check(Schema.isMaxLength(512)),
   text: Schema.String.check(

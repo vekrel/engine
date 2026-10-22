@@ -1,5 +1,5 @@
 import {
-  type EnvironmentId,
+  type MachineId,
   type OrchestrationV2ShellSnapshot,
   type OrchestrationV2ThreadDetailSnapshot,
   type ServerConfig,
@@ -36,7 +36,7 @@ export class ConnectionPersistenceError extends Schema.TaggedError<ConnectionPer
       "save-vcs-refs",
       "remove-vcs-refs",
       "clear-vcs-refs",
-      "clear-environment",
+      "clear-machine",
     ]),
     message: Schema.String,
   },
@@ -46,7 +46,7 @@ export class ConnectionTargetStore extends Context.Service<
   ConnectionTargetStore,
   {
     readonly list: Effect.Effect<ReadonlyArray<ConnectionTarget>, ConnectionPersistenceError>;
-    readonly listDisabled: Effect.Effect<ReadonlyArray<EnvironmentId>, ConnectionPersistenceError>;
+    readonly listDisabled: Effect.Effect<ReadonlyArray<MachineId>, ConnectionPersistenceError>;
   }
 >()("@vekrel/client-runtime/platform/persistence/ConnectionTargetStore") {}
 
@@ -64,49 +64,49 @@ export class ConnectionRegistrationStore extends Context.Service<
      * `routes` must not be empty.
      */
     readonly setRoutes: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       routes: ReadonlyArray<PersistedConnectionTarget>,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly remove: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly setEnabled: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       enabled: boolean,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
   }
 >()("@vekrel/client-runtime/platform/persistence/ConnectionRegistrationStore") {}
 
-export class EnvironmentCacheStore extends Context.Service<
-  EnvironmentCacheStore,
+export class MachineCacheStore extends Context.Service<
+  MachineCacheStore,
   {
     readonly loadShell: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<Option.Option<DeferredShellSnapshot>, ConnectionPersistenceError>;
     readonly saveShell: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       snapshot: OrchestrationV2ShellSnapshot,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly loadThread: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       threadId: ThreadId,
     ) => Effect.Effect<
       Option.Option<OrchestrationV2ThreadDetailSnapshot>,
       ConnectionPersistenceError
     >;
     readonly saveThread: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       snapshot: OrchestrationV2ThreadDetailSnapshot,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly removeThread: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       threadId: ThreadId,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly loadServerConfig: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<Option.Option<ServerConfig>, ConnectionPersistenceError>;
     readonly saveServerConfig: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       config: ServerConfig,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     /**
@@ -114,16 +114,16 @@ export class EnvironmentCacheStore extends Context.Service<
      * to present as a full picker.
      */
     readonly loadVcsRefs: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       cwd: string,
     ) => Effect.Effect<Option.Option<VcsListRefsResult>, ConnectionPersistenceError>;
     readonly saveVcsRefs: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       cwd: string,
       refs: VcsListRefsResult,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly removeVcsRefs: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       cwd: string,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     /**
@@ -131,17 +131,17 @@ export class EnvironmentCacheStore extends Context.Service<
      * cached the same refs under different working-directory keys.
      */
     readonly clearVcsRefs: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
     readonly clear: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<void, ConnectionPersistenceError>;
   }
->()("@vekrel/client-runtime/platform/persistence/EnvironmentCacheStore") {}
+>()("@vekrel/client-runtime/platform/persistence/MachineCacheStore") {}
 
-export class EnvironmentOwnedDataCleanup extends Context.Reference<{
-  readonly clear: (environmentId: EnvironmentId) => Effect.Effect<void>;
-}>("@vekrel/client-runtime/platform/persistence/EnvironmentOwnedDataCleanup", {
+export class MachineOwnedDataCleanup extends Context.Reference<{
+  readonly clear: (machineId: MachineId) => Effect.Effect<void>;
+}>("@vekrel/client-runtime/platform/persistence/MachineOwnedDataCleanup", {
   defaultValue: () => ({
     clear: () => Effect.void,
   }),

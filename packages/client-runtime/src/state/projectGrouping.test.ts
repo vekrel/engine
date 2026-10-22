@@ -1,8 +1,8 @@
-import { EnvironmentId, ProjectId } from "@vekrel/contracts";
+import { MachineId, ProjectId } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { EnvironmentProject } from "./models.ts";
-import { chooseLoadBalancedEnvironment } from "../load-balancing.ts";
+import type { MachineProject } from "./models.ts";
+import { chooseLoadBalancedMachine } from "../load-balancing.ts";
 import {
   buildProjectGroups,
   deriveLogicalProjectKeyFromSettings,
@@ -12,7 +12,7 @@ import {
   type ProjectGroupingSettings,
 } from "./projectGrouping.ts";
 
-const environmentId = EnvironmentId.make("environment");
+const machineId = MachineId.make("machine");
 
 describe("load balancing shared project machines", () => {
   const now = 100_000;
@@ -26,37 +26,37 @@ describe("load balancing shared project machines", () => {
 
   it("compares three machines using free capacity and preference", () => {
     const candidates = [
-      { environmentId: "busy", resources: { ...resources, cpuUtilization: 0.9 }, weight: 1 },
-      { environmentId: "idle", resources, weight: 1 },
-      { environmentId: "preferred", resources: { ...resources, cpuCount: 4 }, weight: 3 },
+      { machineId: "busy", resources: { ...resources, cpuUtilization: 0.9 }, weight: 1 },
+      { machineId: "idle", resources, weight: 1 },
+      { machineId: "preferred", resources: { ...resources, cpuCount: 4 }, weight: 3 },
     ];
-    expect(chooseLoadBalancedEnvironment(candidates, now)).toBe("preferred");
-    expect(chooseLoadBalancedEnvironment(candidates.slice(0, 2), now)).toBe("idle");
+    expect(chooseLoadBalancedMachine(candidates, now)).toBe("preferred");
+    expect(chooseLoadBalancedMachine(candidates.slice(0, 2), now)).toBe("idle");
   });
 
   it("rejects stale, unknown, excluded and saturated machines", () => {
     expect(
-      chooseLoadBalancedEnvironment(
+      chooseLoadBalancedMachine(
         [
           {
-            environmentId: "stale",
+            machineId: "stale",
             resources: { ...resources, sampledAt: now - 15_001 },
             weight: 1,
           },
-          { environmentId: "unknown", resources: null, weight: 1 },
+          { machineId: "unknown", resources: null, weight: 1 },
           {
-            environmentId: "no-cpu-sample",
+            machineId: "no-cpu-sample",
             resources: { ...resources, cpuUtilization: null },
             weight: 1,
           },
-          { environmentId: "excluded", resources, weight: 0 },
+          { machineId: "excluded", resources, weight: 0 },
           {
-            environmentId: "cpu-full",
+            machineId: "cpu-full",
             resources: { ...resources, cpuUtilization: 0.95 },
             weight: 1,
           },
           {
-            environmentId: "memory-full",
+            machineId: "memory-full",
             resources: { ...resources, availableMemoryBytes: 100 },
             weight: 1,
           },
@@ -68,13 +68,13 @@ describe("load balancing shared project machines", () => {
 
   it("uses client receipt time when host clocks differ", () => {
     const candidate = {
-      environmentId: "different-clock",
+      machineId: "different-clock",
       resources: { ...resources, sampledAt: now + 60_000 },
       receivedAt: now,
       weight: 1,
     };
-    expect(chooseLoadBalancedEnvironment([candidate], now)).toBe("different-clock");
-    expect(chooseLoadBalancedEnvironment([candidate], now + 15_001)).toBeNull();
+    expect(chooseLoadBalancedMachine([candidate], now)).toBe("different-clock");
+    expect(chooseLoadBalancedMachine([candidate], now + 15_001)).toBeNull();
   });
 });
 const repositoryIdentity = {
@@ -93,10 +93,10 @@ const repositoryIdentity = {
 function makeProject(
   id: string,
   workspaceRoot: string,
-  overrides: Partial<EnvironmentProject> = {},
-): EnvironmentProject {
+  overrides: Partial<MachineProject> = {},
+): MachineProject {
   return {
-    environmentId,
+    machineId,
     id: ProjectId.make(id),
     title: id,
     workspaceRoot,
@@ -129,7 +129,7 @@ describe("buildProjectGroups", () => {
           repositoryIdentity: null,
         }),
         makeProject("scratch-remote", "/remote/scratch", {
-          environmentId: EnvironmentId.make("remote"),
+          machineId: MachineId.make("remote"),
           isScratch: true,
           repositoryIdentity: null,
         }),
@@ -138,7 +138,7 @@ describe("buildProjectGroups", () => {
       expect(groups.map((group) => group.key)).toEqual(projects.map(derivePhysicalProjectKey));
       expect(groups.map((group) => group.memberProjectRefs)).toEqual(
         projects.map((project) => [
-          { environmentId: project.environmentId, projectId: project.id },
+          { machineId: project.machineId, projectId: project.id },
         ]),
       );
       expect(
@@ -154,7 +154,7 @@ describe("buildProjectGroups", () => {
         repositoryIdentity: { ...repositoryIdentity, rootPath: "/local/repo" },
       });
       const remote = makeProject("scratch-remote", "/remote/scratch", {
-        environmentId: EnvironmentId.make("remote"),
+        machineId: MachineId.make("remote"),
         repositoryIdentity: null,
         isScratch: true,
       });
@@ -179,7 +179,7 @@ describe("buildProjectGroups", () => {
           settings: groupingSettings,
           groupScratchProjects: true,
         })[0]?.memberProjectRefs,
-      ).toEqual([{ environmentId: remote.environmentId, projectId: remote.id }]);
+      ).toEqual([{ machineId: remote.machineId, projectId: remote.id }]);
     },
   );
 
@@ -193,7 +193,7 @@ describe("buildProjectGroups", () => {
   it.each(["repository", "repository_path", "separate"] as const)(
     "coalesces scratch homes in %s mode without merging ordinary same-title projects",
     (mode) => {
-      const remoteEnvironmentId = EnvironmentId.make("remote");
+      const remoteMachineId = MachineId.make("remote");
       const projects = [
         makeProject("scratch-local", "/local/scratch", {
           title: "No project",
@@ -202,12 +202,12 @@ describe("buildProjectGroups", () => {
         }),
         makeProject("scratch-remote", "/remote/scratch", {
           title: "No project",
-          environmentId: remoteEnvironmentId,
+          machineId: remoteMachineId,
           isScratch: true,
         }),
         makeProject("scratch-duplicate", "/remote/scratch/", {
           title: "No project",
-          environmentId: remoteEnvironmentId,
+          machineId: remoteMachineId,
           isScratch: true,
           repositoryIdentity: null,
           updatedAt: "2026-07-02T00:00:00.000Z",
@@ -222,7 +222,7 @@ describe("buildProjectGroups", () => {
         projects,
         groupScratchProjects: true,
         settings: settings(mode, { [derivePhysicalProjectKey(projects[0]!)]: "separate" }),
-        preferredEnvironmentId: remoteEnvironmentId,
+        preferredMachineId: remoteMachineId,
       });
       expect(groups).toHaveLength(3);
       const scratch = groups.find((group) => group.representative.isScratch)!;
@@ -231,7 +231,7 @@ describe("buildProjectGroups", () => {
       expect(scratch.members).toHaveLength(2);
       expect(scratch.memberProjectRefs).toEqual(
         projects.slice(0, 3).map((project) => ({
-          environmentId: project.environmentId,
+          machineId: project.machineId,
           projectId: project.id,
         })),
       );
@@ -380,18 +380,18 @@ describe("buildProjectGroups", () => {
 });
 
 describe("sortProjectsByGroupOrder", () => {
-  const remote = EnvironmentId.make("remote");
-  const ref = (projectId: string, env = environmentId) => ({
-    environmentId: env,
+  const remote = MachineId.make("remote");
+  const ref = (projectId: string, env = machineId) => ({
+    machineId: env,
     projectId: ProjectId.make(projectId),
   });
-  const project = (id: string, env: string = environmentId) => ({ id, environmentId: env });
+  const project = (id: string, env: string = machineId) => ({ id, machineId: env });
 
-  it("tells the same project id on two environments apart", () => {
+  it("tells the same project id on two machines apart", () => {
     const sorted = sortProjectsByGroupOrder(
       [project("shared"), project("shared", remote)],
       [{ memberProjectRefs: [ref("shared", remote)] }, { memberProjectRefs: [ref("shared")] }],
     );
-    expect(sorted.map((entry) => entry.environmentId)).toEqual([remote, environmentId]);
+    expect(sorted.map((entry) => entry.machineId)).toEqual([remote, machineId]);
   });
 });

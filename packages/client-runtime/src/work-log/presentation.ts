@@ -525,7 +525,7 @@ export function resolveViewedImageAsset(
     workspaceRoot: input.workspaceRoot,
     resolvedFilePath,
   });
-  if (media === null || media.access !== "environment") return null;
+  if (media === null || media.access !== "machine") return null;
   return { resource: media.resource, alt: media.name, srcFragment: media.srcFragment };
 }
 
@@ -635,7 +635,7 @@ function summaryActionPriority(action: ToolGroupAction | T3McpToolSummaryAction)
     case "project-update":
     case "project-delete":
     case "project-clone":
-    case "environment-update":
+    case "machine-update":
     case "attachment-prepare":
     case "attachment-discard":
     case "attachment-send":

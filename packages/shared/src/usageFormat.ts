@@ -43,12 +43,12 @@ export function formatPercent(share: number, digits = 1): string {
 }
 
 export function formatUsageContractMismatch(
-  environmentLabel: string,
+  machineLabel: string,
   mismatch: Pick<UsageContractMismatch, "direction">,
 ): string {
   return mismatch.direction === "serverBehind"
-    ? `${environmentLabel} runs an older server version and is excluded from totals.`
-    : `This client is older than the server on ${environmentLabel}; its usage is excluded from totals.`;
+    ? `${machineLabel} runs an older server version and is excluded from totals.`
+    : `This client is older than the server on ${machineLabel}; its usage is excluded from totals.`;
 }
 
 export function formatDayShort(day: string): string {

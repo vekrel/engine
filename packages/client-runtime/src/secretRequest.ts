@@ -70,7 +70,7 @@ export function secretRequestAnswerInput(
   return { threadId: item.threadId, turnItemId: item.id, answer: { type: "save", secret } };
 }
 
-const USER_FACING_FAILURE_TAGS = new Set(["SecretRequestError", "EnvironmentAuthorizationError"]);
+const USER_FACING_FAILURE_TAGS = new Set(["SecretRequestError", "MachineAuthorizationError"]);
 
 /**
  * Only known server errors pass their message through: anything else (transport or encoding

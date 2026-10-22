@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 
 import type {
-  EnvironmentId,
+  MachineId,
   OrchestrationV2ThreadShell,
   Project,
   ThreadId,
@@ -50,7 +50,7 @@ describe("projectThreadAwarenessV2", () => {
 
   it("does not announce completion after a manual stop", () => {
     const input = {
-      environmentId: "env-1" as EnvironmentId,
+      machineId: "env-1" as MachineId,
       project,
       thread: v2Thread({ status: "completed" }),
     };
@@ -68,7 +68,7 @@ describe("projectThreadAwarenessV2", () => {
     (status) => {
       expect(
         projectThreadAwarenessV2({
-          environmentId: "env-1" as EnvironmentId,
+          machineId: "env-1" as MachineId,
           project,
           thread: v2Thread({
             status,
@@ -86,7 +86,7 @@ describe("projectThreadAwarenessV2", () => {
   it("keeps an older activity run visible over a newer cancelled run", () => {
     expect(
       projectThreadAwarenessV2({
-        environmentId: "env-1" as EnvironmentId,
+        machineId: "env-1" as MachineId,
         project,
         thread: v2Thread({ status: "cancelled", activityRunStatus: "running" }),
       }),
@@ -96,7 +96,7 @@ describe("projectThreadAwarenessV2", () => {
   it.each(["completed", "failed"] as const)("removes settled %s work", (status) => {
     expect(
       projectThreadAwarenessV2({
-        environmentId: "env-1" as EnvironmentId,
+        machineId: "env-1" as MachineId,
         project,
         thread: v2Thread({ status, settledOverride: "settled" }),
       }),
@@ -108,7 +108,7 @@ describe("projectThreadAwarenessV2", () => {
     (status) => {
       expect(
         projectThreadAwarenessV2({
-          environmentId: "env-1" as EnvironmentId,
+          machineId: "env-1" as MachineId,
           project,
           thread: v2Thread({ status, settledOverride: "settled" }),
         }),
@@ -121,7 +121,7 @@ describe("projectThreadAwarenessV2", () => {
     (kind) => {
       expect(
         projectThreadAwarenessV2({
-          environmentId: "env-1" as EnvironmentId,
+          machineId: "env-1" as MachineId,
           project,
           thread: v2Thread({
             status: "completed",
@@ -142,7 +142,7 @@ describe("projectThreadAwarenessV2", () => {
   it("keeps settled work held open by a monitor", () => {
     expect(
       projectThreadAwarenessV2({
-        environmentId: "env-1" as EnvironmentId,
+        machineId: "env-1" as MachineId,
         project,
         thread: v2Thread({
           status: "completed",
@@ -167,7 +167,7 @@ describe("projectThreadAwarenessV2", () => {
   ] as const)("reports a completed run waiting on %s as %s", (_case, phase, tasks) => {
     expect(
       projectThreadAwarenessV2({
-        environmentId: "env-1" as EnvironmentId,
+        machineId: "env-1" as MachineId,
         project,
         thread: v2Thread({ status: "completed", pendingBackgroundTasks: tasks }),
       }),
@@ -176,7 +176,7 @@ describe("projectThreadAwarenessV2", () => {
 
   it("reports an async question as input only after the working run completes", () => {
     const input = {
-      environmentId: "env-1" as EnvironmentId,
+      machineId: "env-1" as MachineId,
       project,
       thread: v2Thread({
         pendingRuntimeRequest: {
@@ -199,7 +199,7 @@ describe("projectThreadAwarenessV2", () => {
   it("does not present authentication refreshes as user approvals", () => {
     expect(
       projectThreadAwarenessV2({
-        environmentId: "env-1" as EnvironmentId,
+        machineId: "env-1" as MachineId,
         project,
         thread: v2Thread({
           pendingRuntimeRequest: {

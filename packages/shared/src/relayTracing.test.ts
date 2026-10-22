@@ -58,7 +58,7 @@ describe("withLocalTracing", () => {
             withLocalTracing,
           ),
         ),
-        Effect.withSpan("environment.orchestration.threadSnapshot"),
+        Effect.withSpan("machine.orchestration.threadSnapshot"),
         withRelayClientTracing,
         Effect.provideService(RelayClientTracer, Option.some(productTracer)),
         Effect.withTracer(localTracer),
@@ -66,7 +66,7 @@ describe("withLocalTracing", () => {
 
       expect(productSpans).toEqual([
         "relay.connection.nested",
-        "environment.orchestration.threadSnapshot",
+        "machine.orchestration.threadSnapshot",
       ]);
       expect(localSpans).toEqual(["sql.execute", "ServerSecretStore.get"]);
     }),

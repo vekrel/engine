@@ -1,15 +1,15 @@
 import { WS_METHODS } from "@vekrel/contracts";
 import { Atom } from "effect/reactivity";
 
-import { createEnvironmentRpcCommand } from "./runtime.ts";
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import { createMachineRpcCommand } from "./runtime.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 
-export function createShellEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createShellMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   return {
-    openInEditor: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:shell:open-in-editor",
+    openInEditor: createMachineRpcCommand(runtime, {
+      label: "machine-data:shell:open-in-editor",
       tag: WS_METHODS.shellOpenInEditor,
     }),
   };

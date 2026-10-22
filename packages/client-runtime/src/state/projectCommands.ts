@@ -1,5 +1,5 @@
 import {
-  type EnvironmentId,
+  type MachineId,
   ProjectId,
   type ProjectReadFileResult,
   type ScopedProjectRef,
@@ -14,17 +14,17 @@ import * as Stream from "effect/Stream";
 import { Atom, AtomRegistry } from "effect/reactivity";
 
 import {
-  type EnvironmentRpcInput,
-  type EnvironmentRpcSuccess,
+  type MachineRpcInput,
+  type MachineRpcSuccess,
   request,
   requestGuarded,
 } from "../rpc/client.ts";
-import type { EnvironmentProject } from "./models.ts";
+import type { MachineProject } from "./models.ts";
 import {
   createAtomCommandScheduler,
-  createEnvironmentCommand,
-  createEnvironmentRpcCommand,
-  createEnvironmentRpcQueryAtomFamily,
+  createMachineCommand,
+  createMachineRpcCommand,
+  createMachineRpcQueryAtomFamily,
 } from "./runtime.ts";
 import {
   type CreateProjectInput,
@@ -34,7 +34,7 @@ import {
   deleteProject,
   updateProject,
 } from "../operations/commands.ts";
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import { createFileMetadataAtoms } from "./fileMetadata.ts";
 import { resolveWorkspaceFilePath } from "@vekrel/shared/path";
 
@@ -50,18 +50,18 @@ export interface OptimisticProjectFile {
 }
 
 export interface OptimisticProjectFileTarget {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly cwd: string;
   readonly relativePath: string;
 }
 
 function optimisticProjectFileKey(target: OptimisticProjectFileTarget): string {
-  return JSON.stringify([target.environmentId, target.cwd, target.relativePath]);
+  return JSON.stringify([target.machineId, target.cwd, target.relativePath]);
 }
 
 function writtenFilePaths(
-  input: EnvironmentRpcInput<typeof WS_METHODS.projectsWriteFile>,
-  result: EnvironmentRpcSuccess<typeof WS_METHODS.projectsWriteFile>,
+  input: MachineRpcInput<typeof WS_METHODS.projectsWriteFile>,
+  result: MachineRpcSuccess<typeof WS_METHODS.projectsWriteFile>,
 ) {
   return new Set(
     [result.relativePath, input.relativePath].map((path) =>
@@ -79,10 +79,10 @@ export class ScratchProjectNotLoadedError extends Schema.TaggedError<ScratchProj
   }
 }
 
-export function createProjectEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | Crypto.Crypto | R, E>,
+export function createProjectMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | Crypto.Crypto | R, E>,
   options: {
-    readonly projectAtom: (ref: ScopedProjectRef) => Atom.Atom<EnvironmentProject | null>;
+    readonly projectAtom: (ref: ScopedProjectRef) => Atom.Atom<MachineProject | null>;
   },
 ) {
   const fileMetadata = createFileMetadataAtoms(runtime);
@@ -90,32 +90,32 @@ export function createProjectEnvironmentAtoms<R, E>(
   const fileScheduler = createAtomCommandScheduler();
   const optimisticFileFamily = Atom.family((key: string) =>
     Atom.make<OptimisticProjectFile | null>(null).pipe(
-      Atom.withLabel(`environment-data:projects:optimistic-file:${key}`),
+      Atom.withLabel(`machine-data:projects:optimistic-file:${key}`),
     ),
   );
   const projectConcurrency = {
     mode: "serial" as const,
-    key: ({ environmentId, input }: { environmentId: string; input: { projectId: string } }) =>
-      JSON.stringify([environmentId, input.projectId]),
+    key: ({ machineId, input }: { machineId: string; input: { projectId: string } }) =>
+      JSON.stringify([machineId, input.projectId]),
   };
   return {
     fileMetadata: fileMetadata.metadata,
     fileMetadataThread: fileMetadata.retainThread,
-    invalidateFileMetadata: createEnvironmentCommand(runtime, {
-      label: "environment-data:filesystem:invalidate-metadata",
-      execute: (input: { paths: ReadonlyArray<string> }, registry, environmentId) =>
+    invalidateFileMetadata: createMachineCommand(runtime, {
+      label: "machine-data:filesystem:invalidate-metadata",
+      execute: (input: { paths: ReadonlyArray<string> }, registry, machineId) =>
         Effect.forEach([...new Set(input.paths)], (path) =>
           fileMetadata
             .invalidate(path)
             .pipe(
               Effect.tap(() =>
-                Effect.sync(() => fileMetadata.refreshPath(environmentId, path, registry)),
+                Effect.sync(() => fileMetadata.refreshPath(machineId, path, registry)),
               ),
             ),
         ),
     }),
-    searchEntries: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:projects:search-entries",
+    searchEntries: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:projects:search-entries",
       tag: WS_METHODS.projectsSearchEntries,
       staleTimeMs: 15_000,
       execute: (input) =>
@@ -124,8 +124,8 @@ export function createProjectEnvironmentAtoms<R, E>(
           (result, isCurrent) => fileMetadata.rememberEntries(input.cwd, result.entries, isCurrent),
         ),
     }),
-    listEntries: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:projects:list-entries",
+    listEntries: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:projects:list-entries",
       tag: WS_METHODS.projectsListEntries,
       staleTimeMs: 30_000,
       idleTtlMs: 5 * 60_000,
@@ -135,13 +135,13 @@ export function createProjectEnvironmentAtoms<R, E>(
           (result, isCurrent) => fileMetadata.rememberEntries(input.cwd, result.entries, isCurrent),
         ),
     }),
-    listIgnoredFiles: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:projects:list-ignored-files",
+    listIgnoredFiles: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:projects:list-ignored-files",
       tag: WS_METHODS.projectsListIgnoredFiles,
       staleTimeMs: 15_000,
     }),
-    readFile: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:projects:read-file",
+    readFile: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:projects:read-file",
       tag: WS_METHODS.projectsReadFile,
       staleTimeMs: 30_000,
       idleTtlMs: 5 * 60_000,
@@ -156,36 +156,36 @@ export function createProjectEnvironmentAtoms<R, E>(
     }),
     optimisticFile: (target: OptimisticProjectFileTarget) =>
       optimisticFileFamily(optimisticProjectFileKey(target)),
-    create: createEnvironmentCommand(runtime, {
-      label: "environment-data:commands:project:create",
+    create: createMachineCommand(runtime, {
+      label: "machine-data:commands:project:create",
       execute: (input: CreateProjectInput) => createProject(input),
       scheduler: projectScheduler,
       concurrency: projectConcurrency,
     }),
-    update: createEnvironmentCommand(runtime, {
-      label: "environment-data:commands:project:update",
+    update: createMachineCommand(runtime, {
+      label: "machine-data:commands:project:update",
       execute: (input: UpdateProjectInput) => updateProject(input),
       scheduler: projectScheduler,
       concurrency: projectConcurrency,
     }),
-    delete: createEnvironmentCommand(runtime, {
-      label: "environment-data:commands:project:delete",
+    delete: createMachineCommand(runtime, {
+      label: "machine-data:commands:project:delete",
       execute: (input: DeleteProjectInput) => deleteProject(input),
       scheduler: projectScheduler,
       concurrency: projectConcurrency,
     }),
-    // Finds or creates the environment's Scratch project and resolves once the
+    // Finds or creates the machine's Scratch project and resolves once the
     // project is in the client store, since drafts key off its stored path.
-    openScratch: createEnvironmentCommand(runtime, {
-      label: "environment-data:projects:open-scratch",
+    openScratch: createMachineCommand(runtime, {
+      label: "machine-data:projects:open-scratch",
       execute: (
-        input: EnvironmentRpcInput<typeof WS_METHODS.projectsEnsureScratch>,
+        input: MachineRpcInput<typeof WS_METHODS.projectsEnsureScratch>,
         registry,
-        environmentId,
+        machineId,
       ) =>
         request(WS_METHODS.projectsEnsureScratch, input).pipe(
           Effect.flatMap(({ projectId }) =>
-            AtomRegistry.toStream(registry, options.projectAtom({ environmentId, projectId })).pipe(
+            AtomRegistry.toStream(registry, options.projectAtom({ machineId, projectId })).pipe(
               Stream.filter(Predicate.isNotNull),
               Stream.runHead,
               Effect.timeoutOption("10 seconds"),
@@ -200,22 +200,22 @@ export function createProjectEnvironmentAtoms<R, E>(
           ),
         ),
       scheduler: projectScheduler,
-      concurrency: { mode: "serial", key: ({ environmentId }) => environmentId },
+      concurrency: { mode: "serial", key: ({ machineId }) => machineId },
     }),
-    createNew: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:projects:create-new",
+    createNew: createMachineRpcCommand(runtime, {
+      label: "machine-data:projects:create-new",
       tag: WS_METHODS.projectsCreateNew,
       scheduler: projectScheduler,
-      concurrency: { mode: "serial", key: ({ environmentId }) => environmentId },
+      concurrency: { mode: "serial", key: ({ machineId }) => machineId },
     }),
-    writeFile: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:projects:write-file",
+    writeFile: createMachineRpcCommand(runtime, {
+      label: "machine-data:projects:write-file",
       tag: WS_METHODS.projectsWriteFile,
       scheduler: fileScheduler,
       concurrency: {
         mode: "serial",
-        key: ({ environmentId, input }) =>
-          JSON.stringify([environmentId, input.cwd, input.relativePath]),
+        key: ({ machineId, input }) =>
+          JSON.stringify([machineId, input.cwd, input.relativePath]),
       },
       execute: (input) =>
         requestGuarded(WS_METHODS.projectsWriteFile, input).pipe(
@@ -223,10 +223,10 @@ export function createProjectEnvironmentAtoms<R, E>(
             Effect.forEach(writtenFilePaths(input, result), fileMetadata.invalidate),
           ),
         ),
-      onSuccess: ({ environmentId, input }, registry, result) =>
+      onSuccess: ({ machineId, input }, registry, result) =>
         Effect.sync(() => {
           for (const path of writtenFilePaths(input, result))
-            fileMetadata.refreshPath(environmentId, path, registry);
+            fileMetadata.refreshPath(machineId, path, registry);
         }),
     }),
   };

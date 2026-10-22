@@ -1,13 +1,13 @@
-import type { EnvironmentId } from "@vekrel/contracts";
+import type { MachineId } from "@vekrel/contracts";
 
 import { createAtomCommandScheduler, type AtomCommandConcurrency } from "./runtime.ts";
 
 export const vcsCommandScheduler = createAtomCommandScheduler();
 
 export const vcsCommandConcurrency: AtomCommandConcurrency<{
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly input: { readonly cwd: string };
 }> = {
   mode: "serial",
-  key: ({ environmentId, input }) => JSON.stringify([environmentId, input.cwd]),
+  key: ({ machineId, input }) => JSON.stringify([machineId, input.cwd]),
 };

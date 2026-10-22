@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-import { EnvironmentId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { MachineId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import {
   PREVIEW_VIEWPORT_MAX_AREA,
   PreviewRenderedViewportSize,
@@ -207,12 +207,12 @@ export const BrowserNavigationTarget = Schema.Union([
     }),
   }),
   Schema.Struct({
-    kind: Schema.Literal("environment-port").annotate({
-      description: "Selects a dev-server port relative to the current execution environment.",
+    kind: Schema.Literal("machine-port").annotate({
+      description: "Selects a dev-server port relative to the current execution machine.",
     }),
     port: Schema.Int.check(Schema.isGreaterThan(0))
       .check(Schema.isLessThan(65_536))
-      .annotate({ description: "Dev-server TCP port inside the current environment." }),
+      .annotate({ description: "Dev-server TCP port inside the current machine." }),
     protocol: Schema.optional(
       Schema.Literals(["http", "https"]).annotate({
         description: "Dev-server protocol. Defaults to http.",
@@ -235,11 +235,11 @@ export const PreviewAutomationNavigateInput = Schema.Struct({
   target: Schema.optional(
     BrowserNavigationTarget.annotate({
       description:
-        "Environment-relative target. Prefer {kind:'environment-port',port:5173} for a dev server in the current environment.",
+        "Machine-relative target. Prefer {kind:'machine-port',port:5173} for a dev server in the current machine.",
     }),
   ).annotate({
     description:
-      "Environment-relative target. Prefer {kind:'environment-port',port:5173} for a dev server in the current environment.",
+      "Machine-relative target. Prefer {kind:'machine-port',port:5173} for a dev server in the current machine.",
   }),
   readiness: Schema.optional(
     Schema.Literals(["load", "domContentLoaded", "none"]).annotate({
@@ -492,7 +492,7 @@ export const PreviewAutomationUploadInput = Schema.Struct({
   ...PreviewAutomationTabTargetFields,
   paths: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(20)).annotate({
     description:
-      "Absolute paths of files on the environment to give the page. An empty list cancels the open file picker.",
+      "Absolute paths of files on the machine to give the page. An empty list cancels the open file picker.",
   }),
   selector: Schema.optional(LegacySelector).annotate({
     description: "Legacy CSS selector for an <input type=file>. Prefer locator.",
@@ -759,7 +759,7 @@ export type PreviewAutomationConnectionId = typeof PreviewAutomationConnectionId
 
 export const PreviewAutomationHostIdentity = Schema.Struct({
   clientId: PreviewAutomationClientId,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
 });
 export type PreviewAutomationHostIdentity = typeof PreviewAutomationHostIdentity.Type;
 
@@ -831,7 +831,7 @@ export const PreviewAutomationResponse = Schema.Struct({
 export type PreviewAutomationResponse = typeof PreviewAutomationResponse.Type;
 
 const McpCapabilityErrorFields = {
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   threadId: Schema.optional(ThreadId),
   providerSessionId: Schema.optional(TrimmedNonEmptyString),
   providerInstanceId: Schema.optional(ProviderInstanceId),
@@ -863,7 +863,7 @@ export class McpCapabilityUnavailableError extends Schema.TaggedError<McpCapabil
 
 const PreviewAutomationScopeErrorFields = {
   operation: PreviewAutomationOperation,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   threadId: ThreadId,
   providerSessionId: TrimmedNonEmptyString,
   providerInstanceId: ProviderInstanceId,
@@ -911,7 +911,7 @@ export class PreviewAutomationNoAvailableHostError extends Schema.TaggedError<Pr
   },
 ) {
   override get message(): string {
-    return `No preview automation host is available for ${this.operation} in environment ${this.environmentId}. The server-owned browser may be starting or reconnecting. Retry preview_status, then call preview_open if no tab is available. If it remains unavailable, report the browser connection failure.`;
+    return `No preview automation host is available for ${this.operation} in machine ${this.machineId}. The server-owned browser may be starting or reconnecting. Retry preview_status, then call preview_open if no tab is available. If it remains unavailable, report the browser connection failure.`;
   }
 }
 
@@ -1110,7 +1110,7 @@ export class PreviewAutomationRecordingTransferError extends Schema.TaggedError<
   },
 ) {
   override get message(): string {
-    return "Preview recording could not be saved to the agent environment.";
+    return "Preview recording could not be saved to the agent machine.";
   }
 }
 
@@ -1167,6 +1167,6 @@ export const PreviewUrlResolution = Schema.Struct({
   requestedUrl: Schema.String,
   resolvedUrl: Schema.String,
   resolutionKind: Schema.Literals(["direct", "direct-private-network"]),
-  environmentId: EnvironmentId,
+  machineId: MachineId,
 });
 export type PreviewUrlResolution = typeof PreviewUrlResolution.Type;

@@ -1,20 +1,20 @@
 import { type DeviceToolVersions, WS_METHODS } from "@vekrel/contracts";
 import { Atom } from "effect/reactivity";
 
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import {
   createAtomCommandScheduler,
-  createEnvironmentRpcCommand,
-  createEnvironmentRpcSubscriptionAtomFamily,
+  createMachineRpcCommand,
+  createMachineRpcSubscriptionAtomFamily,
 } from "./runtime.ts";
 
-export function createDeviceEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createDeviceMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   const scheduler = createAtomCommandScheduler();
   const concurrency = {
     mode: "serial" as const,
-    key: ({ environmentId }: { environmentId: string }) => environmentId,
+    key: ({ machineId }: { machineId: string }) => machineId,
   };
   // An EAS Simulator start can take minutes; it must not hold up powering off
   // another device or turning device support off, so each device opens in its
@@ -23,69 +23,69 @@ export function createDeviceEnvironmentAtoms<R, E>(
   const openConcurrency = {
     mode: "serial" as const,
     key: ({
-      environmentId,
+      machineId,
       input,
     }: {
-      environmentId: string;
+      machineId: string;
       input: {
         readonly threadId: string;
         readonly hostId?: string | undefined;
         readonly deviceId: string;
       };
     }) =>
-      JSON.stringify([environmentId, "open", input.threadId, input.hostId ?? null, input.deviceId]),
+      JSON.stringify([machineId, "open", input.threadId, input.hostId ?? null, input.deviceId]),
   };
   return {
-    state: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
-      label: "environment-data:device:state",
+    state: createMachineRpcSubscriptionAtomFamily(runtime, {
+      label: "machine-data:device:state",
       tag: WS_METHODS.subscribeDeviceState,
     }),
-    configure: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:configure",
+    configure: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:configure",
       tag: WS_METHODS.deviceConfigure,
       scheduler,
       concurrency,
     }),
-    testHost: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:test-host",
+    testHost: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:test-host",
       tag: WS_METHODS.deviceTestHost,
     }),
-    easAccount: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:eas-account",
+    easAccount: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:eas-account",
       tag: WS_METHODS.deviceEasAccount,
     }),
-    list: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:list",
+    list: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:list",
       tag: WS_METHODS.deviceList,
       scheduler,
       concurrency,
     }),
-    open: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:open",
+    open: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:open",
       tag: WS_METHODS.deviceOpen,
       scheduler,
       concurrency: openConcurrency,
     }),
-    close: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:close",
+    close: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:close",
       tag: WS_METHODS.deviceClose,
       scheduler,
       concurrency,
     }),
-    shutdown: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:shutdown",
+    shutdown: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:shutdown",
       tag: WS_METHODS.deviceShutdown,
       scheduler,
       concurrency,
     }),
-    detail: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:detail",
+    detail: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:detail",
       tag: WS_METHODS.deviceDetail,
       scheduler,
       concurrency,
     }),
-    action: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:device:action",
+    action: createMachineRpcCommand(runtime, {
+      label: "machine-data:device:action",
       tag: WS_METHODS.deviceAction,
       scheduler,
       concurrency,
@@ -117,4 +117,4 @@ export function deviceToolUpdatePolicy(tools: DeviceToolVersions | undefined) {
     : "Required tools are installed automatically when needed. Checking versions does not install or start anything.";
 }
 export const deviceToolUpdateOwnership =
-  "This environment's T3 server chooses device tool versions for itself and its SSH hosts. Update that server to receive newer tool versions; updating only your browser or mobile app does not update a remote server.";
+  "This machine's T3 server chooses device tool versions for itself and its SSH hosts. Update that server to receive newer tool versions; updating only your browser or mobile app does not update a remote server.";

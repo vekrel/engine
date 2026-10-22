@@ -1,4 +1,4 @@
-import type { EnvironmentId, ServerSelfUpdateInput } from "@vekrel/contracts";
+import type { MachineId, ServerSelfUpdateInput } from "@vekrel/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -8,8 +8,8 @@ import type * as Socket from "effect/socket/Socket";
 
 import { describeOutdatedHost, updateOutdatedHost } from "../connection/outdatedHostUpdate.ts";
 import type * as ConnectionResolver from "../connection/resolver.ts";
-import type * as EnvironmentRegistry from "../connection/registry.ts";
-import type * as RelayEnvironmentDiscovery from "../relay/discovery.ts";
+import type * as MachineRegistry from "../connection/registry.ts";
+import type * as RelayMachineDiscovery from "../relay/discovery.ts";
 import { createAtomCommandScheduler, createRuntimeCommand } from "./runtime.ts";
 import {
   serverUpdateFailureMessage,
@@ -18,7 +18,7 @@ import {
 } from "./server.ts";
 
 export interface OutdatedServerUpdateTarget {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly input: ServerSelfUpdateInput;
   /** From the host descriptor when known; an outdated host never delivers a server config. */
   readonly fromVersion?: string;
@@ -26,36 +26,36 @@ export interface OutdatedServerUpdateTarget {
 
 export function createOutdatedServerDescriptionCommand<E>(
   runtime: Atom.AtomRuntime<
-    EnvironmentRegistry.EnvironmentRegistry | ConnectionResolver.ConnectionResolver,
+    MachineRegistry.MachineRegistry | ConnectionResolver.ConnectionResolver,
     E
   >,
 ) {
   return createRuntimeCommand(runtime, {
-    label: "environment-data:server:describe-outdated-server",
-    execute: (environmentId: EnvironmentId) =>
-      describeOutdatedHost(environmentId).pipe(Effect.timeout("20 seconds")),
+    label: "machine-data:server:describe-outdated-server",
+    execute: (machineId: MachineId) =>
+      describeOutdatedHost(machineId).pipe(Effect.timeout("20 seconds")),
   });
 }
 
 export function createOutdatedServerUpdateCommand<E>(
   runtime: Atom.AtomRuntime<
-    | EnvironmentRegistry.EnvironmentRegistry
+    | MachineRegistry.MachineRegistry
     | ConnectionResolver.ConnectionResolver
-    | RelayEnvironmentDiscovery.RelayEnvironmentDiscovery
+    | RelayMachineDiscovery.RelayMachineDiscovery
     | Socket.WebSocketConstructor
     | HttpClient.HttpClient,
     E
   >,
 ) {
   return createRuntimeCommand(runtime, {
-    label: "environment-data:server:update-outdated-server",
+    label: "machine-data:server:update-outdated-server",
     scheduler: createAtomCommandScheduler(),
     concurrency: {
       mode: "singleFlight",
-      key: ({ environmentId }: OutdatedServerUpdateTarget) => environmentId,
+      key: ({ machineId }: OutdatedServerUpdateTarget) => machineId,
     },
     execute: (target: OutdatedServerUpdateTarget, atomRegistry) => {
-      const stateAtom = serverUpdateStateAtom(target.environmentId);
+      const stateAtom = serverUpdateStateAtom(target.machineId);
       const targetVersion = target.input.targetVersion;
       const fromVersion = target.fromVersion ?? targetVersion;
       let currentStage: ServerUpdateStage = "downloading";
@@ -65,7 +65,7 @@ export function createOutdatedServerUpdateCommand<E>(
           atomRegistry.set(stateAtom, { status: "running", stage, fromVersion, targetVersion });
         });
       return setStage(currentStage).pipe(
-        Effect.andThen(updateOutdatedHost(target.environmentId, target.input, setStage)),
+        Effect.andThen(updateOutdatedHost(target.machineId, target.input, setStage)),
         Effect.onExit((exit) =>
           Effect.sync(() => {
             if (Exit.isSuccess(exit) || Cause.hasInterruptsOnly(exit.cause)) {

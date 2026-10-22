@@ -1,4 +1,4 @@
-import type { EnvironmentId, ThreadId } from "@vekrel/contracts";
+import type { MachineId, ThreadId } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -17,7 +17,7 @@ export type ThreadHistoryHandler = {
 };
 
 export type ThreadHistoryRegistration = {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
   readonly handler: ThreadHistoryHandler;
 };
@@ -26,13 +26,13 @@ export class ThreadHistoryController extends Context.Service<
   ThreadHistoryController,
   {
     readonly register: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       threadId: ThreadId,
       handler: ThreadHistoryHandler,
     ) => Effect.Effect<ThreadHistoryRegistration>;
     readonly unregister: (registration: ThreadHistoryRegistration) => Effect.Effect<void>;
     readonly loadEarlier: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       threadId: ThreadId,
       throughEntryId?: string,
     ) => Effect.Effect<ThreadHistoryLoadEarlierResult>;
@@ -44,14 +44,14 @@ export const layer: Layer.Layer<ThreadHistoryController> = Layer.effect(
   Effect.gen(function* () {
     const handlers = yield* Ref.make(new Map<string, ThreadHistoryHandler>());
     return ThreadHistoryController.of({
-      register: (environmentId, threadId, handler) =>
+      register: (machineId, threadId, handler) =>
         Ref.update(handlers, (current) => {
           const next = new Map(current);
-          next.set(threadKey({ environmentId, threadId }), handler);
+          next.set(threadKey({ machineId, threadId }), handler);
           return next;
         }).pipe(
           Effect.as({
-            environmentId,
+            machineId,
             threadId,
             handler,
           } satisfies ThreadHistoryRegistration),
@@ -59,7 +59,7 @@ export const layer: Layer.Layer<ThreadHistoryController> = Layer.effect(
       unregister: (registration) =>
         Ref.update(handlers, (current) => {
           const key = threadKey({
-            environmentId: registration.environmentId,
+            machineId: registration.machineId,
             threadId: registration.threadId,
           });
           // Only remove when this registration still owns the slot. An older
@@ -71,10 +71,10 @@ export const layer: Layer.Layer<ThreadHistoryController> = Layer.effect(
           next.delete(key);
           return next;
         }),
-      loadEarlier: (environmentId, threadId, throughEntryId) =>
+      loadEarlier: (machineId, threadId, throughEntryId) =>
         Ref.get(handlers).pipe(
           Effect.flatMap((current) => {
-            const handler = current.get(threadKey({ environmentId, threadId }));
+            const handler = current.get(threadKey({ machineId, threadId }));
             if (handler === undefined) {
               return Effect.succeed({ _tag: "noop" } satisfies ThreadHistoryLoadEarlierResult);
             }

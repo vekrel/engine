@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   type ServerConfig,
   type ServerConfigStreamEvent,
   type ServerLifecycleWelcomePayload,
@@ -25,14 +25,14 @@ import {
   PrimaryConnectionTarget,
   type PreparedConnection,
 } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as Persistence from "../platform/persistence.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
 import type { RpcSession } from "../rpc/session.ts";
 import {
   applyServerWelcomeEvent,
-  makeEnvironmentServerWelcomeState,
-  makeEnvironmentServerConfigState,
+  makeMachineServerWelcomeState,
+  makeMachineServerConfigState,
   isLegacyUpdateHandoffLoss,
   matchesServerUpdateReadyEvent,
   matchesServerUpdateResumeEvent,
@@ -43,7 +43,7 @@ import {
   serverUpdateStateForProgressEvent,
   serverUpdateStateForServerVersion,
   validateServerUpdateReadyEvent,
-  waitForNextEnvironmentReconnect,
+  waitForNextMachineReconnect,
   waitForDesktopUpdateTarget,
   runDesktopCommitWithReconnectObserver,
 } from "./server.ts";
@@ -57,7 +57,7 @@ const CONFIG = {
   observability: null,
   providers: [],
   settings: {},
-  environment: { capabilities: { environmentThemes: true } },
+  machine: { capabilities: { machineThemes: true } },
 } as unknown as ServerConfig;
 
 const snapshotEvent = (config: ServerConfig): ServerConfigStreamEvent => ({
@@ -67,10 +67,10 @@ const snapshotEvent = (config: ServerConfig): ServerConfigStreamEvent => ({
 });
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Test environment",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  machineId: MachineId.make("machine-1"),
+  label: "Test machine",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 
 function session(client: WsRpcProtocolClient): RpcSession {
@@ -96,7 +96,7 @@ describe("update restart reconnect nudges", () => {
           type: "ready" as const,
           payload: {
             at: "2026-09-01T00:00:00.000Z",
-            environment: { serverVersion },
+            machine: { serverVersion },
           },
         }) as Parameters<typeof matchesServerUpdateReadyEvent>[1];
       yield* Queue.offerAll(readyEvents, [ready("0.0.30"), ready("0.0.31")]);
@@ -111,14 +111,14 @@ describe("update restart reconnect nudges", () => {
         Ref.update(retries, (count) => count + 1).pipe(Effect.andThen(Effect.fail(disconnect))),
       );
 
-      expect(result.payload.environment.serverVersion).toBe("0.0.31");
+      expect(result.payload.machine.serverVersion).toBe("0.0.31");
       expect(yield* Ref.get(retries)).toBe(1);
     }),
   );
   it.effect("observes a fast reconnect even when the caller awaits it later", () =>
     Effect.gen(function* () {
       const states = yield* Queue.unbounded<{ readonly phase: string }>();
-      const reconnected = yield* waitForNextEnvironmentReconnect(Stream.fromQueue(states)).pipe(
+      const reconnected = yield* waitForNextMachineReconnect(Stream.fromQueue(states)).pipe(
         Effect.forkChild,
       );
       yield* Queue.offerAll(states, [
@@ -193,7 +193,7 @@ describe("update restart reconnect nudges", () => {
             phase: "blocked",
             lastFailure: {
               reason: "authentication",
-              detail: "The environment credential is invalid.",
+              detail: "The machine credential is invalid.",
             },
           },
           { phase: "blocked", lastFailure: { reason: "configuration" } },
@@ -331,7 +331,7 @@ describe("server state projection", () => {
           type: "ready" as const,
           payload: {
             at: "2026-08-01T00:00:00.000Z",
-            environment: { serverVersion: status === "committed" ? "0.0.31" : "0.0.30" },
+            machine: { serverVersion: status === "committed" ? "0.0.31" : "0.0.30" },
             updateOutcome: {
               id: "update-1",
               fromVersion: "0.0.30",
@@ -359,7 +359,7 @@ describe("server state projection", () => {
         type: "ready" as const,
         payload: {
           at: "2026-09-01T00:00:00.000Z",
-          environment: { serverVersion },
+          machine: { serverVersion },
         },
       }) as Parameters<typeof matchesServerUpdateResumeEvent>[1];
 
@@ -394,33 +394,33 @@ describe("server state projection", () => {
 
     const withThemes = applyServerConfigProjection(
       applyServerConfigProjection(Option.none(), { version: 1, type: "snapshot", config: CONFIG }),
-      { version: 1, type: "environmentThemesUpdated", payload: { themes } },
+      { version: 1, type: "machineThemesUpdated", payload: { themes } },
     );
-    expect(Option.getOrThrow(withThemes).config.environmentThemes).toEqual(themes);
+    expect(Option.getOrThrow(withThemes).config.machineThemes).toEqual(themes);
 
     const afterReconnect = applyServerConfigProjection(withThemes, {
       version: 1,
       type: "snapshot",
       config: CONFIG,
     });
-    expect(Option.getOrThrow(afterReconnect).config.environmentThemes).toEqual(themes);
+    expect(Option.getOrThrow(afterReconnect).config.machineThemes).toEqual(themes);
 
     const downgraded = applyServerConfigProjection(withThemes, {
       version: 1,
       type: "snapshot",
       config: {
         ...CONFIG,
-        environment: { capabilities: {} },
+        machine: { capabilities: {} },
       } as unknown as ServerConfig,
     });
-    expect(Option.getOrThrow(downgraded).config.environmentThemes).toBeUndefined();
+    expect(Option.getOrThrow(downgraded).config.machineThemes).toBeUndefined();
   });
 
   it("keeps a current welcome on ready and rejects a buffered welcome from the old session", () => {
     const firstSession = session({} as WsRpcProtocolClient);
     const secondSession = session({} as WsRpcProtocolClient);
     const welcome = {
-      environment: {} as ServerLifecycleWelcomePayload["environment"],
+      machine: {} as ServerLifecycleWelcomePayload["machine"],
       cwd: "/repo",
       projectName: "repo",
     } as ServerLifecycleWelcomePayload;
@@ -466,7 +466,7 @@ describe("server state projection", () => {
       const firstSession = session(firstClient);
       const secondSession = session({} as WsRpcProtocolClient);
       const supervisorSession = yield* SubscriptionRef.make(Option.some(firstSession));
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: supervisorSession,
@@ -474,17 +474,17 @@ describe("server state projection", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
       const staleWelcome = {
-        environment: {} as ServerLifecycleWelcomePayload["environment"],
+        machine: {} as ServerLifecycleWelcomePayload["machine"],
         cwd: "/stale",
         projectName: "stale",
       } as ServerLifecycleWelcomePayload;
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const state = yield* makeEnvironmentServerWelcomeState().pipe(
-            Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+          const state = yield* makeMachineServerWelcomeState().pipe(
+            Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
           );
           yield* Deferred.await(firstSubscribed);
 
@@ -521,7 +521,7 @@ describe("server state projection", () => {
       const secondSession = session(secondClient);
       const thirdSession = session({} as WsRpcProtocolClient);
       const supervisorSession = yield* SubscriptionRef.make(Option.some(firstSession));
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: supervisorSession,
@@ -529,12 +529,12 @@ describe("server state projection", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const state = yield* makeEnvironmentServerWelcomeState().pipe(
-            Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+          const state = yield* makeMachineServerWelcomeState().pipe(
+            Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
           );
           yield* Deferred.await(firstSubscribed);
           const changed = yield* SubscriptionRef.changes(state).pipe(
@@ -579,7 +579,7 @@ describe("server state projection", () => {
       const firstSession = session(firstClient);
       const secondSession = session(secondClient);
       const supervisorSession = yield* SubscriptionRef.make(Option.some(firstSession));
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: supervisorSession,
@@ -587,22 +587,22 @@ describe("server state projection", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
       const firstWelcome = {
-        environment: {} as ServerLifecycleWelcomePayload["environment"],
+        machine: {} as ServerLifecycleWelcomePayload["machine"],
         cwd: "/first",
         projectName: "first",
       } as ServerLifecycleWelcomePayload;
       const secondWelcome = {
-        environment: {} as ServerLifecycleWelcomePayload["environment"],
+        machine: {} as ServerLifecycleWelcomePayload["machine"],
         cwd: "/second",
         projectName: "second",
       } as ServerLifecycleWelcomePayload;
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const state = yield* makeEnvironmentServerWelcomeState().pipe(
-            Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+          const state = yield* makeMachineServerWelcomeState().pipe(
+            Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
           );
           const nextResolved = (
             predicate: (value: ServerLifecycleWelcomePayload | null) => boolean,
@@ -639,7 +639,7 @@ describe("server state projection", () => {
     const config = (source: string, serverVersion: string) =>
       ({
         ...CONFIG,
-        environment: { serverVersion },
+        machine: { serverVersion },
         settings: { source },
       }) as unknown as ServerConfig;
     const cached = config("cache", "0.0.29");
@@ -685,7 +685,7 @@ describe("server state projection", () => {
       const client = {
         [WS_METHODS.subscribeServerConfig]: () => Stream.fromQueue(events),
       } as unknown as WsRpcProtocolClient;
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: yield* SubscriptionRef.make(Option.some(session(client))),
@@ -693,16 +693,16 @@ describe("server state projection", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
       const savedConfigs = yield* Queue.unbounded<ServerConfig>();
-      const cache = Persistence.EnvironmentCacheStore.of({
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeedNone,
         saveShell: () => Effect.void,
         loadThread: () => Effect.succeedNone,
         saveThread: () => Effect.void,
         removeThread: () => Effect.void,
         loadServerConfig: () => Effect.succeedSome(CONFIG),
-        saveServerConfig: (_environmentId, config) => Queue.offer(savedConfigs, config),
+        saveServerConfig: (_machineId, config) => Queue.offer(savedConfigs, config),
         loadVcsRefs: () => Effect.succeedNone,
         saveVcsRefs: () => Effect.void,
         removeVcsRefs: () => Effect.void,
@@ -712,9 +712,9 @@ describe("server state projection", () => {
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const state = yield* makeEnvironmentServerConfigState({}).pipe(
-            Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-            Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+          const state = yield* makeMachineServerConfigState({}).pipe(
+            Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+            Effect.provideService(Persistence.MachineCacheStore, cache),
           );
           expect(Option.getOrThrow(yield* SubscriptionRef.get(state)).config).toBe(CONFIG);
 
@@ -749,7 +749,7 @@ describe("server state projection", () => {
       const client = {
         [WS_METHODS.subscribeServerConfig]: () => Stream.fromQueue(events),
       } as unknown as WsRpcProtocolClient;
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: yield* SubscriptionRef.make(Option.some(session(client))),
@@ -757,16 +757,16 @@ describe("server state projection", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
       const savedConfigs = yield* Queue.unbounded<ServerConfig>();
-      const cache = Persistence.EnvironmentCacheStore.of({
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeedNone,
         saveShell: () => Effect.void,
         loadThread: () => Effect.succeedNone,
         saveThread: () => Effect.void,
         removeThread: () => Effect.void,
         loadServerConfig: () => Effect.succeedSome(CONFIG),
-        saveServerConfig: (_environmentId, config) => Queue.offer(savedConfigs, config),
+        saveServerConfig: (_machineId, config) => Queue.offer(savedConfigs, config),
         loadVcsRefs: () => Effect.succeedNone,
         saveVcsRefs: () => Effect.void,
         removeVcsRefs: () => Effect.void,
@@ -776,9 +776,9 @@ describe("server state projection", () => {
 
       yield* Effect.scoped(
         Effect.gen(function* () {
-          const state = yield* makeEnvironmentServerConfigState({}).pipe(
-            Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-            Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+          const state = yield* makeMachineServerConfigState({}).pipe(
+            Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+            Effect.provideService(Persistence.MachineCacheStore, cache),
           );
           expect(Option.getOrThrow(yield* SubscriptionRef.get(state)).config).toBe(CONFIG);
 

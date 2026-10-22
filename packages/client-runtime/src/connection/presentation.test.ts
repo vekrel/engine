@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 
@@ -14,14 +14,14 @@ import {
   type SupervisorConnectionState,
 } from "./model.ts";
 import {
-  environmentMcpUrl,
-  presentEnvironmentConnection,
+  machineMcpUrl,
+  presentMachineConnection,
   presentConnectionState,
 } from "./presentation.ts";
 
 const TARGET = new BearerConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Remote environment",
+  machineId: MachineId.make("machine-1"),
+  label: "Remote machine",
   connectionId: "connection-1",
 });
 
@@ -30,10 +30,10 @@ const ENTRY: ConnectionCatalogEntry = {
   profile: Option.some(
     new BearerConnectionProfile({
       connectionId: TARGET.connectionId,
-      environmentId: TARGET.environmentId,
+      machineId: TARGET.machineId,
       label: TARGET.label,
-      httpBaseUrl: "https://environment.example.test",
-      wsBaseUrl: "wss://environment.example.test",
+      httpBaseUrl: "https://machine.example.test",
+      wsBaseUrl: "wss://machine.example.test",
     }),
   ),
   enabled: true,
@@ -62,7 +62,7 @@ describe("connection presentation", () => {
         profile: Option.some(
           new BearerConnectionProfile({
             connectionId,
-            environmentId: TARGET.environmentId,
+            machineId: TARGET.machineId,
             label: TARGET.label,
             httpBaseUrl,
             wsBaseUrl: httpBaseUrl.replace(/^http/, "ws"),
@@ -80,16 +80,16 @@ describe("connection presentation", () => {
       alternateRoutes: [tailnet, serve],
     };
 
-    expect(environmentMcpUrl({ entry, connectedTarget: tailnet.target })).toBe(
+    expect(machineMcpUrl({ entry, connectedTarget: tailnet.target })).toBe(
       "http://100.115.1.44:3773/mcp",
     );
-    expect(environmentMcpUrl({ entry })).toBe("http://192.168.4.53:3773/mcp");
+    expect(machineMcpUrl({ entry })).toBe("http://192.168.4.53:3773/mcp");
   });
 
   // regression: #16909 Copy MCP URL falls back to an alternate route when the relay route has no address
   it("passes over routes without an address of their own", () => {
     const relay = new RelayConnectionTarget({
-      environmentId: TARGET.environmentId,
+      machineId: TARGET.machineId,
       label: TARGET.label,
     });
     const entry: ConnectionCatalogEntry = {
@@ -99,11 +99,11 @@ describe("connection presentation", () => {
       alternateRoutes: [{ target: ENTRY.target, profile: ENTRY.profile }],
     };
 
-    expect(environmentMcpUrl({ entry, connectedTarget: relay })).toBe(
-      "https://environment.example.test/mcp",
+    expect(machineMcpUrl({ entry, connectedTarget: relay })).toBe(
+      "https://machine.example.test/mcp",
     );
     expect(
-      environmentMcpUrl({
+      machineMcpUrl({
         entry,
         connectedTarget: relay,
         relayHttpBaseUrl: "https://tunnel.example.test",
@@ -154,9 +154,9 @@ describe("connection presentation", () => {
     });
   });
 
-  it("preserves an explicitly available environment while offline", () => {
+  it("preserves an explicitly available machine while offline", () => {
     expect(
-      presentEnvironmentConnection(
+      presentMachineConnection(
         supervisorState({
           desired: false,
           network: "offline",

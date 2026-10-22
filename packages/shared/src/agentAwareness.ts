@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   OrchestrationV2ThreadShell,
   Project,
   ThreadId,
@@ -18,7 +18,7 @@ export type AgentAwarenessPhase =
   | "stale";
 
 export interface AgentAwarenessState {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
   readonly projectTitle: string;
   readonly threadTitle: string;
@@ -31,14 +31,14 @@ export interface AgentAwarenessState {
 }
 
 function buildAgentAwarenessDeepLink(input: {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
 }): string {
-  return `/threads/${encodeURIComponent(input.environmentId)}/${encodeURIComponent(input.threadId)}`;
+  return `/threads/${encodeURIComponent(input.machineId)}/${encodeURIComponent(input.threadId)}`;
 }
 
 export interface ProjectThreadAwarenessV2Input {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly project: Pick<Project, "title">;
   readonly thread: Pick<
     OrchestrationV2ThreadShell,
@@ -59,7 +59,7 @@ export interface ProjectThreadAwarenessV2Input {
 export function projectThreadAwarenessV2(
   input: ProjectThreadAwarenessV2Input,
 ): AgentAwarenessState | null {
-  const { environmentId, project, thread } = input;
+  const { machineId, project, thread } = input;
   if (thread.lineage.relationshipToParent === "subagent") return null;
   const phase = resolveThreadAwarenessPhaseV2(thread);
   if (phase === null) {
@@ -81,7 +81,7 @@ export function projectThreadAwarenessV2(
         ? "The agent run failed."
         : undefined;
   return {
-    environmentId,
+    machineId,
     threadId: thread.id,
     projectTitle: project.title,
     threadTitle: thread.title,
@@ -90,7 +90,7 @@ export function projectThreadAwarenessV2(
     ...(detail === undefined ? {} : { detail }),
     modelTitle: thread.modelSelection.model,
     updatedAt: DateTime.formatIso(thread.updatedAt),
-    deepLink: buildAgentAwarenessDeepLink({ environmentId, threadId: thread.id }),
+    deepLink: buildAgentAwarenessDeepLink({ machineId, threadId: thread.id }),
   };
 }
 

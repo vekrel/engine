@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ThreadId,
   type ScopedProjectRef,
@@ -46,15 +46,15 @@ const decodeProjectRefCollectionKey = Schema.decodeUnknownSync(
 );
 
 export function projectKey(ref: ScopedProjectRef): string {
-  return `${ref.environmentId}\u0000${ref.projectId}`;
+  return `${ref.machineId}\u0000${ref.projectId}`;
 }
 
 export function threadKey(ref: ScopedThreadRef): string {
-  return `${ref.environmentId}\u0000${ref.threadId}`;
+  return `${ref.machineId}\u0000${ref.threadId}`;
 }
 
 export function projectRefCollectionKey(refs: ReadonlyArray<ScopedProjectRef>): string {
-  return JSON.stringify(refs.map((ref) => [ref.environmentId, ref.projectId]));
+  return JSON.stringify(refs.map((ref) => [ref.machineId, ref.projectId]));
 }
 
 export function parseProjectKey(key: string): ScopedProjectRef {
@@ -63,7 +63,7 @@ export function parseProjectKey(key: string): ScopedProjectRef {
     throw new InvalidScopedProjectKeyError({ key });
   }
   return {
-    environmentId: EnvironmentId.make(key.slice(0, separator)),
+    machineId: MachineId.make(key.slice(0, separator)),
     projectId: ProjectId.make(key.slice(separator + 1)),
   };
 }
@@ -75,8 +75,8 @@ export function parseProjectRefCollectionKey(key: string): ReadonlyArray<ScopedP
   } catch (cause) {
     throw new InvalidScopedProjectRefCollectionKeyError({ key, cause });
   }
-  return entries.map(([environmentId, projectId]) => ({
-    environmentId: EnvironmentId.make(environmentId),
+  return entries.map(([machineId, projectId]) => ({
+    machineId: MachineId.make(machineId),
     projectId: ProjectId.make(projectId),
   }));
 }
@@ -87,7 +87,7 @@ export function parseThreadKey(key: string): ScopedThreadRef {
     throw new InvalidScopedThreadKeyError({ key });
   }
   return {
-    environmentId: EnvironmentId.make(key.slice(0, separator)),
+    machineId: MachineId.make(key.slice(0, separator)),
     threadId: ThreadId.make(key.slice(separator + 1)),
   };
 }
@@ -100,7 +100,7 @@ export function projectRefsEqual(
     left.length === right.length &&
     left.every(
       (ref, index) =>
-        ref.environmentId === right[index]?.environmentId &&
+        ref.machineId === right[index]?.machineId &&
         ref.projectId === right[index]?.projectId,
     )
   );
@@ -114,7 +114,7 @@ export function threadRefsEqual(
     left.length === right.length &&
     left.every(
       (ref, index) =>
-        ref.environmentId === right[index]?.environmentId &&
+        ref.machineId === right[index]?.machineId &&
         ref.threadId === right[index]?.threadId,
     )
   );

@@ -1,17 +1,17 @@
-import { EnvironmentId, ProjectId, type ServerConfig } from "@vekrel/contracts";
+import { MachineId, ProjectId, type ServerConfig } from "@vekrel/contracts";
 import { Atom, AtomRegistry } from "effect/reactivity";
 import * as Option from "effect/Option";
 import { describe, expect, it } from "vite-plus/test";
 
 import { PrimaryConnectionTarget } from "../connection/model.ts";
-import { createEnvironmentProjectAtoms } from "./projectEntities.ts";
+import { createMachineProjectAtoms } from "./projectEntities.ts";
 import { v2Project, v2ShellSnapshot } from "./orchestrationV2TestFixtures.ts";
 
-const environmentId = EnvironmentId.make("local");
-const remoteEnvironmentId = EnvironmentId.make("remote");
+const machineId = MachineId.make("local");
+const remoteMachineId = MachineId.make("remote");
 
 function makeHarness(withConfig = true) {
-  const snapshotAtom = Atom.family((_environmentId: EnvironmentId) =>
+  const snapshotAtom = Atom.family((_machineId: MachineId) =>
     Atom.make({
       ...v2ShellSnapshot,
       projects: [
@@ -25,17 +25,17 @@ function makeHarness(withConfig = true) {
       ],
     }),
   );
-  const configAtom = Atom.family((_environmentId: EnvironmentId) =>
+  const configAtom = Atom.family((_machineId: MachineId) =>
     Atom.make<(Pick<ServerConfig, "scratchWorkspaceRoot"> & { revision?: number }) | null>(null),
   );
   const catalogValueAtom = Atom.make({
     isReady: true,
     entries: new Map(
-      [environmentId, remoteEnvironmentId].map((id) => [
+      [machineId, remoteMachineId].map((id) => [
         id,
         {
           target: new PrimaryConnectionTarget({
-            environmentId: id,
+            machineId: id,
             label: id,
             httpBaseUrl: `https://${id}.example.test`,
             wsBaseUrl: `wss://${id}.example.test`,
@@ -46,7 +46,7 @@ function makeHarness(withConfig = true) {
       ]),
     ),
   });
-  const projects = createEnvironmentProjectAtoms({
+  const projects = createMachineProjectAtoms({
     catalogValueAtom,
     snapshotAtom,
     ...(withConfig ? { serverConfigValueAtom: configAtom } : {}),
@@ -55,11 +55,11 @@ function makeHarness(withConfig = true) {
 }
 
 describe("project scratch identity", () => {
-  it("waits for enabled project configs and ignores a disabled environment with no config", () => {
+  it("waits for enabled project configs and ignores a disabled machine with no config", () => {
     const { registry, projects, configAtom, catalogValueAtom } = makeHarness();
     try {
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(false);
-      registry.set(configAtom(environmentId), { scratchWorkspaceRoot: v2Project.workspaceRoot });
+      registry.set(configAtom(machineId), { scratchWorkspaceRoot: v2Project.workspaceRoot });
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(false);
       const catalog = registry.get(catalogValueAtom);
       registry.set(catalogValueAtom, {
@@ -67,14 +67,14 @@ describe("project scratch identity", () => {
         entries: new Map(
           [...catalog.entries].map(([id, entry]) => [
             id,
-            { ...entry, enabled: id === environmentId },
+            { ...entry, enabled: id === machineId },
           ]),
         ),
       });
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(true);
       registry.set(catalogValueAtom, catalog);
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(false);
-      registry.set(configAtom(remoteEnvironmentId), {});
+      registry.set(configAtom(remoteMachineId), {});
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(true);
       registry.set(catalogValueAtom, { ...catalog, isReady: false });
       expect(registry.get(projects.projectConfigsReadyAtom)).toBe(false);
@@ -87,8 +87,8 @@ describe("project scratch identity", () => {
     const { registry, projects, configAtom, snapshotAtom } = makeHarness();
     try {
       const initial = registry.get(projects.projectsAtom);
-      const source = registry.get(snapshotAtom(environmentId));
-      registry.set(configAtom(environmentId), {
+      const source = registry.get(snapshotAtom(machineId));
+      registry.set(configAtom(machineId), {
         scratchWorkspaceRoot: `${v2Project.workspaceRoot}/`,
       });
       const next = registry.get(projects.projectsAtom);
@@ -99,22 +99,22 @@ describe("project scratch identity", () => {
       for (let index = 1; index < initial.length; index++) {
         expect(next[index]).toBe(initial[index]);
       }
-      expect(registry.get(snapshotAtom(environmentId))).toBe(source);
+      expect(registry.get(snapshotAtom(machineId))).toBe(source);
       expect(v2Project).not.toHaveProperty("isScratch");
 
-      registry.set(configAtom(environmentId), {
+      registry.set(configAtom(machineId), {
         scratchWorkspaceRoot: v2Project.workspaceRoot,
         revision: 1,
       });
       expect(registry.get(projects.projectsAtom)).toBe(next);
 
-      registry.set(configAtom(environmentId), { scratchWorkspaceRoot: "/repo" });
+      registry.set(configAtom(machineId), { scratchWorkspaceRoot: "/repo" });
       const changedRoot = registry.get(projects.projectsAtom);
       expect(changedRoot[0]).not.toHaveProperty("isScratch");
       expect(changedRoot[1]?.isScratch).toBe(true);
       expect(changedRoot[2]).toBe(initial[2]);
 
-      registry.set(configAtom(environmentId), null);
+      registry.set(configAtom(machineId), null);
       expect(registry.get(projects.projectsAtom).every((project) => !project.isScratch)).toBe(true);
     } finally {
       registry.dispose();

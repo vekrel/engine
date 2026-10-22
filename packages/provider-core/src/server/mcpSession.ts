@@ -1,7 +1,7 @@
-import type { EnvironmentId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
+import type { MachineId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
 
 export interface McpProviderSessionConfig {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
   readonly providerSessionId: string;
   readonly providerInstanceId: ProviderInstanceId;
