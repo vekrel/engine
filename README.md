@@ -33,3 +33,42 @@ The Node server that runs agents and serves the clients; derived from T3 Code (M
   - expo-modules-core@58.0.22
   - "@expo/fingerprint@0.21.5"
   - app-builder-lib@26.16.1
+## Default home
+The default data directory is `~/.vekrel` (not `~/.t3`), so a machine with T3 Code installed does not share its database or config. Override with `VEKREL_HOME` or `--base-dir`. The dev-worktree `.t3` fallback (packages/shared/src/devHome.ts) and remote-host paths (`~/.t3/device`) are unchanged.
+
+## Known upstream names
+Deferred; these files still use `"t3"` as CLI, executable or npm-launcher name:
+README.md
+apps/server/scripts/acp-mock-agent.ts
+apps/server/src/binCli.ts
+apps/server/src/cli/config.test.ts
+apps/server/src/cli/invocation.test.ts
+apps/server/src/cli/invocation.ts
+apps/server/src/cli/pair.test.ts
+apps/server/src/cli/update.test.ts
+apps/server/src/cloud/pinnedRuntime.test.ts
+apps/server/src/cloud/pinnedRuntime.ts
+apps/server/src/cloud/selfUpdate.test.ts
+apps/server/src/entrypoint.test.ts
+apps/server/src/environment/ServerEnvironment.test.ts
+apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts
+apps/server/src/provider/Drivers/codexUsage.test.ts
+apps/server/src/provider/ProviderCredentialStore.ts
+apps/server/src/serverRuntimeState.test.ts
+apps/server/src/serviceLauncher.test.ts
+apps/server/src/serviceLauncher.ts
+apps/server/vite.config.ts
+scripts/build-cli-archive.ts
+scripts/build-npm-launcher.test.ts
+scripts/build-npm-launcher.ts
+scripts/npm-launcher/t3.mjs
+scripts/smoke-cli-archive.ts
+
+## Updating packages/ from Vekrel-Shared
+`packages/` is a subtree of Shared's `packages/` directory, so split it first (Shared's root is not the prefix):
+```bash
+git clone <shared-url-or-path> /tmp/vsplit && cd /tmp/vsplit && git subtree split --prefix=packages -b packages-only
+cd <this repo>
+git subtree add  --prefix=packages /tmp/vsplit packages-only --squash   # first time (done)
+git subtree pull --prefix=packages /tmp/vsplit packages-only --squash   # later updates
+```
