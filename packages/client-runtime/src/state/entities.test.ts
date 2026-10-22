@@ -556,7 +556,7 @@ describe("V2 client presentation", () => {
               id: "target",
               header: "Target",
               question: "Which target?",
-              options: [{ label: "Staging", description: "Staging machine" }],
+              options: [{ label: "Staging", description: "Staging environment" }],
             },
           ],
         },
