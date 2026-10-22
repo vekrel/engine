@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/brand/logo-horizontal-on-dark.png">
+    <img src=".github/brand/logo-horizontal-on-light.png" alt="Vekrel" width="360">
+  </picture>
+</p>
+
 # Vekrel-Engine
 
 The Node server that runs agents and serves the clients. Highly inspired by T3 Code (MIT, see NOTICE).
