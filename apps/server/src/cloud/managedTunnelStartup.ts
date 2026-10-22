@@ -7,7 +7,7 @@ import * as Semaphore from "effect/Semaphore";
 
 import { isRelayUnavailable, relayRetryAfterMillis } from "./relayResponse.ts";
 
-// "revoked" leads to no action: relinking a deregistered environment is the
+// "revoked" leads to no action: relinking a deregistered machine is the
 // user's call, so startup neither retries nor relinks it.
 export type ManagedTunnelRegistrationResult =
   | { readonly status: "not_linked" | "ready" | "unavailable" | "superseded" | "revoked" }

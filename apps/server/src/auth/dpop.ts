@@ -15,7 +15,7 @@ import {
   ServerAuthDpopReplayStateRecordError,
   ServerAuthInvalidCredentialError,
   type ServerAuthInternalError,
-} from "./EnvironmentAuth.ts";
+} from "./MachineAuth.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 
 export const DPOP_REPLAY_MARKER_PREFIX = "dpop-proof-";
@@ -75,7 +75,7 @@ export const verifyRequestDpopProof = Effect.fn("dpop.verifyRequestDpopProof")(f
   });
   if (!result.ok) {
     yield* Effect.annotateCurrentSpan({
-      "environment.dpop.failure_code": result.code,
+      "machine.dpop.failure_code": result.code,
     });
     return yield* new ServerAuthInvalidCredentialError({
       diagnostic: result.reason,
@@ -113,7 +113,7 @@ export const verifyRequestDpopProof = Effect.fn("dpop.verifyRequestDpopProof")(f
           const mapped = mapDpopReplayStoreError(error);
           if (mapped._tag === "ServerAuthInvalidCredentialError") {
             yield* Effect.annotateCurrentSpan({
-              "environment.dpop.failure_code": mapped.dpopFailureReason,
+              "machine.dpop.failure_code": mapped.dpopFailureReason,
             });
           }
           return yield* mapped;

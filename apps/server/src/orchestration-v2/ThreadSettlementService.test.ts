@@ -697,14 +697,14 @@ describe("ThreadSettlementServiceV2 worker", () => {
     ),
   );
 
-  it.effect("settles only the project opted in while environment settlement is disabled", () =>
+  it.effect("settles only the project opted in while machine settlement is disabled", () =>
     Effect.scoped(
       Effect.gen(function* () {
         yield* TestClock.setTime(Date.parse(NOW));
         const thread = makeThread("project-opt-in", {
           latestRunCompletedAt: DateTime.makeUnsafe("2026-08-25T00:00:00.000Z"),
         });
-        const other = makeThread("environment-off", { projectId: ProjectId.make("other-project") });
+        const other = makeThread("machine-off", { projectId: ProjectId.make("other-project") });
         const fixture = yield* makeHarness({
           snapshot: makeSnapshot([thread, other]),
           settings: {

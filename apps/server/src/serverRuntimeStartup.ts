@@ -46,8 +46,8 @@ import * as ServerSettings from "./serverSettings.ts";
 import { forkParked, forkParkedFiber } from "./serverActivation.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import { getServerOwners } from "./telemetry/Identify.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
 import {
   formatHeadlessServeOutput,
   formatHostForUrl,
@@ -333,7 +333,7 @@ const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
 
 const resolveStartupBrowserTarget = Effect.gen(function* () {
   const serverConfig = yield* ServerConfig.ServerConfig;
-  const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
+  const serverAuth = yield* MachineAuth.MachineAuth;
   const localUrl = `http://localhost:${serverConfig.port}`;
   const bindUrl =
     serverConfig.host && !isWildcardHost(serverConfig.host)
@@ -459,7 +459,7 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
   const agentAwarenessRelay = yield* AgentAwarenessRelay.AgentAwarenessRelay;
   const lifecycleEvents = yield* ServerLifecycleEvents.ServerLifecycleEvents;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
-  const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
+  const serverMachine = yield* ServerMachine.ServerMachine;
   const crypto = yield* Crypto.Crypto;
   const launcher = yield* ServiceLauncherClient.ServiceLauncherClient;
 
@@ -527,7 +527,7 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
     );
 
     const welcomeBase = yield* resolveWelcomeBase;
-    const environment = yield* serverEnvironment.getDescriptor;
+    const machine = yield* serverMachine.getDescriptor;
     const legacyMigrationThreadCount = yield* legacyV1ThreadImporter.pendingThreadCount;
     if (legacyMigrationThreadCount > 0) {
       yield* lifecycleEvents.publish({
@@ -646,7 +646,7 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
     const updateOutcome = yield* launcher.prepareTrial;
 
     yield* Effect.logDebug("startup phase: publishing welcome event", {
-      environmentId: environment.environmentId,
+      machineId: machine.machineId,
       cwd: welcomeBase.cwd,
       projectName: welcomeBase.projectName,
       bootstrapProjectId: bootstrapTargets.bootstrapProjectId,
@@ -658,7 +658,7 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
         version: 1,
         type: "welcome",
         payload: {
-          environment,
+          machine,
           ...welcomeBase,
           ...bootstrapTargets,
         },
@@ -676,7 +676,7 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
         type: "ready",
         payload: {
           at: DateTime.formatIso(yield* DateTime.now),
-          environment,
+          machine,
           ...(updateOutcome === undefined ? {} : { updateOutcome }),
         },
       }),

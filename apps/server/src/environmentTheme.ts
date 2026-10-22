@@ -3,10 +3,10 @@
 import * as NodeFS from "node:fs";
 
 import {
-  EnvironmentTheme,
-  EnvironmentThemeFile,
-  EnvironmentThemeId,
-  environmentThemeFileHasColors,
+  MachineTheme,
+  MachineThemeFile,
+  MachineThemeId,
+  machineThemeFileHasColors,
 } from "@vekrel/contracts";
 import { UNPUBLISHABLE_THEME_IDS } from "@vekrel/shared/themePalettes";
 import * as Cause from "effect/Cause";
@@ -26,10 +26,10 @@ import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "./config.ts";
 
-const decodeEnvironmentThemeFileJsonExit = Schema.decodeUnknownExit(
-  Schema.fromJsonString(EnvironmentThemeFile),
+const decodeMachineThemeFileJsonExit = Schema.decodeUnknownExit(
+  Schema.fromJsonString(MachineThemeFile),
 );
-const isEnvironmentThemeId = Schema.is(EnvironmentThemeId);
+const isMachineThemeId = Schema.is(MachineThemeId);
 
 const THEME_FILE_SUFFIX = ".json";
 
@@ -40,21 +40,21 @@ const MAX_THEME_TOTAL_BYTES = 192 * 1024;
 
 interface PublishedThemes {
   readonly seq: number;
-  readonly themes: ReadonlyArray<EnvironmentTheme>;
+  readonly themes: ReadonlyArray<MachineTheme>;
 }
 
-export class EnvironmentThemeService extends Context.Service<
-  EnvironmentThemeService,
+export class MachineThemeService extends Context.Service<
+  MachineThemeService,
   {
-    readonly current: Effect.Effect<ReadonlyArray<EnvironmentTheme>>;
+    readonly current: Effect.Effect<ReadonlyArray<MachineTheme>>;
 
     /**
      * The subscription is acquired before the current set is read, so a publish
      * landing while a client connects is delivered rather than lost.
      */
-    readonly streamChanges: Stream.Stream<ReadonlyArray<EnvironmentTheme>>;
+    readonly streamChanges: Stream.Stream<ReadonlyArray<MachineTheme>>;
   }
->()("vekrel-engine/environmentTheme/EnvironmentThemeService") {}
+>()("vekrel-engine/environmentTheme/MachineThemeService") {}
 
 /**
  * Reads a theme file through one opened handle, so every check binds to the
@@ -106,7 +106,7 @@ export const readPublishedThemes = Effect.fn(function* (themesDir: string) {
     .readDirectory(themesDir)
     .pipe(Effect.orElseSucceed((): Array<string> => []));
 
-  const themes: Array<EnvironmentTheme> = [];
+  const themes: Array<MachineTheme> = [];
   let examined = 0;
   let totalBytes = 0;
   for (const entry of entries.toSorted()) {
@@ -114,14 +114,14 @@ export const readPublishedThemes = Effect.fn(function* (themesDir: string) {
     const id = entry.slice(0, -THEME_FILE_SUFFIX.length);
     // A reserved id is either shadowed by a built-in on the client or captures
     // clients that never chose it, so it is not publishable.
-    if (!isEnvironmentThemeId(id) || UNPUBLISHABLE_THEME_IDS.has(id)) continue;
+    if (!isMachineThemeId(id) || UNPUBLISHABLE_THEME_IDS.has(id)) continue;
 
     // Counts files examined, not themes accepted: capping the output would
     // let a directory of malformed files be opened, read, and decoded in full
     // on every refresh and every client connect.
     examined += 1;
     if (examined > MAX_THEME_FILES) {
-      yield* Effect.logWarning("ignoring environment theme files past the limit", {
+      yield* Effect.logWarning("ignoring machine theme files past the limit", {
         path: themesDir,
         limit: MAX_THEME_FILES,
       });
@@ -131,7 +131,7 @@ export const readPublishedThemes = Effect.fn(function* (themesDir: string) {
     const filePath = `${themesDir}/${entry}`;
     const raw = readThemeFileGuarded(filePath, MAX_THEME_FILE_BYTES);
     if (raw === null) {
-      yield* Effect.logWarning("ignoring unusable environment theme file", {
+      yield* Effect.logWarning("ignoring unusable machine theme file", {
         path: filePath,
         limit: MAX_THEME_FILE_BYTES,
       });
@@ -139,23 +139,23 @@ export const readPublishedThemes = Effect.fn(function* (themesDir: string) {
     }
     if (raw.trim().length === 0) continue;
 
-    const decoded = decodeEnvironmentThemeFileJsonExit(raw);
+    const decoded = decodeMachineThemeFileJsonExit(raw);
     if (decoded._tag === "Failure") {
-      yield* Effect.logWarning("ignoring invalid environment theme", {
+      yield* Effect.logWarning("ignoring invalid machine theme", {
         path: filePath,
         detail: Cause.pretty(decoded.cause),
       });
       continue;
     }
     const file = decoded.value;
-    if (!environmentThemeFileHasColors(file)) {
-      yield* Effect.logWarning("ignoring environment theme without colors", { path: filePath });
+    if (!machineThemeFileHasColors(file)) {
+      yield* Effect.logWarning("ignoring machine theme without colors", { path: filePath });
       continue;
     }
 
     totalBytes += Buffer.byteLength(raw);
     if (totalBytes > MAX_THEME_TOTAL_BYTES) {
-      yield* Effect.logWarning("ignoring environment themes past the total size limit", {
+      yield* Effect.logWarning("ignoring machine themes past the total size limit", {
         path: themesDir,
         limit: MAX_THEME_TOTAL_BYTES,
       });
@@ -168,7 +168,7 @@ export const readPublishedThemes = Effect.fn(function* (themesDir: string) {
 });
 
 const make = Effect.gen(function* () {
-  const { environmentThemesDir } = yield* ServerConfig.ServerConfig;
+  const { machineThemesDir } = yield* ServerConfig.ServerConfig;
   const fs = yield* FileSystem.FileSystem;
   /**
    * Every observed set carries a sequence number, so a subscriber can drop
@@ -191,7 +191,7 @@ const make = Effect.gen(function* () {
 
   const refresh = refreshSemaphore.withPermits(1)(
     Effect.gen(function* () {
-      const themes = yield* readPublishedThemes(environmentThemesDir).pipe(
+      const themes = yield* readPublishedThemes(machineThemesDir).pipe(
         Effect.provideService(FileSystem.FileSystem, fs),
       );
       // Structural equality over the whole decoded value: a hand-rolled field
@@ -212,13 +212,13 @@ const make = Effect.gen(function* () {
   // The directory is created up front so the watcher has something to attach
   // to before the first publisher writes into it.
   yield* fs
-    .makeDirectory(environmentThemesDir, { recursive: true })
+    .makeDirectory(machineThemesDir, { recursive: true })
     .pipe(Effect.ignoreCause({ log: true }));
 
   // Debounced for the same reason settings watching is: a theme script emits
   // several events per save and `fs.watch` can fire before the content is
   // flushed.
-  const watchEvents = fs.watch(environmentThemesDir).pipe(Stream.debounce(Duration.millis(100)));
+  const watchEvents = fs.watch(machineThemesDir).pipe(Stream.debounce(Duration.millis(100)));
 
   yield* refresh;
   yield* Stream.runForEach(watchEvents, () => refresh.pipe(Effect.ignoreCause({ log: true }))).pipe(
@@ -244,7 +244,7 @@ const make = Effect.gen(function* () {
         }),
       );
     },
-  } satisfies EnvironmentThemeService["Service"];
+  } satisfies MachineThemeService["Service"];
 });
 
-export const layer = Layer.effect(EnvironmentThemeService, make);
+export const layer = Layer.effect(MachineThemeService, make);

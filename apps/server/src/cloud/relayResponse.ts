@@ -65,12 +65,12 @@ export function relayRetryAfterMillis(error: unknown): number | undefined {
 
 function recoveryHint(error: RelayProtectedError): string {
   switch (error._tag) {
-    case "RelayEnvironmentLinkLimitExceededError":
-      return "Unlink an unused environment in T3 Connect, then restart T3 Code on this machine.";
+    case "RelayMachineLinkLimitExceededError":
+      return "Unlink an unused machine in T3 Connect, then restart T3 Code on this machine.";
     case "RelayAuthInvalidError":
       return "Run `t3 connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `t3 connect logout`, then run `t3 connect` again. Restart T3 Code after signing in.";
-    case "RelayEnvironmentLinkProofExpiredError":
-    case "RelayEnvironmentLinkProofInvalidError":
+    case "RelayMachineLinkProofExpiredError":
+    case "RelayMachineLinkProofInvalidError":
       return "Check this machine's date and time, update T3 Code, then restart it.";
     default:
       return "Retry when the relay is available. If this continues, include the trace ID when reporting it.";
@@ -97,7 +97,7 @@ export const filterRelayResponse = Effect.fn("cloud.filter_relay_response")(func
   if (
     response.status === 401 &&
     Option.isSome(decoded) &&
-    decoded.value._tag === "RelayEnvironmentLinkProofExpiredError"
+    decoded.value._tag === "RelayMachineLinkProofExpiredError"
   ) {
     return yield* new RelayRequestError({ rejection: "unavailable", description });
   }

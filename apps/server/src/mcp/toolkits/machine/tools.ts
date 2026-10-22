@@ -1,14 +1,14 @@
 import {
   BackgroundActivityProfile,
   BackgroundActivityProfileSelection,
-  ExecutionEnvironmentDescriptor,
+  ExecutionMachineDescriptor,
   OrchestratorMcpFailure,
   ServerSettings,
   ServerSettingsPatch,
 } from "@vekrel/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
-import * as ServerEnvironment from "../../../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../../../machine/ServerMachine.ts";
 import * as ThreadCommandExecutor from "../../../orchestration-v2/ThreadCommandExecutor.ts";
 import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as Settings from "../../../serverSettings.ts";
@@ -32,29 +32,29 @@ const shared = {
   dependencies: [
     McpInvocationContext.McpInvocationContext,
     ThreadManagementService.ThreadManagementService,
-    ServerEnvironment.ServerEnvironment,
+    ServerMachine.ServerMachine,
     Settings.ServerSettingsService,
     ThreadCommandExecutor.ThreadCommandExecutor,
   ],
 };
-const EnvironmentReadTool = Tool.make("t3_environment_read", {
+const MachineReadTool = Tool.make("vekrel_machine_read", {
   ...shared,
   description:
-    "Read this server's identity and selected environment preferences. Provider/model availability is exposed by orchestrator_capabilities. Writing instructions are limited to 4,000 characters.",
+    "Read this server's identity and selected machine preferences. Provider/model availability is exposed by orchestrator_capabilities. Writing instructions are limited to 4,000 characters.",
   success: Schema.Struct({
-    environmentId: ExecutionEnvironmentDescriptor.fields.environmentId,
+    machineId: ExecutionMachineDescriptor.fields.machineId,
     label: Schema.String,
     serverVersion: Schema.String,
-    platform: ExecutionEnvironmentDescriptor.fields.platform,
+    platform: ExecutionMachineDescriptor.fields.platform,
     preferences: Schema.Struct(PreferenceFields),
   }),
 })
   .annotate(Tool.Readonly, true)
   .annotate(Tool.Destructive, false);
-const EnvironmentPreferencesTool = Tool.make("t3_environment_preferences_update", {
+const MachinePreferencesTool = Tool.make("vekrel_machine_preferences_update", {
   ...shared,
   description:
-    "Update selected environment-wide preferences through normal settings persistence and notifications. Requires a live full-access/default calling thread. Omitted fields are preserved; empty customInstructions clears them.",
+    "Update selected machine-wide preferences through normal settings persistence and notifications. Requires a live full-access/default calling thread. Omitted fields are preserved; empty customInstructions clears them.",
   parameters: Schema.Struct({
     defaultThreadEnvMode: ServerSettingsPatch.fields.defaultThreadEnvMode,
     newWorktreesStartFromOrigin: ServerSettingsPatch.fields.newWorktreesStartFromOrigin,
@@ -64,4 +64,4 @@ const EnvironmentPreferencesTool = Tool.make("t3_environment_preferences_update"
   }),
   success: Schema.Struct(PreferenceFields),
 }).annotate(Tool.Destructive, true);
-export const EnvironmentToolkit = Toolkit.make(EnvironmentReadTool, EnvironmentPreferencesTool);
+export const MachineToolkit = Toolkit.make(MachineReadTool, MachinePreferencesTool);

@@ -1,11 +1,11 @@
 import * as CodexInstallation from "../CodexInstallation.ts";
 import * as ServerSecretStore from "../../auth/ServerSecretStore.ts";
-import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../../machine/ServerMachine.ts";
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodePath from "node:path";
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ProviderSessionId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId, ProviderSessionId, ThreadId } from "@vekrel/contracts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -59,8 +59,8 @@ const layerDeps = ServerConfig.layerTest(process.cwd(), {
   ),
   Layer.provideMerge(Layer.mock(ServerSecretStore.ServerSecretStore)({})),
   Layer.provideMerge(
-    Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-      getEnvironmentId: Effect.succeed(EnvironmentId.make("00000000-0000-4000-8000-000000000001")),
+    Layer.succeed(ServerMachine.ServerMachineIdentity, {
+      getMachineId: Effect.succeed(MachineId.make("00000000-0000-4000-8000-000000000001")),
     }),
   ),
   Layer.provideMerge(ServerSettings.layerTest()),

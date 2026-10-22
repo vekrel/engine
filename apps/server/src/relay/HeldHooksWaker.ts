@@ -5,16 +5,16 @@ import * as Stream from "effect/Stream";
 
 import * as CloudManagedEndpointRuntime from "../cloud/ManagedEndpointRuntime.ts";
 import { readHoldWebhooksWhileOffline, readRelayConnection } from "../cloud/config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
-import { makeRelayEnvironmentClient } from "./relayEnvironmentClient.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
+import { makeRelayMachineClient } from "./relayMachineClient.ts";
 
 const wakeHeldHooks = Effect.fn("HeldHooksWaker.wake")(function* () {
   if (!(yield* readHoldWebhooksWhileOffline)) return false;
   const connection = yield* readRelayConnection;
   if (connection === null) return false;
-  const environmentId = yield* (yield* ServerEnvironment.ServerEnvironment).getEnvironmentId;
-  const client = yield* makeRelayEnvironmentClient(connection);
-  const { pending } = yield* client.server.wakeHeldHooks({ params: { environmentId } });
+  const machineId = yield* (yield* ServerMachine.ServerMachine).getMachineId;
+  const client = yield* makeRelayMachineClient(connection);
+  const { pending } = yield* client.server.wakeHeldHooks({ params: { machineId } });
   yield* Effect.annotateCurrentSpan({ "relay.inbox.pending": pending });
   return pending;
 });

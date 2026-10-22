@@ -26,7 +26,7 @@ const REAL_SECRET_NAMES = [
   "cloud-linked-user-id",
   "cloud-relay-url",
   "cloud-relay-issuer",
-  "cloud-relay-environment-credential",
+  "cloud-relay-machine-credential",
   "cloud-publish-agent-activity",
   "provider-env-Y29kZXg-T1BFTkFJX0FQSV9LRVk",
   "provider-auth-0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0",

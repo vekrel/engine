@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
@@ -44,7 +44,7 @@ const testCrypto = Crypto.make({
 const invocation = (
   capabilities: ReadonlyArray<McpInvocationContext.McpCapability>,
 ): McpInvocationContext.McpInvocationScope => ({
-  environmentId: EnvironmentId.make("environment-1"),
+  machineId: MachineId.make("machine-1"),
   requestNamespace: "provider-session-1",
   thread: {
     threadId: THREAD_ID,
@@ -622,7 +622,7 @@ describe("pull request guide tools", () => {
           ["t3tools/t3code", 12, "started"],
           ["someone/else", 1, "failed"],
         ]);
-        expect(result.guides[2]?.detail).toContain("No project in this environment");
+        expect(result.guides[2]?.detail).toContain("No project in this machine");
         expect(
           (yield* Ref.get(harness.guideRequests)).map((ref) => [ref.projectId, ref.number]),
         ).toEqual([

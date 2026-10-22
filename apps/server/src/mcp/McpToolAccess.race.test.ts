@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   OrchestratorMcpFailure,
   ProjectId,
   ProviderDriverKind,
@@ -61,7 +61,7 @@ const RenameTool = Tool.make("rename", {
 const RenameToolkit = Toolkit.make(RenameTool);
 
 const supervisedClient: McpInvocationContext.McpInvocationScope = {
-  environmentId: EnvironmentId.make("environment"),
+  machineId: MachineId.make("machine"),
   requestNamespace: "client:race",
   thread: undefined,
   client: { sessionId: "race", label: "Claude Code", access: "approval-required" },

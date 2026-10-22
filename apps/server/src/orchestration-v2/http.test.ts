@@ -1,10 +1,10 @@
 import {
   AuthSessionId,
-  type AuthEnvironmentScope,
-  EnvironmentAuthenticatedAuth,
-  EnvironmentAuthenticatedPrincipal,
-  EnvironmentHttpApi,
-  EnvironmentId,
+  type AuthMachineScope,
+  MachineAuthenticatedAuth,
+  MachineAuthenticatedPrincipal,
+  MachineHttpApi,
+  MachineId,
   EventId,
   ORCHESTRATION_PROTOCOL_HEADER,
   ORCHESTRATION_PROTOCOL_VERSION_TEXT,
@@ -27,7 +27,7 @@ import * as Etag from "effect/http/Etag";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ServerSettings from "../serverSettings.ts";
 
@@ -41,15 +41,15 @@ import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ProviderAdapterRegistry from "./ProviderAdapterRegistry.ts";
 import * as ProviderReplayHarness from "./testkit/ProviderReplayHarness.ts";
 
-class TranscriptTestApi extends HttpApi.make("environment").add(
-  EnvironmentHttpApi.groups.orchestration,
+class TranscriptTestApi extends HttpApi.make("machine").add(
+  MachineHttpApi.groups.orchestration,
 ) {}
 const decodeTranscript = Schema.decodeUnknownEffect(
   Schema.toCodecJson(OrchestrationV2ThreadTranscript),
 );
 
 const now = DateTime.makeUnsafe("2026-09-29T00:00:00.000Z");
-const environmentId = EnvironmentId.make("source-بيئة");
+const machineId = MachineId.make("source-بيئة");
 const output = "Full tool output. ".repeat(4_000);
 const thread = Schema.decodeUnknownSync(OrchestrationV2AppThread)({
   id: "source-thread",
@@ -131,19 +131,19 @@ it.effect("exports full history with size, scope, and missing-thread checks", ()
     const routes = HttpApiBuilder.layer(TranscriptTestApi).pipe(
       Layer.provide(OrchestrationHttp.layer),
       Layer.provide(
-        Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-          getEnvironmentId: Effect.succeed(environmentId),
+        Layer.succeed(ServerMachine.ServerMachineIdentity, {
+          getMachineId: Effect.succeed(machineId),
         }),
       ),
       Layer.provide(
-        Layer.succeed(EnvironmentAuthenticatedAuth, (effect) =>
+        Layer.succeed(MachineAuthenticatedAuth, (effect) =>
           Effect.suspend(() =>
             effect.pipe(
-              Effect.provideService(EnvironmentAuthenticatedPrincipal, {
+              Effect.provideService(MachineAuthenticatedPrincipal, {
                 sessionId: AuthSessionId.make("test-session"),
                 subject: "test",
                 method: "bearer-access-token",
-                scopes: new Set<AuthEnvironmentScope>(allowed ? ["orchestration:read"] : []),
+                scopes: new Set<AuthMachineScope>(allowed ? ["orchestration:read"] : []),
               }),
             ),
           ),
@@ -192,7 +192,7 @@ it.effect("exports full history with size, scope, and missing-thread checks", ()
     const emptyOutputRows = transcript.items.map((row, position) =>
       position === 0 ? { ...row, item: { ...row.item, output: "" } } : row,
     );
-    const header = threadTranscriptHeader(environmentId, transcript);
+    const header = threadTranscriptHeader(machineId, transcript);
     const baseSize =
       Buffer.byteLength(header, "utf8") +
       emptyOutputRows.reduce(
@@ -224,14 +224,14 @@ it.effect("exports full history with size, scope, and missing-thread checks", ()
         const error = yield* Context.get(services, ThreadManagementService.ThreadManagementService)
           .getThreadTranscript(thread.id)
           .pipe(
-            Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, {
-              getEnvironmentId: Effect.succeed(environmentId),
+            Effect.provideService(ServerMachine.ServerMachineIdentity, {
+              getMachineId: Effect.succeed(machineId),
             }),
             Effect.flip,
           );
         expect(error).toBeInstanceOf(ThreadManagementService.ThreadTranscriptTooLargeError);
         expect(yield* Effect.promise(() => response.json())).toMatchObject({
-          _tag: "EnvironmentRequestInvalidError",
+          _tag: "MachineRequestInvalidError",
           reason: "thread_transcript_too_large",
         });
       }

@@ -2,7 +2,7 @@ import * as Mime from "effect/http/Mime";
 import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
-  EnvironmentHttpApi,
+  MachineHttpApi,
 } from "@vekrel/contracts";
 import { isDevProxiedPath } from "@vekrel/shared/devProxy";
 import { injectMcpAppCookieBootstrap, injectMcpAppThemeBootstrap } from "@vekrel/shared/mcpApp";
@@ -39,15 +39,15 @@ import {
   validateAttachmentUploadToken,
 } from "./assets/AttachmentUpload.ts";
 import * as BrowserTraceCollector from "./observability/BrowserTraceCollector.ts";
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
 import { traceRelayRequest } from "./cloud/traceRelayRequest.ts";
 import {
-  annotateEnvironmentRequest,
-  failEnvironmentScopeRequired,
-  failEnvironmentAuthInvalid,
-  failEnvironmentInternal,
+  annotateMachineRequest,
+  failMachineScopeRequired,
+  failMachineAuthInvalid,
+  failMachineInternal,
 } from "./auth/http.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
 import { WEBHOOK_ROUTE_PREFIX } from "./scheduledTasks/ScheduledTaskService.ts";
 import {
   browserApiCorsAllowedHeaders,
@@ -297,33 +297,33 @@ const authenticateRawRouteWithScope =
     scope: typeof AuthOrchestrationReadScope | typeof AuthOrchestrationOperateScope,
   ) {
     const request = yield* HttpServerRequest.HttpServerRequest;
-    const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
+    const serverAuth = yield* MachineAuth.MachineAuth;
     const session = yield* serverAuth.authenticateHttpRequest(request).pipe(
-      Effect.catchIf(EnvironmentAuth.isServerAuthCredentialError, (error) =>
-        failEnvironmentAuthInvalid(
-          EnvironmentAuth.serverAuthCredentialReason(error),
-          EnvironmentAuth.serverAuthDpopFailureReason(error),
+      Effect.catchIf(MachineAuth.isServerAuthCredentialError, (error) =>
+        failMachineAuthInvalid(
+          MachineAuth.serverAuthCredentialReason(error),
+          MachineAuth.serverAuthDpopFailureReason(error),
         ),
       ),
-      Effect.catchIf(EnvironmentAuth.isServerAuthInternalError, (error) =>
-        failEnvironmentInternal("internal_error", error),
+      Effect.catchIf(MachineAuth.isServerAuthInternalError, (error) =>
+        failMachineInternal("internal_error", error),
       ),
     );
     if (!session.scopes.includes(scope)) {
-      return yield* failEnvironmentScopeRequired(scope);
+      return yield* failMachineScopeRequired(scope);
     }
   });
 
-export const layerServerEnvironmentHttpApi = HttpApiBuilder.group(
-  EnvironmentHttpApi,
+export const layerServerMachineHttpApi = HttpApiBuilder.group(
+  MachineHttpApi,
   "metadata",
   Effect.fnUntraced(function* (handlers) {
-    const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
+    const serverMachine = yield* ServerMachine.ServerMachine;
     return handlers.handle(
       "descriptor",
-      Effect.fn("environment.metadata.descriptor")(function* (args) {
-        yield* annotateEnvironmentRequest(args.endpoint.name);
-        return yield* serverEnvironment.getDescriptor;
+      Effect.fn("machine.metadata.descriptor")(function* (args) {
+        yield* annotateMachineRequest(args.endpoint.name);
+        return yield* serverMachine.getDescriptor;
       }, traceRelayRequest),
     );
   }),
@@ -381,9 +381,9 @@ export const layerOtlpTracesProxyRoute = HttpRouter.add(
       );
   }).pipe(
     Effect.catchTags({
-      EnvironmentAuthInvalidError: HttpServerRespondable.toResponse,
-      EnvironmentInternalError: HttpServerRespondable.toResponse,
-      EnvironmentScopeRequiredError: HttpServerRespondable.toResponse,
+      MachineAuthInvalidError: HttpServerRespondable.toResponse,
+      MachineInternalError: HttpServerRespondable.toResponse,
+      MachineScopeRequiredError: HttpServerRespondable.toResponse,
     }),
     Effect.withTracerEnabled(false),
   ),

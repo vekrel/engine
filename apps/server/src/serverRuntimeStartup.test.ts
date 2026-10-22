@@ -6,7 +6,7 @@ import {
   ProviderInstanceId,
   ProviderDriverKind,
   CommandId,
-  EnvironmentId,
+  MachineId,
   type ServerLifecycleStreamEvent,
 } from "@vekrel/contracts";
 import { DEFAULT_SIGNAL_EXPORT } from "@vekrel/shared/observability";
@@ -26,9 +26,9 @@ import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
 
 import * as ServerConfig from "./config.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as EffectWorker from "./orchestration-v2/EffectWorker.ts";
 import * as LegacyV1ThreadImporter from "./orchestration-v2/legacy/LegacyV1ThreadImporter.ts";
@@ -142,10 +142,10 @@ it.effect.each([
             },
           }),
         }),
-        Layer.mock(ServerEnvironment.ServerEnvironment)({
+        Layer.mock(ServerMachine.ServerMachine)({
           getDescriptor: Effect.succeed({
-            environmentId: EnvironmentId.make("bootstrap-environment"),
-            label: "Test environment",
+            machineId: MachineId.make("bootstrap-machine"),
+            label: "Test machine",
             platform: { os: "linux", arch: "x64" },
             serverVersion: "0.0.0-test",
             capabilities: { repositoryIdentity: true },
@@ -213,7 +213,7 @@ it.effect.each([
         // No provider logins or Connect link, so startup records no owners.
         FileSystem.layerNoop({}),
         Layer.mock(ServerSecretStore.ServerSecretStore)({ get: () => Effect.succeedNone }),
-        Layer.mock(EnvironmentAuth.EnvironmentAuth)({}),
+        Layer.mock(MachineAuth.MachineAuth)({}),
         Layer.mock(ExternalLauncher.ExternalLauncher)({}),
         Layer.mock(HttpServer.HttpServer)({
           address: NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 3773),

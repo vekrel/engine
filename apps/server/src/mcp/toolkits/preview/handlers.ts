@@ -245,7 +245,7 @@ const handlers = {
       const { tabId, ...operationInput } = input;
       const response = yield* invoke<unknown>(
         "recordingStop",
-        { ...operationInput, transferToEnvironment: true },
+        { ...operationInput, transferToMachine: true },
         PREVIEW_RECORDING_STOP_TIMEOUT_MS,
         tabId,
       );

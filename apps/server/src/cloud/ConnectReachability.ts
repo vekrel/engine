@@ -2,7 +2,7 @@ import * as NodeNet from "node:net";
 
 import {
   connectReachabilityHelpUrl,
-  type EnvironmentConnectReachability,
+  type MachineConnectReachability,
   formatConnectReachable,
 } from "@vekrel/contracts";
 import { readTailscaleExitNode, type TailscaleExitNode } from "@vekrel/tailscale";
@@ -45,7 +45,7 @@ export interface ReachabilityFacts {
   readonly exitNode: TailscaleExitNode | null;
 }
 
-type Unreachable = Extract<EnvironmentConnectReachability, { status: "unreachable" }>;
+type Unreachable = Extract<MachineConnectReachability, { status: "unreachable" }>;
 
 function exitNodeHint(exitNode: TailscaleExitNode | null): string | null {
   if (!exitNode) return null;
@@ -57,7 +57,7 @@ function exitNodeHint(exitNode: TailscaleExitNode | null): string | null {
 export function classifyReachability(
   facts: ReachabilityFacts,
   checkedAt: string,
-): EnvironmentConnectReachability {
+): MachineConnectReachability {
   const { connector, endpoint, exitNode } = facts;
   const fail = (
     cause: Unreachable["cause"],
@@ -192,8 +192,8 @@ export class ConnectReachability extends Context.Service<
   ConnectReachability,
   {
     /** Runs a check now. The server also runs one when the tunnel's readiness changes. */
-    readonly check: Effect.Effect<EnvironmentConnectReachability>;
-    readonly latest: Effect.Effect<Option.Option<EnvironmentConnectReachability>>;
+    readonly check: Effect.Effect<MachineConnectReachability>;
+    readonly latest: Effect.Effect<Option.Option<MachineConnectReachability>>;
   }
 >()("vekrel-engine/cloud/ConnectReachability") {}
 
@@ -203,7 +203,7 @@ const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
   // `order` ranks checks by start, so a slow older one cannot replace a newer result.
   const latestRef = yield* Ref.make(
-    Option.none<{ readonly order: number; readonly result: EnvironmentConnectReachability }>(),
+    Option.none<{ readonly order: number; readonly result: MachineConnectReachability }>(),
   );
   const checkCounter = yield* Ref.make(0);
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -213,7 +213,7 @@ const make = Effect.gen(function* () {
   );
 
   const probeEndpoint = (hostname: string) =>
-    httpClient.get(`https://${hostname}/.well-known/t3/environment`).pipe(
+    httpClient.get(`https://${hostname}/.well-known/vekrel/machine`).pipe(
       Effect.map((response): EndpointProbe => ({ kind: "status", status: response.status })),
       Effect.scoped,
       Effect.timeoutOption(ENDPOINT_REQUEST_TIMEOUT),

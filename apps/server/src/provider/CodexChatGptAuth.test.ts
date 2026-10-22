@@ -3,7 +3,7 @@ import * as NodeHttp from "node:http";
 import * as NodeCrypto from "node:crypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -14,7 +14,7 @@ import { subscribeChatGptHandoff } from "./CodexChatGptHandoff.ts";
 import { FetchHttpClient } from "effect/http";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ProviderCredentialStore from "./ProviderCredentialStore.ts";
 import * as AnalyticsService from "../telemetry/AnalyticsService.ts";
 import { makeCodexChatGptAuth } from "./CodexChatGptAuth.ts";
@@ -26,17 +26,17 @@ const assertSameCallback = (actual: string | null, expected: string | null) => {
   assert.strictEqual(left.hostname, right.hostname);
   assert.strictEqual(left.pathname, right.pathname);
 };
-const environmentIds = new WeakMap<Map<string, Uint8Array>, EnvironmentId>();
+const machineIds = new WeakMap<Map<string, Uint8Array>, MachineId>();
 const instanceId = ProviderInstanceId.make("managed-codex-test");
 const makeHarnessFor = Effect.fnUntraced(function* (
   instanceId: ProviderInstanceId,
   bytes: Map<string, Uint8Array> = new Map(),
   failAnalytics = false,
 ) {
-  const environmentId = environmentIds.get(bytes) ?? EnvironmentId.make(NodeCrypto.randomUUID());
-  environmentIds.set(bytes, environmentId);
-  const environment = ServerEnvironment.ServerEnvironmentIdentity.of({
-    getEnvironmentId: Effect.succeed(environmentId),
+  const machineId = machineIds.get(bytes) ?? MachineId.make(NodeCrypto.randomUUID());
+  machineIds.set(bytes, machineId);
+  const machine = ServerMachine.ServerMachineIdentity.of({
+    getMachineId: Effect.succeed(machineId),
   });
   const keys = yield* Effect.promise(() => generateKeyPair("RS256"));
   const jwk = yield* Effect.promise(() => exportJWK(keys.publicKey));
@@ -52,7 +52,7 @@ const makeHarnessFor = Effect.fnUntraced(function* (
         bytes.delete(name);
       }),
     create: () => Effect.die("unused"),
-    getOrCreateRandom: () => Effect.die("Host identity must come from the environment."),
+    getOrCreateRandom: () => Effect.die("Host identity must come from the machine."),
   });
   let authorize: URL | undefined;
   let refreshes = 0;
@@ -227,7 +227,7 @@ const makeHarnessFor = Effect.fnUntraced(function* (
   }).pipe(
     Effect.provideService(AnalyticsService.AnalyticsService, analytics),
     Effect.provideService(ServerSecretStore.ServerSecretStore, secrets),
-    Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, environment),
+    Effect.provideService(ServerMachine.ServerMachineIdentity, machine),
   );
   const phase = (phase: string) =>
     auth.controller.subscribe("owner").pipe(
@@ -279,13 +279,13 @@ const makeHarnessFor = Effect.fnUntraced(function* (
     auth,
     analyticsEvents,
     secrets,
-    environmentId,
+    machineId,
     bytes,
     handoff: (profile: Parameters<typeof subscribeChatGptHandoff>[0]["profile"]) =>
       subscribeChatGptHandoff(
         {
           instanceId,
-          environmentId,
+          machineId,
           attemptId: "test-handoff",
           returnUrl,
           profile,
@@ -316,7 +316,7 @@ const makeHarnessFor = Effect.fnUntraced(function* (
       }).pipe(
         Effect.provideService(AnalyticsService.AnalyticsService, analytics),
         Effect.provideService(ServerSecretStore.ServerSecretStore, destinationStore),
-        Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, environment),
+        Effect.provideService(ServerMachine.ServerMachineIdentity, machine),
       );
       return { auth: destination, bytes: destinationBytes };
     }),
@@ -326,7 +326,7 @@ const makeHarnessFor = Effect.fnUntraced(function* (
       resource: `${origin}/v1`,
     }).pipe(
       Effect.provideService(ServerSecretStore.ServerSecretStore, secrets),
-      Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, environment),
+      Effect.provideService(ServerMachine.ServerMachineIdentity, machine),
     ),
     startRemote,
     signIn: signInWithMethod(),
@@ -549,7 +549,7 @@ it.effect(
         const first = h.authorizationRequests[0]!;
         assert.strictEqual(
           first.searchParams.get("ext_agent_host_id"),
-          `urn:uuid:${h.environmentId}`,
+          `urn:uuid:${h.machineId}`,
         );
         assert.strictEqual(first.origin, h.origin);
         assert.strictEqual(first.pathname, "/authorize");
@@ -877,7 +877,7 @@ it.effect.each([
 );
 
 it.effect(
-  "completes remote sign-in on the owning environment and reuses its exact callback for reauthorization",
+  "completes remote sign-in on the owning machine and reuses its exact callback for reauthorization",
   () =>
     Effect.gen(function* () {
       const harness = yield* makeHarnessFor(instanceId);
@@ -946,7 +946,7 @@ it.effect(
     ),
 );
 
-it.effect("keeps simultaneous remote accounts and environments independent", () =>
+it.effect("keeps simultaneous remote accounts and machines independent", () =>
   Effect.gen(function* () {
     const first = yield* makeHarnessFor(instanceId);
     const second = yield* makeHarnessFor(instanceId);
@@ -1346,7 +1346,7 @@ it.effect("identity-only sign-in requests consent on an explicit retry, then rec
 );
 
 it.effect(
-  "controller replacement shares refresh serialization for the same environment session",
+  "controller replacement shares refresh serialization for the same machine session",
   () =>
     provision(
       Effect.gen(function* () {
@@ -1557,7 +1557,7 @@ it.effect("primary handoff reuses the selected registration and ID token hint", 
       assert.strictEqual(url.searchParams.get("client_id"), profile!.clientId);
       assert.strictEqual(url.searchParams.get("id_token_hint"), profile!.idTokenHint);
       assert.strictEqual(url.searchParams.get("login_hint"), profile!.email);
-      assert.strictEqual(url.searchParams.get("ext_agent_host_id"), `urn:uuid:${h.environmentId}`);
+      assert.strictEqual(url.searchParams.get("ext_agent_host_id"), `urn:uuid:${h.machineId}`);
       yield* h.finishCallback(state);
       const results = yield* Fiber.join(resultFiber);
       assert.strictEqual(results.at(-1)?.phase, "finished");

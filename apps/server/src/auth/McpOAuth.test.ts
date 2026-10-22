@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   AuthStandardClientScopes,
   type AuthCreatePairingCredentialInput,
-  EnvironmentHttpApi,
+  MachineHttpApi,
 } from "@vekrel/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
@@ -18,29 +18,29 @@ import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import * as Schema from "effect/Schema";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as Sqlite from "../persistence/Sqlite.ts";
-import * as EnvironmentAuth from "./EnvironmentAuth.ts";
+import * as MachineAuth from "./MachineAuth.ts";
 import * as McpOAuth from "./McpOAuth.ts";
 import * as McpOAuthHttp from "./mcpOAuthHttp.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import * as AuthHttp from "./http.ts";
 
-class AuthTestApi extends HttpApi.make("environment")
-  .add(EnvironmentHttpApi.groups.auth)
-  .add(EnvironmentHttpApi.groups.mcpOAuth) {}
+class AuthTestApi extends HttpApi.make("machine")
+  .add(MachineHttpApi.groups.auth)
+  .add(MachineHttpApi.groups.mcpOAuth) {}
 
 const layerConfig = ServerConfig.layerTest(process.cwd(), { prefix: "t3-mcp-oauth-test-" });
-const layerEnvironmentAuth = EnvironmentAuth.layer.pipe(
+const layerMachineAuth = MachineAuth.layer.pipe(
   Layer.provide(Sqlite.layerMemory),
   Layer.provideMerge(ServerSecretStore.layer),
-  Layer.provideMerge(ServerEnvironment.layerIdentity),
+  Layer.provideMerge(ServerMachine.layerIdentity),
   Layer.provide(layerConfig),
 );
-const makeLayerRoutes = (capture: (auth: EnvironmentAuth.EnvironmentAuth["Service"]) => void) =>
+const makeLayerRoutes = (capture: (auth: MachineAuth.MachineAuth["Service"]) => void) =>
   Layer.mergeAll(
     Layer.effectDiscard(
-      EnvironmentAuth.EnvironmentAuth.pipe(Effect.tap((auth) => Effect.sync(() => capture(auth)))),
+      MachineAuth.MachineAuth.pipe(Effect.tap((auth) => Effect.sync(() => capture(auth)))),
     ),
     HttpApiBuilder.layer(AuthTestApi).pipe(
       Layer.provide(AuthHttp.layer),
@@ -48,7 +48,7 @@ const makeLayerRoutes = (capture: (auth: EnvironmentAuth.EnvironmentAuth["Servic
       Layer.provide(AuthHttp.layerAuthenticatedAuth),
     ),
   ).pipe(
-    Layer.provideMerge(layerEnvironmentAuth),
+    Layer.provideMerge(layerMachineAuth),
     Layer.provide(layerConfig),
     Layer.provideMerge(
       HttpPlatform.layer.pipe(
@@ -79,12 +79,12 @@ const form = (body: Record<string, string>) => ({
 type Handler = (request: Request) => Effect.Effect<Response>;
 
 const withRoutes = <A, E>(
-  use: (handler: Handler, auth: EnvironmentAuth.EnvironmentAuth["Service"]) => Effect.Effect<A, E>,
+  use: (handler: Handler, auth: MachineAuth.MachineAuth["Service"]) => Effect.Effect<A, E>,
 ) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto;
     const context = Context.make(Crypto.Crypto, crypto);
-    let routerAuth: EnvironmentAuth.EnvironmentAuth["Service"] | undefined;
+    let routerAuth: MachineAuth.MachineAuth["Service"] | undefined;
     const layerRoutes = makeLayerRoutes((auth) => {
       routerAuth = auth;
     });
@@ -222,7 +222,7 @@ it.live("registers loopback and https clients and never redirects for an unverif
       expect(details).toEqual({
         clientName: "Claude Code",
         redirectHost: "localhost:51234",
-        environmentHost: "box.example.ts.net",
+        machineHost: "box.example.ts.net",
       });
 
       const forgedDetails = yield* handler(

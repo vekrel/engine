@@ -1,6 +1,6 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { expect, it } from "@effect/vitest";
-import { DEFAULT_SERVER_SETTINGS, EnvironmentId, ProjectId } from "@vekrel/contracts";
+import { DEFAULT_SERVER_SETTINGS, MachineId, ProjectId } from "@vekrel/contracts";
 import { DEFAULT_SIGNAL_EXPORT } from "@vekrel/shared/observability";
 import * as OtelEnvironment from "@vekrel/shared/otelEnvironment";
 import * as Deferred from "effect/Deferred";
@@ -11,10 +11,10 @@ import * as Path from "effect/Path";
 import { HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
 import * as ServerConfig from "./config.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as EffectWorker from "./orchestration-v2/EffectWorker.ts";
 import * as LegacyV1ThreadImporter from "./orchestration-v2/legacy/LegacyV1ThreadImporter.ts";
@@ -127,10 +127,10 @@ it.effect("parks automatic pull until activation without delaying command readin
           start: Effect.void,
           getSettings: Effect.succeed({ ...DEFAULT_SERVER_SETTINGS, defaultAutoPull: true }),
         }),
-        Layer.mock(ServerEnvironment.ServerEnvironment)({
+        Layer.mock(ServerMachine.ServerMachine)({
           getDescriptor: Effect.succeed({
-            environmentId: EnvironmentId.make("auto-pull-environment"),
-            label: "Test environment",
+            machineId: MachineId.make("auto-pull-machine"),
+            label: "Test machine",
             platform: { os: "darwin", arch: "arm64" },
             serverVersion: "0.0.0-test",
             capabilities: { repositoryIdentity: true },
@@ -169,7 +169,7 @@ it.effect("parks automatic pull until activation without delaying command readin
         FileSystem.layerNoop({}),
         Layer.mock(ServerSecretStore.ServerSecretStore)({ get: () => Effect.succeedNone }),
         NodeCrypto.layer,
-        Layer.mock(EnvironmentAuth.EnvironmentAuth)({}),
+        Layer.mock(MachineAuth.MachineAuth)({}),
         Layer.mock(ExternalLauncher.ExternalLauncher)({}),
         Layer.mock(HttpServer.HttpServer)({
           address: NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 3773),

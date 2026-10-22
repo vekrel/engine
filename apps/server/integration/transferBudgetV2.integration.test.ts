@@ -10,10 +10,10 @@ import {
   ORCHESTRATION_PROTOCOL_VERSION,
   AuthSessionId,
   AuthOrchestrationReadScope,
-  EnvironmentHttpApi,
-  EnvironmentId,
-  EnvironmentAuthenticatedAuth,
-  EnvironmentAuthenticatedPrincipal,
+  MachineHttpApi,
+  MachineId,
+  MachineAuthenticatedAuth,
+  MachineAuthenticatedPrincipal,
   ORCHESTRATION_V2_WS_METHODS,
   OrchestrationV2RpcSchemas,
   OrchestrationV2ThreadDetailSnapshot,
@@ -37,7 +37,7 @@ import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import { HttpRouter, HttpServer } from "effect/http";
 import { Rpc, RpcGroup, RpcServer, RpcSerialization } from "effect/rpc";
-import * as ServerEnvironment from "../src/environment/ServerEnvironment.ts";
+import * as ServerMachine from "../src/machine/ServerMachine.ts";
 import * as SqlitePersistence from "../src/persistence/Sqlite.ts";
 import * as OrchestrationEventStore from "../src/persistence/OrchestrationEventStore.ts";
 import * as EventStore from "../src/orchestration-v2/EventStore.ts";
@@ -112,8 +112,8 @@ const layerEnrichment = Layer.unwrap(
 );
 const layerServices = layerManagement.pipe(
   Layer.provideMerge(
-    Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-      getEnvironmentId: Effect.succeed(EnvironmentId.make("transfer-test")),
+    Layer.succeed(ServerMachine.ServerMachineIdentity, {
+      getMachineId: Effect.succeed(MachineId.make("transfer-test")),
     }),
   ),
   Layer.provideMerge(ProjectStore.layer),
@@ -121,12 +121,12 @@ const layerServices = layerManagement.pipe(
   Layer.provideMerge(layerEnrichment),
   Layer.provideMerge(layerPersistence),
 );
-class TransferApi extends HttpApi.make("environment").add(
-  EnvironmentHttpApi.groups.orchestration,
+class TransferApi extends HttpApi.make("machine").add(
+  MachineHttpApi.groups.orchestration,
 ) {}
-const layerAuth = Layer.succeed(EnvironmentAuthenticatedAuth, (effect) =>
+const layerAuth = Layer.succeed(MachineAuthenticatedAuth, (effect) =>
   effect.pipe(
-    Effect.provideService(EnvironmentAuthenticatedPrincipal, {
+    Effect.provideService(MachineAuthenticatedPrincipal, {
       sessionId: AuthSessionId.make("transfer-session"),
       subject: "transfer-test",
       method: "browser-session-cookie",

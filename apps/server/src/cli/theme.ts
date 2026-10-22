@@ -4,9 +4,9 @@
 import * as NodeFS from "node:fs";
 
 import {
-  EnvironmentThemeFile,
-  EnvironmentThemeId,
-  environmentThemeFileHasColors,
+  MachineThemeFile,
+  MachineThemeId,
+  machineThemeFileHasColors,
 } from "@vekrel/contracts";
 import { fromJsonStringPretty, fromLenientJson } from "@vekrel/shared/schemaJson";
 import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@vekrel/shared/themePalettes";
@@ -34,9 +34,9 @@ const SparseSettings = Schema.Record(Schema.String, Schema.Unknown);
 const decodeSettingsJson = Schema.decodeUnknownEffect(fromLenientJson(SparseSettings));
 const encodeSettingsJson = Schema.encodeEffect(fromJsonStringPretty(SparseSettings));
 const decodeThemeFileJsonExit = Schema.decodeUnknownExit(
-  Schema.fromJsonString(EnvironmentThemeFile),
+  Schema.fromJsonString(MachineThemeFile),
 );
-const isEnvironmentThemeId = Schema.is(EnvironmentThemeId);
+const isMachineThemeId = Schema.is(MachineThemeId);
 
 export class ThemeSettingsUnreadableError extends Schema.TaggedError<ThemeSettingsUnreadableError>()(
   "ThemeSettingsUnreadableError",
@@ -169,7 +169,7 @@ const resolveThemePaths = Effect.fn(function* (explicitBaseDir: Option.Option<st
   });
   return {
     settingsPath: derivedPaths.settingsPath,
-    themesDir: derivedPaths.environmentThemesDir,
+    themesDir: derivedPaths.machineThemesDir,
   };
 });
 
@@ -283,7 +283,7 @@ const publishThemeFile = Effect.fn(function* (input: {
   if (decoded._tag === "Failure") {
     return yield* new ThemeFileInvalidError({ filePath: input.filePath, cause: decoded.cause });
   }
-  if (!environmentThemeFileHasColors(decoded.value)) {
+  if (!machineThemeFileHasColors(decoded.value)) {
     return yield* new ThemeFileColorlessError({ filePath: input.filePath });
   }
 
@@ -291,7 +291,7 @@ const publishThemeFile = Effect.fn(function* (input: {
   const themeId = Option.getOrElse(input.explicitId, () => fileBasename);
   // The same rules the watcher applies when it reads the directory back, so a
   // publish cannot report success for a file that will then be skipped.
-  if (!isEnvironmentThemeId(themeId) || UNPUBLISHABLE_THEME_IDS.has(themeId)) {
+  if (!isMachineThemeId(themeId) || UNPUBLISHABLE_THEME_IDS.has(themeId)) {
     return yield* new ThemeFileIdInvalidError({ themeId, filePath: input.filePath });
   }
 
@@ -412,7 +412,7 @@ const themeSetCommand = Command.make("set", {
     ),
   ),
 }).pipe(
-  Command.withDescription("Set the environment's theme; connected clients switch to it."),
+  Command.withDescription("Set the machine's theme; connected clients switch to it."),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -447,7 +447,7 @@ const themeSetCommand = Command.make("set", {
         cleanupPublish = published.cleanup;
       } else if (looksLikePath) {
         return yield* new ThemeFileUnreadableError({ filePath: target });
-      } else if (isEnvironmentThemeId(target)) {
+      } else if (isMachineThemeId(target)) {
         const known = yield* resolvableThemeIds(paths.themesDir);
         if (!known.includes(target)) {
           return yield* new ThemeIdUnknownError({ themeId: target, known });
@@ -463,26 +463,26 @@ const themeSetCommand = Command.make("set", {
       yield* cleanupPublish;
       yield* Console.log(
         targetIsFile
-          ? `Published ${target} as "${themeId}" and set it as the environment theme.\n`
-          : `Environment theme set to "${themeId}" in ${paths.settingsPath}.\n`,
+          ? `Published ${target} as "${themeId}" and set it as the machine theme.\n`
+          : `Machine theme set to "${themeId}" in ${paths.settingsPath}.\n`,
       );
     }),
   ),
 );
 
 const themeClearCommand = Command.make("clear", { baseDir: baseDirFlag }).pipe(
-  Command.withDescription("Remove the environment's theme; clients keep what they have."),
+  Command.withDescription("Remove the machine's theme; clients keep what they have."),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
       const paths = yield* resolveThemePaths(flags.baseDir);
       yield* writeDefaultTheme({ settingsPath: paths.settingsPath, themeId: "" });
-      yield* Console.log(`Environment theme cleared in ${paths.settingsPath}.\n`);
+      yield* Console.log(`Machine theme cleared in ${paths.settingsPath}.\n`);
     }),
   ),
 );
 
 const themeShowCommand = Command.make("show", { baseDir: baseDirFlag }).pipe(
-  Command.withDescription("Show the environment's theme and its published themes."),
+  Command.withDescription("Show the machine's theme and its published themes."),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
       const paths = yield* resolveThemePaths(flags.baseDir);
@@ -498,8 +498,8 @@ const themeShowCommand = Command.make("show", { baseDir: baseDirFlag }).pipe(
 
       yield* Console.log(
         defaultTheme === null
-          ? "Environment theme: not set.\n"
-          : `Environment theme: "${defaultTheme}".\n`,
+          ? "Machine theme: not set.\n"
+          : `Machine theme: "${defaultTheme}".\n`,
       );
       yield* Console.log(
         published.length === 0
@@ -511,6 +511,6 @@ const themeShowCommand = Command.make("show", { baseDir: baseDirFlag }).pipe(
 );
 
 export const themeCommand = Command.make("theme").pipe(
-  Command.withDescription("Inspect and set environment-wide theme defaults."),
+  Command.withDescription("Inspect and set machine-wide theme defaults."),
   Command.withSubcommands([themeSetCommand, themeClearCommand, themeShowCommand]),
 );

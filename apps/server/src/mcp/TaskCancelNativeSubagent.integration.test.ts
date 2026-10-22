@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   ProjectId,
@@ -328,7 +328,7 @@ it.effect("task_cancel ends a delegated child's background native subagent", () 
         yield* worker.drain();
 
         const scope: McpInvocationScope = {
-          environmentId: EnvironmentId.make("environment:task-cancel"),
+          machineId: MachineId.make("machine:task-cancel"),
           requestNamespace: "provider-session:task-cancel",
           thread: {
             threadId: parentThreadId,

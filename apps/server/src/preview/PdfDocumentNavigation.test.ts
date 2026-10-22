@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import { installPdfDocumentNavigation } from "./PdfDocumentNavigation.ts";
 
-const source = "https://environment.test/api/assets/signed-token/files/Study%20guide.PDF";
+const source = "https://machine.test/api/assets/signed-token/files/Study%20guide.PDF";
 
 function fixture(nativePdfViewer = false) {
   const completed = Promise.withResolvers<{ method: string; params: Record<string, unknown> }>();
@@ -61,7 +61,7 @@ describe("PDF document navigation", () => {
     const test = fixture();
     await installPdfDocumentNavigation(test.cdp);
     const result = await test.navigate(
-      "https://environment.test/api/assets/token/%3Cscript%3E.pdf",
+      "https://machine.test/api/assets/token/%3Cscript%3E.pdf",
     );
     expect(Buffer.from(String(result.params.body), "base64").toString()).toContain(
       "<title>&lt;script>.pdf</title>",

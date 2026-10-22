@@ -1,8 +1,8 @@
 import {
-  EnvironmentId,
+  MachineId,
   ORCHESTRATION_PROTOCOL_VERSION,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
-  type ExecutionEnvironmentDescriptor,
+  type ExecutionMachineDescriptor,
 } from "@vekrel/contracts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Context from "effect/Context";
@@ -21,41 +21,41 @@ import { resolveServerSelfUpdateCapability } from "../cloud/selfUpdate.ts";
 import { resolveServiceLauncherMode } from "../cloud/serviceLauncherClient.ts";
 import * as ServerConfig from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
-import { resolveServerEnvironmentLabel } from "./ServerEnvironmentLabel.ts";
-import { detectServerEnvironmentMachineKind } from "./ServerEnvironmentMachine.ts";
+import { resolveServerMachineLabel } from "./ServerMachineLabel.ts";
+import { detectServerMachineKind } from "./ServerMachineKind.ts";
 
-export class ServerEnvironmentIdPersistenceError extends Schema.TaggedError<ServerEnvironmentIdPersistenceError>()(
-  "ServerEnvironmentIdPersistenceError",
+export class ServerMachineIdPersistenceError extends Schema.TaggedError<ServerMachineIdPersistenceError>()(
+  "ServerMachineIdPersistenceError",
   {
     operation: Schema.Literals(["check", "read", "write", "initialize"]),
-    environmentIdPath: Schema.String,
+    machineIdPath: Schema.String,
     cause: Schema.optional(Schema.Defect()),
   },
 ) {
   override get message(): string {
     if (this.operation === "initialize") {
-      return `Server environment ID file is missing or empty after initialization at '${this.environmentIdPath}'.`;
+      return `Server machine ID file is missing or empty after initialization at '${this.machineIdPath}'.`;
     }
-    return `Server environment ID ${this.operation} failed at '${this.environmentIdPath}'.`;
+    return `Server machine ID ${this.operation} failed at '${this.machineIdPath}'.`;
   }
 }
 
-export class ServerEnvironment extends Context.Service<
-  ServerEnvironment,
+export class ServerMachine extends Context.Service<
+  ServerMachine,
   {
-    readonly getEnvironmentId: Effect.Effect<EnvironmentId>;
-    readonly getDescriptor: Effect.Effect<ExecutionEnvironmentDescriptor>;
+    readonly getMachineId: Effect.Effect<MachineId>;
+    readonly getDescriptor: Effect.Effect<ExecutionMachineDescriptor>;
   }
->()("vekrel-engine/environment/ServerEnvironment") {}
+>()("vekrel-engine/machine/ServerMachine") {}
 
-export class ServerEnvironmentIdentity extends Context.Service<
-  ServerEnvironmentIdentity,
+export class ServerMachineIdentity extends Context.Service<
+  ServerMachineIdentity,
   {
-    readonly getEnvironmentId: Effect.Effect<EnvironmentId>;
+    readonly getMachineId: Effect.Effect<MachineId>;
   }
->()("vekrel-engine/environment/ServerEnvironment/ServerEnvironmentIdentity") {}
+>()("vekrel-engine/machine/ServerMachine/ServerMachineIdentity") {}
 
-function platformOs(platform: NodeJS.Platform): ExecutionEnvironmentDescriptor["platform"]["os"] {
+function platformOs(platform: NodeJS.Platform): ExecutionMachineDescriptor["platform"]["os"] {
   switch (platform) {
     case "darwin":
       return "darwin";
@@ -70,7 +70,7 @@ function platformOs(platform: NodeJS.Platform): ExecutionEnvironmentDescriptor["
 
 function platformArch(
   architecture: NodeJS.Architecture,
-): ExecutionEnvironmentDescriptor["platform"]["arch"] {
+): ExecutionMachineDescriptor["platform"]["arch"] {
   switch (architecture) {
     case "arm64":
       return "arm64";
@@ -86,13 +86,13 @@ const makeIdentity = Effect.gen(function* () {
   const serverConfig = yield* ServerConfig.ServerConfig;
   const crypto = yield* Crypto.Crypto;
 
-  const readPersistedEnvironmentId = Effect.gen(function* () {
-    const exists = yield* fileSystem.exists(serverConfig.environmentIdPath).pipe(
+  const readPersistedMachineId = Effect.gen(function* () {
+    const exists = yield* fileSystem.exists(serverConfig.machineIdPath).pipe(
       Effect.mapError(
         (cause) =>
-          new ServerEnvironmentIdPersistenceError({
+          new ServerMachineIdPersistenceError({
             operation: "check",
-            environmentIdPath: serverConfig.environmentIdPath,
+            machineIdPath: serverConfig.machineIdPath,
             cause,
           }),
       ),
@@ -101,13 +101,13 @@ const makeIdentity = Effect.gen(function* () {
       return null;
     }
 
-    const raw = yield* fileSystem.readFileString(serverConfig.environmentIdPath).pipe(
+    const raw = yield* fileSystem.readFileString(serverConfig.machineIdPath).pipe(
       Effect.map((value) => value.trim()),
       Effect.mapError(
         (cause) =>
-          new ServerEnvironmentIdPersistenceError({
+          new ServerMachineIdPersistenceError({
             operation: "read",
-            environmentIdPath: serverConfig.environmentIdPath,
+            machineIdPath: serverConfig.machineIdPath,
             cause,
           }),
       ),
@@ -116,15 +116,15 @@ const makeIdentity = Effect.gen(function* () {
     return raw.length > 0 ? raw : null;
   });
 
-  const persistEnvironmentId = Effect.fn("ServerEnvironmentIdentity.persistEnvironmentId")(
+  const persistMachineId = Effect.fn("ServerMachineIdentity.persistMachineId")(
     function* (value: string, mode: "create" | "recover") {
       const destinationPath =
         mode === "recover"
-          ? `${serverConfig.environmentIdPath}.recovery`
-          : serverConfig.environmentIdPath;
+          ? `${serverConfig.machineIdPath}.recovery`
+          : serverConfig.machineIdPath;
       const tempPath = yield* fileSystem.makeTempFileScoped({
         directory: serverConfig.stateDir,
-        prefix: ".environment-id-",
+        prefix: ".machine-id-",
       });
       yield* fileSystem.writeFileString(tempPath, `${value}\n`);
       // Publish the completed file without replacing an ID created by another process.
@@ -138,45 +138,45 @@ const makeIdentity = Effect.gen(function* () {
         // Keep the recovery ID so delayed initializers also publish the same winner.
         yield* fileSystem.remove(tempPath);
         yield* fileSystem.copyFile(destinationPath, tempPath);
-        yield* fileSystem.rename(tempPath, serverConfig.environmentIdPath);
+        yield* fileSystem.rename(tempPath, serverConfig.machineIdPath);
       }
     },
     Effect.scoped,
     Effect.mapError(
       (cause) =>
-        new ServerEnvironmentIdPersistenceError({
+        new ServerMachineIdPersistenceError({
           operation: "write",
-          environmentIdPath: serverConfig.environmentIdPath,
+          machineIdPath: serverConfig.machineIdPath,
           cause,
         }),
     ),
   );
 
-  const environmentIdRaw = yield* Effect.gen(function* () {
-    const persisted = yield* readPersistedEnvironmentId;
+  const machineIdRaw = yield* Effect.gen(function* () {
+    const persisted = yield* readPersistedMachineId;
     if (persisted) {
       return persisted;
     }
 
     const generated = yield* crypto.randomUUIDv4();
-    yield* persistEnvironmentId(generated, "create");
-    let winner = yield* readPersistedEnvironmentId;
+    yield* persistMachineId(generated, "create");
+    let winner = yield* readPersistedMachineId;
     if (winner === null) {
-      yield* persistEnvironmentId(generated, "recover");
-      winner = yield* readPersistedEnvironmentId;
+      yield* persistMachineId(generated, "recover");
+      winner = yield* readPersistedMachineId;
     }
     if (winner === null) {
-      return yield* new ServerEnvironmentIdPersistenceError({
+      return yield* new ServerMachineIdPersistenceError({
         operation: "initialize",
-        environmentIdPath: serverConfig.environmentIdPath,
+        machineIdPath: serverConfig.machineIdPath,
       });
     }
     return winner;
   });
 
-  const environmentId = EnvironmentId.make(environmentIdRaw);
-  return ServerEnvironmentIdentity.of({
-    getEnvironmentId: Effect.succeed(environmentId),
+  const machineId = MachineId.make(machineIdRaw);
+  return ServerMachineIdentity.of({
+    getMachineId: Effect.succeed(machineId),
   });
 });
 
@@ -185,13 +185,13 @@ export const make = Effect.gen(function* () {
   const path = yield* Path.Path;
   const serverConfig = yield* ServerConfig.ServerConfig;
   const secrets = yield* ServerSecretStore.ServerSecretStore;
-  const identity = yield* ServerEnvironmentIdentity;
+  const identity = yield* ServerMachineIdentity;
   const hostPlatform = yield* HostProcess.Platform;
   const hostArchitecture = yield* HostProcess.Architecture;
-  const environmentId = yield* identity.getEnvironmentId;
+  const machineId = yield* identity.getMachineId;
   const cwdBaseName = path.basename(serverConfig.cwd).trim();
-  const label = yield* resolveServerEnvironmentLabel({ cwdBaseName });
-  const machine = yield* detectServerEnvironmentMachineKind();
+  const label = yield* resolveServerMachineLabel({ cwdBaseName });
+  const machine = yield* detectServerMachineKind();
   const launcher = yield* resolveServiceLauncherMode();
   const serverSelfUpdate = resolveServerSelfUpdateCapability({
     desktopManaged: serverConfig.mode === "desktop",
@@ -205,8 +205,8 @@ export const make = Effect.gen(function* () {
   const desktopAppUpdate =
     serverSelfUpdate === "desktop-managed" && serverConfig.desktopTelemetryControlFd !== undefined;
 
-  const descriptor: ExecutionEnvironmentDescriptor = {
-    environmentId,
+  const descriptor: ExecutionMachineDescriptor = {
+    machineId,
     label,
     platform: {
       os: platformOs(hostPlatform),
@@ -239,7 +239,7 @@ export const make = Effect.gen(function* () {
       projectSettingsOverrides: true,
       projectProviderInstanceOverrides: true,
       threadSnooze: true,
-      environmentThemes: true,
+      machineThemes: true,
       usageLimitSources: true,
       usagePriceOverrides: true,
       usageModelAliases: true,
@@ -256,7 +256,7 @@ export const make = Effect.gen(function* () {
       threadPullRequestLinking: true,
       serverResolvedCommandContext: true,
       threadStop: true,
-      environmentIcon: true,
+      machineIcon: true,
       projectCloneTracking: true,
       ignoredFileListing: true,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),
@@ -269,8 +269,8 @@ export const make = Effect.gen(function* () {
     },
   };
 
-  return ServerEnvironment.of({
-    getEnvironmentId: Effect.succeed(environmentId),
+  return ServerMachine.of({
+    getMachineId: Effect.succeed(machineId),
     // The publish opt-in and relay link change at runtime (`t3 connect
     // publish`, the client settings toggle), so the capability is read per
     // descriptor request rather than baked in at startup.
@@ -283,9 +283,9 @@ export const make = Effect.gen(function* () {
   });
 });
 
-export const layerIdentity = Layer.effect(ServerEnvironmentIdentity, makeIdentity);
+export const layerIdentity = Layer.effect(ServerMachineIdentity, makeIdentity);
 
-export const layer = Layer.effect(ServerEnvironment, make).pipe(
+export const layer = Layer.effect(ServerMachine, make).pipe(
   Layer.provideMerge(layerIdentity),
   Layer.provide(ProcessRunner.layer),
 );

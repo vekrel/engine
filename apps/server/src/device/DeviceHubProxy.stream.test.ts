@@ -10,7 +10,7 @@ import {
   AuthSessionId,
   LOCAL_DEVICE_HOST_ID,
 } from "@vekrel/contracts";
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as DeviceService from "./DeviceService.ts";
 import * as DeviceHubProxy from "./DeviceHubProxy.ts";
 
@@ -39,7 +39,7 @@ it.effect("preserves binary input and admission frames through the real socket p
       HttpRouter.serve(DeviceHubProxy.layer, { disableListenLog: true }).pipe(
         Layer.provideMerge(NodeHttpServer.layerTest),
         Layer.provide(
-          Layer.succeed(EnvironmentAuth.EnvironmentAuth, {
+          Layer.succeed(MachineAuth.MachineAuth, {
             authenticateWebSocketUpgrade: () =>
               Effect.succeed({
                 sessionId: AuthSessionId.make("test"),
@@ -47,7 +47,7 @@ it.effect("preserves binary input and admission frames through the real socket p
                 method: "bearer-access-token",
                 scopes: [AuthOrchestrationOperateScope],
               }),
-          } as unknown as EnvironmentAuth.EnvironmentAuth["Service"]),
+          } as unknown as MachineAuth.MachineAuth["Service"]),
         ),
         Layer.provide(
           Layer.succeed(DeviceService.DeviceService, {

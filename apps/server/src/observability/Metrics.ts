@@ -101,7 +101,7 @@ export const webhookDeliveryDuration = Metric.timer("t3_webhook_delivery_duratio
 
 export const webhookHeldDelay = Metric.timer("t3_webhook_held_delay", {
   description:
-    "Time between the relay receiving a webhook request and the environment handling it.",
+    "Time between the relay receiving a webhook request and the machine handling it.",
 });
 
 export const webhookRunsTotal = Metric.counter("t3_webhook_runs_total", {

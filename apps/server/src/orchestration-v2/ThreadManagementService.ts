@@ -48,7 +48,7 @@ import * as Stream from "effect/Stream";
 
 import * as CommandReceiptStore from "./CommandReceiptStore.ts";
 import * as Orchestrator from "./Orchestrator.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import { projectedRowEncodedBytes } from "./threadHistoryPaging.ts";
 import * as ProviderSessionManager from "./ProviderSessionManager.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
@@ -344,7 +344,7 @@ export interface ThreadManagementServiceShape {
   ) => Effect.Effect<
     OrchestrationV2ThreadTranscript,
     Orchestrator.OrchestratorV2Error | ThreadTranscriptTooLargeError,
-    ServerEnvironment.ServerEnvironmentIdentity
+    ServerMachine.ServerMachineIdentity
   >;
   readonly getThreadSnapshotWindow: Orchestrator.OrchestratorV2["Service"]["getThreadSnapshotWindow"];
   readonly getProjectThreadRecords: <K extends ProjectionRecordField>(
@@ -611,7 +611,7 @@ const make = Effect.gen(function* () {
   const getThreadTranscript = Effect.fn("orchestrationV2.threadManagement.getThreadTranscript")(
     function* (threadId: ThreadId) {
       const { projection } = yield* getThreadSnapshot(threadId);
-      const environment = yield* ServerEnvironment.ServerEnvironmentIdentity;
+      const machine = yield* ServerMachine.ServerMachineIdentity;
       const transcript = {
         threadId: projection.thread.id,
         title: projection.thread.title,
@@ -619,7 +619,7 @@ const make = Effect.gen(function* () {
         items: projection.visibleTurnItems,
       };
       let sizeBytes = Buffer.byteLength(
-        threadTranscriptHeader(yield* environment.getEnvironmentId, transcript),
+        threadTranscriptHeader(yield* machine.getMachineId, transcript),
         "utf8",
       );
       if (sizeBytes > PROVIDER_SEND_TURN_MAX_FILE_BYTES) {

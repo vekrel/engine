@@ -10,15 +10,15 @@ const CLOUD_LINK_KEY_PAIR = "cloud-link-ed25519-key-pair";
 const CLOUD_LINK_PRIVATE_KEY = "cloud-link-ed25519-private-key";
 const CLOUD_LINK_PUBLIC_KEY = "cloud-link-ed25519-public-key";
 
-const EnvironmentKeyPair = Schema.Struct({
+const MachineKeyPair = Schema.Struct({
   privateKey: Schema.String,
   publicKey: Schema.String,
 });
-type EnvironmentKeyPair = typeof EnvironmentKeyPair.Type;
+type MachineKeyPair = typeof MachineKeyPair.Type;
 
-const EnvironmentKeyPairJson = Schema.fromJsonString(EnvironmentKeyPair);
-const decodeEnvironmentKeyPair = Schema.decodeUnknownEffect(EnvironmentKeyPairJson);
-const encodeEnvironmentKeyPair = Schema.encodeEffect(EnvironmentKeyPairJson);
+const MachineKeyPairJson = Schema.fromJsonString(MachineKeyPair);
+const decodeMachineKeyPair = Schema.decodeUnknownEffect(MachineKeyPairJson);
+const encodeMachineKeyPair = Schema.encodeEffect(MachineKeyPairJson);
 
 function bytesToString(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes);
@@ -28,7 +28,7 @@ function stringToBytes(value: string): Uint8Array {
   return new TextEncoder().encode(value);
 }
 
-const KEY_PAIR_RESOURCE = "environment signing key pair";
+const KEY_PAIR_RESOURCE = "machine signing key pair";
 
 const keyPairDecodeError = (cause: unknown): ServerSecretStore.SecretStoreDecodeError =>
   new ServerSecretStore.SecretStoreDecodeError({ resource: KEY_PAIR_RESOURCE, cause });
@@ -39,31 +39,31 @@ const keyPairEncodeError = (cause: unknown): ServerSecretStore.SecretStoreEncode
 const keyPairConcurrentReadError = (): ServerSecretStore.SecretStoreConcurrentReadError =>
   new ServerSecretStore.SecretStoreConcurrentReadError({ resource: KEY_PAIR_RESOURCE });
 
-const readEnvironmentKeyPair = Effect.fn("readEnvironmentKeyPair")(function* (
+const readMachineKeyPair = Effect.fn("readMachineKeyPair")(function* (
   secrets: ServerSecretStore.ServerSecretStore["Service"],
 ) {
   const encoded = yield* secrets.get(CLOUD_LINK_KEY_PAIR);
   if (Option.isNone(encoded)) {
-    return Option.none<EnvironmentKeyPair>();
+    return Option.none<MachineKeyPair>();
   }
-  const decoded = yield* decodeEnvironmentKeyPair(bytesToString(encoded.value)).pipe(
+  const decoded = yield* decodeMachineKeyPair(bytesToString(encoded.value)).pipe(
     Effect.mapError(keyPairDecodeError),
   );
   return Option.some(decoded);
 });
 
-const persistEnvironmentKeyPair = Effect.fn("persistEnvironmentKeyPair")(function* (
+const persistMachineKeyPair = Effect.fn("persistMachineKeyPair")(function* (
   secrets: ServerSecretStore.ServerSecretStore["Service"],
-  keyPair: EnvironmentKeyPair,
+  keyPair: MachineKeyPair,
 ) {
-  const encoded = yield* encodeEnvironmentKeyPair(keyPair).pipe(
+  const encoded = yield* encodeMachineKeyPair(keyPair).pipe(
     Effect.mapError(keyPairEncodeError),
   );
   return yield* secrets.create(CLOUD_LINK_KEY_PAIR, stringToBytes(encoded)).pipe(
     Effect.as(keyPair),
     Effect.catchIf(ServerSecretStore.isSecretStoreError, (error) =>
       ServerSecretStore.isSecretAlreadyExistsError(error)
-        ? readEnvironmentKeyPair(secrets).pipe(
+        ? readMachineKeyPair(secrets).pipe(
             Effect.flatMap(
               Option.match({
                 onSome: Effect.succeed,
@@ -76,10 +76,10 @@ const persistEnvironmentKeyPair = Effect.fn("persistEnvironmentKeyPair")(functio
   );
 });
 
-export const getOrCreateEnvironmentKeyPairFromSecretStore = Effect.fn(function* (
+export const getOrCreateMachineKeyPairFromSecretStore = Effect.fn(function* (
   secrets: ServerSecretStore.ServerSecretStore["Service"],
 ) {
-  const existing = yield* readEnvironmentKeyPair(secrets);
+  const existing = yield* readMachineKeyPair(secrets);
   if (Option.isSome(existing)) {
     return existing.value;
   }
@@ -87,7 +87,7 @@ export const getOrCreateEnvironmentKeyPairFromSecretStore = Effect.fn(function* 
   const existingPrivate = yield* secrets.get(CLOUD_LINK_PRIVATE_KEY);
   const existingPublic = yield* secrets.get(CLOUD_LINK_PUBLIC_KEY);
   if (Option.isSome(existingPrivate) && Option.isSome(existingPublic)) {
-    return yield* persistEnvironmentKeyPair(secrets, {
+    return yield* persistMachineKeyPair(secrets, {
       privateKey: bytesToString(existingPrivate.value),
       publicKey: bytesToString(existingPublic.value),
     });
@@ -97,7 +97,7 @@ export const getOrCreateEnvironmentKeyPairFromSecretStore = Effect.fn(function* 
     privateKeyEncoding: { format: "pem", type: "pkcs8" },
     publicKeyEncoding: { format: "pem", type: "spki" },
   });
-  return yield* persistEnvironmentKeyPair(secrets, {
+  return yield* persistMachineKeyPair(secrets, {
     privateKey: keyPair.privateKey,
     publicKey: keyPair.publicKey,
   });

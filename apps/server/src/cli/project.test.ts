@@ -330,7 +330,7 @@ it.layer(NodeServices.layer)("project lookup with unavailable workspaces", (it) 
       }),
   );
 
-  it.effect("does not resolve another environment's project ID in an empty database", () =>
+  it.effect("does not resolve another machine's project ID in an empty database", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const { baseDir, workspaceRoot, project } = yield* makeProjectLookupFixture();

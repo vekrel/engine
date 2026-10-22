@@ -309,7 +309,7 @@ it.effect("dispatches exactly the rendered prompt and logs the delivery", () =>
   ),
 );
 
-it("builds the relay hook URL from the managed tunnel's key, never the environment id", () => {
+it("builds the relay hook URL from the managed tunnel's key, never the machine id", () => {
   const relayUrl = "https://relay.example.com/";
   assert.equal(
     ScheduledTaskService.relayHookBaseUrl({
@@ -323,7 +323,7 @@ it("builds the relay hook URL from the managed tunnel's key, never the environme
   }
 });
 
-it.effect("gives webhook tasks a relay URL when the environment has a managed tunnel", () =>
+it.effect("gives webhook tasks a relay URL when the machine has a managed tunnel", () =>
   withService(
     ({ service }) =>
       Effect.gen(function* () {

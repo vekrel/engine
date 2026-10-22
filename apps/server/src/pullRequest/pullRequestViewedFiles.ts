@@ -192,11 +192,11 @@ export const make = (dependencies: Dependencies) => {
   const toFilesViewedStoreError = (operation: string) => (cause: unknown) =>
     new PullRequestOperationError({
       operation,
-      detail: "This environment could not reach its record of which files you have seen.",
+      detail: "This machine could not reach its record of which files you have seen.",
       cause,
     });
 
-  const environmentFilesViewed = Effect.fn("pullRequestViewedFiles.environmentFilesViewed")(
+  const machineFilesViewed = Effect.fn("pullRequestViewedFiles.machineFilesViewed")(
     function* (
       project: SupportedProject,
       ref: PullRequestRef,
@@ -272,7 +272,7 @@ export const make = (dependencies: Dependencies) => {
         );
     });
 
-  const environmentSetFilesViewed = Effect.fn("pullRequestViewedFiles.environmentSetFilesViewed")(
+  const machineSetFilesViewed = Effect.fn("pullRequestViewedFiles.machineSetFilesViewed")(
     function* (
       project: SupportedProject,
       input: PullRequestSetFilesViewedInput,
@@ -320,8 +320,8 @@ export const make = (dependencies: Dependencies) => {
             number: input.number,
           }).pipe(Effect.mapError(toPullRequestError("filesViewed")));
         }
-        if (project.api.capabilities.viewedFiles === "environment") {
-          return environmentFilesViewed(project, input);
+        if (project.api.capabilities.viewedFiles === "machine") {
+          return machineFilesViewed(project, input);
         }
         return Effect.fail(
           new PullRequestOperationError({
@@ -347,11 +347,11 @@ export const make = (dependencies: Dependencies) => {
             files: input.files,
           }).pipe(Effect.mapError(toPullRequestError("setFilesViewed")));
         }
-        if (project.api.capabilities.viewedFiles === "environment") {
+        if (project.api.capabilities.viewedFiles === "machine") {
           return inFilesViewedOrder(
             project,
             input.number,
-            environmentSetFilesViewed(project, input),
+            machineSetFilesViewed(project, input),
           );
         }
         return Effect.fail(

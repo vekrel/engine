@@ -1,7 +1,7 @@
 import { vi } from "vite-plus/test";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, it, assert, expect } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
@@ -18,7 +18,7 @@ import * as Sink from "effect/Sink";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import {
-  EnvironmentId,
+  MachineId,
   ClaudeSettings,
   CodexSettings,
   DEFAULT_SERVER_SETTINGS,
@@ -311,8 +311,8 @@ const layerTestNodeServices = Layer.mergeAll(
     managedDirectory: "unused-managed-installation",
   }),
   Layer.mock(ServerSecretStore.ServerSecretStore)({}),
-  Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-    getEnvironmentId: Effect.succeed(EnvironmentId.make("00000000-0000-4000-8000-000000000001")),
+  Layer.succeed(ServerMachine.ServerMachineIdentity, {
+    getMachineId: Effect.succeed(MachineId.make("00000000-0000-4000-8000-000000000001")),
   }),
 );
 

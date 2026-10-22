@@ -9,7 +9,7 @@ import {
   CLOUD_LINKED_USER_ID,
   CLOUD_MINT_PUBLIC_KEY,
   PUBLISH_AGENT_ACTIVITY_SECRET,
-  RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+  RELAY_MACHINE_CREDENTIAL_SECRET,
   RELAY_ISSUER_SECRET,
   RELAY_URL_SECRET,
 } from "./config.ts";
@@ -60,7 +60,7 @@ export const dropRevokedCloudLink = Effect.gen(function* () {
   yield* Effect.all(
     [
       secrets.remove(CLOUD_LINKED_USER_ID),
-      secrets.remove(RELAY_ENVIRONMENT_CREDENTIAL_SECRET),
+      secrets.remove(RELAY_MACHINE_CREDENTIAL_SECRET),
       secrets.remove(CLOUD_MINT_PUBLIC_KEY),
       secrets.remove(CLOUD_ENDPOINT_RUNTIME_CONFIG),
       secrets.remove(CLOUD_ENDPOINT_CONFIRMED_ORIGIN),
@@ -80,7 +80,7 @@ export const clearPersistedCloudLink = Effect.gen(function* () {
       secrets.remove(CLOUD_LINKED_USER_ID),
       secrets.remove(RELAY_URL_SECRET),
       secrets.remove(RELAY_ISSUER_SECRET),
-      secrets.remove(RELAY_ENVIRONMENT_CREDENTIAL_SECRET),
+      secrets.remove(RELAY_MACHINE_CREDENTIAL_SECRET),
       secrets.remove(CLOUD_MINT_PUBLIC_KEY),
       secrets.remove(CLOUD_ENDPOINT_RUNTIME_CONFIG),
       secrets.remove(CLOUD_ENDPOINT_CONFIRMED_ORIGIN),

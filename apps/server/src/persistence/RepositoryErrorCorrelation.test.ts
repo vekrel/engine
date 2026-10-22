@@ -1,4 +1,4 @@
-import { AuthSessionId, ThreadId, type AuthEnvironmentScope } from "@vekrel/contracts";
+import { AuthSessionId, ThreadId, type AuthMachineScope } from "@vekrel/contracts";
 import { assert, describe, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -14,7 +14,7 @@ import * as ProviderSessionRuntime from "./ProviderSessionRuntime.ts";
 const issuedAt = DateTime.makeUnsafe("2026-06-20T00:00:00.000Z");
 const expiresAt = DateTime.makeUnsafe("2027-06-20T00:00:00.000Z");
 const now = DateTime.makeUnsafe("2026-06-21T00:00:00.000Z");
-const scopes: ReadonlyArray<AuthEnvironmentScope> = ["access:read"];
+const scopes: ReadonlyArray<AuthMachineScope> = ["access:read"];
 
 const layerAuthSession = AuthSessions.layer.pipe(Layer.provideMerge(SqlitePersistence.layerMemory));
 const layerAuthPairingLink = AuthPairingLinks.layer.pipe(

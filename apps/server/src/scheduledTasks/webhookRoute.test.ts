@@ -14,8 +14,8 @@ import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 
 import { RELAY_HOOK_DELIVERY_TYP, signRelayJwt } from "@vekrel/shared/relayJwt";
 import {
-  EnvironmentHttpApi,
-  EnvironmentId,
+  MachineHttpApi,
+  MachineId,
   ScheduledTaskWebhookDeliveryId,
   ScheduledTaskError,
 } from "@vekrel/contracts";
@@ -26,14 +26,14 @@ import {
 } from "./ScheduledTaskService.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import { CLOUD_MINT_PUBLIC_KEY, RELAY_ISSUER_SECRET } from "../cloud/config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as RelayDeliveryProof from "./RelayDeliveryProof.ts";
 import { WEBHOOK_MAX_BODY_BYTES } from "./webhookRoute.ts";
 import * as WebhookRoute from "./webhookRoute.ts";
 
-class WebhookTestApi extends HttpApi.make("environment").add(EnvironmentHttpApi.groups.webhooks) {}
+class WebhookTestApi extends HttpApi.make("machine").add(MachineHttpApi.groups.webhooks) {}
 
-const environmentId = EnvironmentId.make("env-1");
+const machineId = MachineId.make("env-1");
 const relayIssuer = "https://relay.example.test";
 const mintKeys = NodeCrypto.generateKeyPairSync("ed25519", {
   privateKeyEncoding: { format: "pem", type: "pkcs8" },
@@ -56,12 +56,12 @@ const relayProof = Effect.fn("relayProof")(function* (claims: {
     typ: RELAY_HOOK_DELIVERY_TYP,
     payload: {
       iss: relayIssuer,
-      aud: `t3-env:${environmentId}`,
-      sub: environmentId,
+      aud: `t3-env:${machineId}`,
+      sub: machineId,
       jti: `proof:${claims.deliveryId}`,
       iat: now,
       exp: now + 3_600,
-      environmentId,
+      machineId,
       deliveryId: claims.deliveryId,
       receivedAt: claims.receivedAt,
       hookId: claims.hookId,
@@ -91,8 +91,8 @@ const handlerFor = (
         }),
       ),
       Layer.provide(
-        Layer.mock(ServerEnvironment.ServerEnvironment)({
-          getEnvironmentId: Effect.succeed(environmentId),
+        Layer.mock(ServerMachine.ServerMachine)({
+          getMachineId: Effect.succeed(machineId),
         }),
       ),
       Layer.provide(
@@ -164,7 +164,7 @@ describe("webhook route", () => {
     }),
   );
 
-  it.live("trusts no relay headers on an environment not linked to T3 Connect", () =>
+  it.live("trusts no relay headers on a machine not linked to T3 Connect", () =>
     Effect.gen(function* () {
       const received: Array<WebhookTriggerRequest> = [];
       const { handler, dispose } = handlerFor((request) => {

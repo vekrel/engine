@@ -7,22 +7,22 @@ import * as PlatformError from "effect/PlatformError";
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../config.ts";
-import { getOrCreateEnvironmentKeyPairFromSecretStore } from "./environmentKeys.ts";
+import { getOrCreateMachineKeyPairFromSecretStore } from "./machineKeys.ts";
 
 const layerServerSecretStore = () =>
   ServerSecretStore.layer.pipe(
-    Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-environment-keys-test-" })),
+    Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-machine-keys-test-" })),
   );
 
 const unusedSecretStoreOperation = () => Effect.die("unused secret-store operation");
 
-it.layer(NodeServices.layer)("getOrCreateEnvironmentKeyPairFromSecretStore", (it) => {
+it.layer(NodeServices.layer)("getOrCreateMachineKeyPairFromSecretStore", (it) => {
   it.effect("persists one atomic keypair secret and reuses it", () =>
     Effect.gen(function* () {
       const secretStore = yield* ServerSecretStore.ServerSecretStore;
 
-      const first = yield* getOrCreateEnvironmentKeyPairFromSecretStore(secretStore);
-      const second = yield* getOrCreateEnvironmentKeyPairFromSecretStore(secretStore);
+      const first = yield* getOrCreateMachineKeyPairFromSecretStore(secretStore);
+      const second = yield* getOrCreateMachineKeyPairFromSecretStore(secretStore);
 
       assert.deepEqual(second, first);
       assert.isTrue(Option.isSome(yield* secretStore.get("cloud-link-ed25519-key-pair")));
@@ -37,7 +37,7 @@ it.layer(NodeServices.layer)("getOrCreateEnvironmentKeyPairFromSecretStore", (it
       yield* secretStore.set("cloud-link-ed25519-private-key", new TextEncoder().encode("private"));
       yield* secretStore.set("cloud-link-ed25519-public-key", new TextEncoder().encode("public"));
 
-      assert.deepEqual(yield* getOrCreateEnvironmentKeyPairFromSecretStore(secretStore), {
+      assert.deepEqual(yield* getOrCreateMachineKeyPairFromSecretStore(secretStore), {
         privateKey: "private",
         publicKey: "public",
       });
@@ -66,7 +66,7 @@ it.layer(NodeServices.layer)("getOrCreateEnvironmentKeyPairFromSecretStore", (it
             Effect.flatMap(() =>
               Effect.fail(
                 new ServerSecretStore.SecretStorePersistError({
-                  resource: "environment signing key pair",
+                  resource: "machine signing key pair",
                   cause: PlatformError.systemError({
                     _tag: "AlreadyExists",
                     module: "FileSystem",
@@ -81,7 +81,7 @@ it.layer(NodeServices.layer)("getOrCreateEnvironmentKeyPairFromSecretStore", (it
         remove: unusedSecretStoreOperation,
       } satisfies ServerSecretStore.ServerSecretStore["Service"];
 
-      assert.deepEqual(yield* getOrCreateEnvironmentKeyPairFromSecretStore(secretStore), {
+      assert.deepEqual(yield* getOrCreateMachineKeyPairFromSecretStore(secretStore), {
         privateKey: "winner-private",
         publicKey: "winner-public",
       });

@@ -1,7 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - checks the host's default Codex directory without writing to it.
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
-import { CodexSettings, EnvironmentId, ProviderInstanceId } from "@vekrel/contracts";
+import { CodexSettings, MachineId, ProviderInstanceId } from "@vekrel/contracts";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -12,7 +12,7 @@ import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import * as ServerConfig from "../config.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import { makeCodexManagedRuntime } from "./CodexManagedRuntime.ts";
 import * as ProviderCredentialStore from "./ProviderCredentialStore.ts";
@@ -152,9 +152,9 @@ it.effect.each(
         );
       }).pipe(
         Effect.provideService(ServerSecretStore.ServerSecretStore, secrets),
-        Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, {
-          getEnvironmentId: Effect.succeed(
-            EnvironmentId.make("00000000-0000-4000-8000-000000000001"),
+        Effect.provideService(ServerMachine.ServerMachineIdentity, {
+          getMachineId: Effect.succeed(
+            MachineId.make("00000000-0000-4000-8000-000000000001"),
           ),
         }),
         Effect.provide(layerInstaller),

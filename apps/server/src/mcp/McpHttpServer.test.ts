@@ -4,7 +4,7 @@ import { expect, it } from "@effect/vitest";
 import { NodeHttpServer } from "@effect/platform-node";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
-  EnvironmentId,
+  MachineId,
   OrchestratorMcpFailure,
   PreviewTabId,
   ProviderInstanceId,
@@ -31,12 +31,12 @@ import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
 import { OrchestratorToolkit } from "./toolkits/orchestrator/tools.ts";
 import { ProjectToolkit } from "./toolkits/project/tools.ts";
 
-const environmentId = EnvironmentId.make("environment-mcp-test");
+const machineId = MachineId.make("machine-mcp-test");
 const threadId = ThreadId.make("thread-mcp-test");
 const alternateTabId = PreviewTabId.make("tab-mcp-alternate");
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 const invocation = {
-  environmentId,
+  machineId,
   requestNamespace: "provider-session-mcp-test",
   thread: {
     threadId,
@@ -103,7 +103,7 @@ const serveSnapshots = (clientId: string, result: unknown) =>
     const broker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
     const connected = yield* Deferred.make<void>();
     const inputs: Array<unknown> = [];
-    const events = yield* broker.connect({ clientId, environmentId });
+    const events = yield* broker.connect({ clientId, machineId });
     yield* Stream.runForEach(events, (event) => {
       if (event.type === "connected") return Deferred.succeed(connected, undefined);
       inputs.push(event.request.input);
@@ -177,7 +177,7 @@ it.effect.each([{}, { includeImage: false }])(
         const broker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
         const events = yield* broker.connect({
           clientId: "mcp-failure-client",
-          environmentId,
+          machineId,
         });
         yield* Stream.runForEach(events, (event) =>
           event.type === "connected"
@@ -255,7 +255,7 @@ it.effect.each([
       };
       const screenshot = { mimeType: "image/png", width: 1, height: 1 };
       let requests = 0;
-      const events = yield* broker.connect({ clientId: "mcp-image-option-client", environmentId });
+      const events = yield* broker.connect({ clientId: "mcp-image-option-client", machineId });
       yield* Stream.runForEach(events, (event) => {
         if (event.type === "connected") return Deferred.succeed(connected, undefined);
         requests += 1;
@@ -619,7 +619,7 @@ it.effect("terminates HTTP MCP sessions with DELETE", () =>
     Effect.gen(function* () {
       const token = "providerTokenWithoutDots";
       const scope: McpInvocationContext.McpInvocationScope = {
-        environmentId,
+        machineId,
         requestNamespace: "provider-session",
         thread: {
           threadId: ThreadId.make("thread-provider"),
@@ -695,7 +695,7 @@ it.effect("admits provider and OAuth client credentials and points only clients 
       const providerToken = "providerTokenWithoutDots";
       const clientToken = "client-payload.client-signature";
       const providerScope: McpInvocationContext.McpInvocationScope = {
-        environmentId,
+        machineId,
         requestNamespace: "provider-session",
         thread: {
           threadId: ThreadId.make("thread-provider"),
@@ -707,7 +707,7 @@ it.effect("admits provider and OAuth client credentials and points only clients 
         issuedAt: 1,
       };
       const clientScope: McpInvocationContext.McpInvocationScope = {
-        environmentId,
+        machineId,
         requestNamespace: "client:session-1",
         thread: undefined,
         client: { sessionId: "session-1", label: "Claude Code", access: "auto" },

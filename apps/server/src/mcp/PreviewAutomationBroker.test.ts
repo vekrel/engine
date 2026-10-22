@@ -1,7 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   PreviewAutomationClientDisconnectedError,
   PreviewAutomationMalformedResponseError,
   PreviewAutomationNoAvailableHostError,
@@ -24,7 +24,7 @@ import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
 const makeBroker = PreviewAutomationBroker.make.pipe(Effect.provide(NodeServices.layer));
 
 const scope = {
-  environmentId: EnvironmentId.make("environment-1"),
+  machineId: MachineId.make("machine-1"),
   requestNamespace: "provider-session-1",
   thread: {
     threadId: ThreadId.make("thread-1"),
@@ -38,7 +38,7 @@ const scope = {
 
 const makeHost = (overrides: Partial<PreviewAutomationHost> = {}): PreviewAutomationHost => ({
   clientId: "client-1",
-  environmentId: scope.environmentId,
+  machineId: scope.machineId,
   ...overrides,
 });
 
@@ -339,7 +339,7 @@ it.effect("distinguishes malformed remote failures", () =>
       expect(error).toBeInstanceOf(PreviewAutomationMalformedResponseError);
       expect(error).toMatchObject({
         operation: "status",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         threadId: scope.thread.threadId,
         providerSessionId: scope.thread.providerSessionId,
         providerInstanceId: scope.thread.providerInstanceId,
@@ -356,7 +356,7 @@ it.effect("does not create host state from focus updates without a live stream",
     const broker = yield* makeBroker;
     yield* broker.focusHost({
       clientId: "client-1",
-      environmentId: scope.environmentId,
+      machineId: scope.machineId,
       connectionId: "connection-missing",
       focused: true,
     });
@@ -390,7 +390,7 @@ it.effect("removes host availability when the authoritative request stream disco
   ),
 );
 
-it.effect("routes requests for background threads through an environment-level host", () =>
+it.effect("routes requests for background threads through a machine-level host", () =>
   Effect.scoped(
     Effect.gen(function* () {
       const broker = yield* makeBroker;
@@ -428,7 +428,7 @@ it.effect("routes requests for background threads through an environment-level h
   ),
 );
 
-it.effect("never routes a provider session to a host from another environment", () =>
+it.effect("never routes a provider session to a host from another machine", () =>
   Effect.scoped(
     Effect.gen(function* () {
       const broker = yield* makeBroker;
@@ -439,7 +439,7 @@ it.effect("never routes a provider session to a host from another environment", 
         yield* broker.connect(
           makeHost({
             clientId: "client-foreign",
-            environmentId: EnvironmentId.make("environment-foreign"),
+            machineId: MachineId.make("machine-foreign"),
           }),
         ),
       );
@@ -510,7 +510,7 @@ it.effect("pins a provider session to its initial host despite later focus chang
 
       yield* broker.focusHost({
         clientId: "client-first",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: "connection-stale",
         focused: true,
         liveTabs: [{ threadId: scope.thread.threadId, tabId: PreviewTabId.make("stale-tab") }],
@@ -520,7 +520,7 @@ it.effect("pins a provider session to its initial host despite later focus chang
       );
       yield* broker.focusHost({
         clientId: "client-first",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: firstConnectionId,
         focused: true,
       });
@@ -535,7 +535,7 @@ it.effect("pins a provider session to its initial host despite later focus chang
 
       yield* broker.focusHost({
         clientId: "client-second",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: secondConnectionId,
         focused: true,
       });
@@ -580,7 +580,7 @@ it.effect("prefers the live tab owner for new sessions without moving existing l
       yield* Effect.yieldNow;
       yield* broker.focusHost({
         clientId: "owner",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: connections.get("owner")!,
         focused: false,
         liveTabs: [
@@ -589,7 +589,7 @@ it.effect("prefers the live tab owner for new sessions without moving existing l
       });
       yield* broker.focusHost({
         clientId: "other",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: connections.get("other")!,
         focused: true,
         liveTabs: [
@@ -627,7 +627,7 @@ it.effect("prefers the live tab owner for new sessions without moving existing l
 
       yield* broker.focusHost({
         clientId: "owner",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: connections.get("owner")!,
         focused: false,
         liveTabs: [],
@@ -734,7 +734,7 @@ it.effect("does not move a live legacy assignment to another runtime for resize"
   ),
 );
 
-it.effect("ignores stale focus updates for a different environment", () =>
+it.effect("ignores stale focus updates for a different machine", () =>
   Effect.scoped(
     Effect.gen(function* () {
       const broker = yield* makeBroker;
@@ -770,7 +770,7 @@ it.effect("ignores stale focus updates for a different environment", () =>
 
       yield* broker.focusHost({
         clientId: "client-first",
-        environmentId: EnvironmentId.make("environment-stale"),
+        machineId: MachineId.make("machine-stale"),
         connectionId: firstConnectionId,
         focused: true,
       });
@@ -821,7 +821,7 @@ it.effect("fails over a pinned provider session only after its host disconnects"
 
       yield* broker.focusHost({
         clientId: "client-first",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         connectionId: firstConnectionId,
         focused: true,
         liveTabs: [{ threadId: scope.thread.threadId, tabId: firstTabId }],
@@ -943,7 +943,7 @@ it.effect("fails requests assigned to the stream that is replaced", () =>
       expect(error).toBeInstanceOf(PreviewAutomationClientDisconnectedError);
       expect(error).toMatchObject({
         operation: "status",
-        environmentId: scope.environmentId,
+        machineId: scope.machineId,
         threadId: scope.thread.threadId,
         providerSessionId: scope.thread.providerSessionId,
         providerInstanceId: scope.thread.providerInstanceId,

@@ -2908,7 +2908,7 @@ export const make = Effect.gen(function* () {
         : Effect.void;
     });
   // The last state each routed read reported, kept apart from `detailStates`: an unverified report
-  // must never outrank a reading this environment made itself.
+  // must never outrank a reading this machine made itself.
   const reportedStates = new Map<
     string,
     {

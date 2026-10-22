@@ -98,7 +98,7 @@ describe("browser API CORS", () => {
     const layerRoute = Layer.effectDiscard(
       Effect.gen(function* () {
         const router = yield* HttpRouter.HttpRouter;
-        yield* router.add("GET", "/api/environment", HttpServerResponse.empty());
+        yield* router.add("GET", "/api/machine", HttpServerResponse.empty());
       }),
     );
     const layerApp = Layer.merge(layerRoute, ServerHttp.layerBrowserApiCors).pipe(
@@ -109,7 +109,7 @@ describe("browser API CORS", () => {
 
     try {
       const response = await handler(
-        new Request("https://backend.example/api/environment", {
+        new Request("https://backend.example/api/machine", {
           method: "OPTIONS",
           headers: {
             origin: "https://app.t3.codes",

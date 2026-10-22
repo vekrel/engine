@@ -1,5 +1,5 @@
 import {
-  AuthEnvironmentMaintainScope,
+  AuthMachineMaintainScope,
   AuthDiagnosticsReadScope,
   AuthFilesystemReadScope,
   AuthProvidersManageScope,
@@ -97,9 +97,9 @@ describe("RPC scope middleware", () => {
   );
 
   it.effect.each([
-    { scopes: [AuthOrchestrationReadScope], missing: AuthEnvironmentMaintainScope },
+    { scopes: [AuthOrchestrationReadScope], missing: AuthMachineMaintainScope },
     {
-      scopes: [AuthOrchestrationReadScope, AuthEnvironmentMaintainScope],
+      scopes: [AuthOrchestrationReadScope, AuthMachineMaintainScope],
       missing: AuthDiagnosticsReadScope,
     },
   ])("rejects telemetry retry without $missing before its handler runs", ({ scopes, missing }) =>
@@ -121,7 +121,7 @@ describe("RPC scope middleware", () => {
       expect(
         yield* client[WS_METHODS.serverRetryResourceTelemetry]({}).pipe(Effect.flip),
       ).toMatchObject({
-        _tag: "EnvironmentAuthorizationError",
+        _tag: "MachineAuthorizationError",
         requiredPermission: missing,
       });
       expect(handled).toEqual([]);

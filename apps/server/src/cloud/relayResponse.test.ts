@@ -16,7 +16,7 @@ const response = (
   headers?: Record<string, string>,
 ) =>
   HttpClientResponse.fromWeb(
-    HttpClientRequest.post("https://relay.example.test/v1/client/environment-links"),
+    HttpClientRequest.post("https://relay.example.test/v1/client/machine-links"),
     typeof body === "string"
       ? new Response(body, { status, ...(headers ? { headers } : {}) })
       : Response.json(body, { status, ...(headers ? { headers } : {}) }),
@@ -45,8 +45,8 @@ it.effect("retries an expired link proof but not a revoked bearer, both 401", ()
   Effect.gen(function* () {
     const expired = yield* filterRelayResponse(
       response(401, {
-        _tag: "RelayEnvironmentLinkProofExpiredError",
-        code: "environment_link_proof_expired",
+        _tag: "RelayMachineLinkProofExpiredError",
+        code: "machine_link_proof_expired",
         traceId: "trace-expired",
       }),
     ).pipe(Effect.mapError(relayRequestError), Effect.flip);
@@ -60,7 +60,7 @@ it.effect("retries an expired link proof but not a revoked bearer, both 401", ()
     ).pipe(Effect.mapError(relayRequestError), Effect.flip);
 
     expect(expired).toMatchObject({ _tag: "RelayRequestError", rejection: "unavailable" });
-    expect(expired.message).toContain("Relay environment link proof expired");
+    expect(expired.message).toContain("Relay machine link proof expired");
     expect(expired.message).toContain("date and time");
     expect(expired.message).toContain("Trace ID: trace-expired");
     expect(shouldRetryRelayRequest(expired)).toBe(true);

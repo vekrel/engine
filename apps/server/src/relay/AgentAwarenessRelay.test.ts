@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import {
-  EnvironmentId,
+  MachineId,
   EventId,
   MessageId,
   NodeId,
@@ -30,11 +30,11 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import {
   PUBLISH_AGENT_ACTIVITY_SECRET,
-  RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+  RELAY_MACHINE_CREDENTIAL_SECRET,
   RELAY_ISSUER_SECRET,
   RELAY_URL_SECRET,
 } from "../cloud/config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
@@ -102,7 +102,7 @@ describe("startup agent activity", () => {
     const oldFailed = ThreadId.make("old-failed");
     const newFailed = ThreadId.make("new-failed");
     const ids = AgentAwarenessRelay.resolveAgentAwarenessRelayActiveThreadIds({
-      environmentId: EnvironmentId.make("relay-env"),
+      machineId: MachineId.make("relay-env"),
       startedAt,
       projects: [{ id: PROJECT_ID, title: "Project" }],
       threads: [
@@ -151,7 +151,7 @@ const makeTestRelay = Effect.fnUntraced(function* (
           [PUBLISH_AGENT_ACTIVITY_SECRET, new TextEncoder().encode("true")],
           [RELAY_URL_SECRET, new TextEncoder().encode("https://relay.example.test")],
           [RELAY_ISSUER_SECRET, new TextEncoder().encode("https://relay.example.test")],
-          [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, new TextEncoder().encode("credential-1")],
+          [RELAY_MACHINE_CREDENTIAL_SECRET, new TextEncoder().encode("credential-1")],
         ],
   );
   const secretReads: string[] = [];
@@ -253,8 +253,8 @@ const makeTestRelay = Effect.fnUntraced(function* (
   const relay = yield* AgentAwarenessRelay.make.pipe(
     Effect.provideService(ServerSecretStore.ServerSecretStore, secrets),
     Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
-    Effect.provideService(ServerEnvironment.ServerEnvironment, {
-      getEnvironmentId: Effect.succeed(EnvironmentId.make("relay-environment")),
+    Effect.provideService(ServerMachine.ServerMachine, {
+      getMachineId: Effect.succeed(MachineId.make("relay-machine")),
       getDescriptor: unused(),
     }),
     Effect.provideService(ProjectService.ProjectService, {
@@ -356,7 +356,7 @@ describe("AgentAwarenessRelay", () => {
       const { relay, secrets, publications } = yield* makeTestRelay();
       yield* relay.publishThread(THREAD_ID);
       yield* secrets.set(
-        RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+        RELAY_MACHINE_CREDENTIAL_SECRET,
         new TextEncoder().encode("credential-2"),
       );
       yield* relay.publishThread(THREAD_ID);

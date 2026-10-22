@@ -1,6 +1,6 @@
 import {
   AuthStandardClientScopes,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   type AuthPairingLink,
   type ServerAuthBootstrapMethod,
 } from "@vekrel/contracts";
@@ -25,7 +25,7 @@ import * as AuthPairingLinks from "../persistence/AuthPairingLinks.ts";
 
 export interface BootstrapGrant {
   readonly method: ServerAuthBootstrapMethod;
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly subject: string;
   readonly label?: string;
   readonly proofKeyThumbprint?: string;
@@ -209,7 +209,7 @@ export class PairingGrantStore extends Context.Service<
   {
     readonly issueOneTimeToken: (input?: {
       readonly ttl?: Duration.Duration;
-      readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+      readonly scopes?: ReadonlyArray<AuthMachineScope>;
       readonly subject?: string;
       readonly label?: string;
       readonly proofKeyThumbprint?: string;
@@ -225,7 +225,7 @@ export class PairingGrantStore extends Context.Service<
       credential: string,
       input?: {
         readonly proofKeyThumbprint?: string;
-        readonly requestedScopes?: ReadonlyArray<AuthEnvironmentScope>;
+        readonly requestedScopes?: ReadonlyArray<AuthMachineScope>;
       },
     ) => Effect.Effect<BootstrapGrant, BootstrapCredentialError>;
   }

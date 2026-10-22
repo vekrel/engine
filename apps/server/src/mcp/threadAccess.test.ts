@@ -1,5 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ThreadId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
@@ -10,7 +10,7 @@ import { readThread } from "./threadAccess.ts";
 
 const bareId = ThreadId.make("5d0b4a3e-8c1f-4a52-9d37-2f6c7e1b9a04");
 const client: McpInvocationContext.McpInvocationScope = {
-  environmentId: EnvironmentId.make("environment:thread-access"),
+  machineId: MachineId.make("machine:thread-access"),
   requestNamespace: "client:thread-access",
   thread: undefined,
   client: { sessionId: "thread-access", label: "Claude Code", access: "full-access" },

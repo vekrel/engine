@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off globalFetchInEffect:off - Exercise the real local callback receiver without contacting OpenAI.
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId } from "@vekrel/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -26,7 +26,7 @@ async function input() {
   return {
     authorizationUrl: authorizationUrl.toString(),
     returnUrl: "http://localhost:7001/welcome#agents:remote-nuc",
-    environmentId: EnvironmentId.make("remote-nuc"),
+    machineId: MachineId.make("remote-nuc"),
     instanceId: ProviderInstanceId.make("work"),
     flowId: "remote-flow",
   };
@@ -42,7 +42,7 @@ function callback(authorizationUrl: string) {
   return url;
 }
 
-it.effect("a local primary environment receives sign-in for a remote secondary environment", () =>
+it.effect("a local primary machine receives sign-in for a remote secondary machine", () =>
   Effect.gen(function* () {
     const request = yield* Effect.promise(input);
     const ready = yield* Deferred.make<void>();

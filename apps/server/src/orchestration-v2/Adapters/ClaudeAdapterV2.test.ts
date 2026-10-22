@@ -30,7 +30,7 @@ import {
   ChatImageAttachment,
   CheckpointId,
   ClaudeSettings,
-  EnvironmentId,
+  MachineId,
   MessageId,
   type ModelSelection,
   NodeId,
@@ -79,7 +79,7 @@ import * as McpProviderSession from "@vekrel/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@vekrel/provider-core/server/McpProviderSessions";
 import { PreviewControlsToolkit } from "../../mcp/toolkits/previewControls/tools.ts";
 import { HtmlToolkit } from "../../mcp/toolkits/html/tools.ts";
-import { EnvironmentToolkit } from "../../mcp/toolkits/environment/tools.ts";
+import { MachineToolkit } from "../../mcp/toolkits/machine/tools.ts";
 import { ProjectToolkit } from "../../mcp/toolkits/project/tools.ts";
 import { WorktreeToolkit } from "../../mcp/toolkits/worktree/tools.ts";
 import { ThreadToolkit } from "../../mcp/toolkits/thread/tools.ts";
@@ -424,7 +424,7 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
 
 describe("ClaudeAdapterV2 MCP query overrides", () => {
   const T3_MCP_SERVERS = {
-    "t3-code": {
+    vekrel: {
       type: "http",
       url: "http://127.0.0.1:43123/mcp",
       headers: {
@@ -438,7 +438,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
     threadId: ThreadId,
     authorizationHeader = "Bearer secret-claude-token",
   ): McpProviderSession.McpProviderSessionConfig => ({
-    environmentId: EnvironmentId.make(`environment-${threadId}`),
+    machineId: MachineId.make(`machine-${threadId}`),
     threadId,
     providerSessionId: `mcp-session-${threadId}`,
     providerInstanceId: ProviderInstanceId.make("claudeAgent"),
@@ -447,7 +447,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
     browserToolsAvailable: true,
   });
 
-  it("pre-approves only read-only t3-code tools in a read-only sandbox", () => {
+  it("pre-approves only read-only vekrel tools in a read-only sandbox", () => {
     const threadId = ThreadId.make("thread-claude-mcp-read-only");
     const mcpSession = mcpSessionFor(threadId);
     const overrides = ClaudeAdapterV2.claudeMcpQueryOverrides({
@@ -497,12 +497,12 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       ...Object.values(ThreadToolkit.tools),
       ...Object.values(WorktreeToolkit.tools),
       ...Object.values(ProjectToolkit.tools),
-      ...Object.values(EnvironmentToolkit.tools),
+      ...Object.values(MachineToolkit.tools),
       ...Object.values(PreviewControlsToolkit.tools),
       ...Object.values(HtmlToolkit.tools),
     ]
       .filter((tool) => Context.get(tool.annotations, Tool.Readonly))
-      .map((tool) => `mcp__t3-code__${tool.name}`)
+      .map((tool) => `mcp__vekrel__${tool.name}`)
       .sort();
 
     assert.deepEqual(
@@ -516,7 +516,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
   it("injects thread-scoped MCP configuration without logging the credential", () => {
     const threadId = ThreadId.make("thread-claude-mcp");
     const mcpSession = {
-      environmentId: EnvironmentId.make("environment-claude-mcp"),
+      machineId: MachineId.make("machine-claude-mcp"),
       threadId,
       providerSessionId: "mcp-session-claude",
       providerInstanceId: ProviderInstanceId.make("claudeAgent"),
@@ -531,9 +531,9 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
       allowedTools: ["Read"],
     });
     assert.deepEqual(overrides, {
-      allowedTools: ["Read", "mcp__t3-code__*"],
+      allowedTools: ["Read", "mcp__vekrel__*"],
       mcpServers: {
-        "t3-code": {
+        vekrel: {
           type: "http",
           url: "http://127.0.0.1:43123/mcp",
           headers: {

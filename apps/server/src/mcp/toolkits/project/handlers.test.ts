@@ -1,6 +1,6 @@
 import { expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ProviderInstanceId,
   type Project as ProjectRecord,
@@ -59,7 +59,7 @@ const clientLaunchHarness = (input: {
     }),
     NodeCrypto.layer,
     Layer.succeed(McpInvocationContext.McpInvocationContext, {
-      environmentId: EnvironmentId.make("environment"),
+      machineId: MachineId.make("machine"),
       requestNamespace: "client:session-1",
       thread: undefined,
       client: {

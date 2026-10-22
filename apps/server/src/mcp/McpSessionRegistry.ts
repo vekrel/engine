@@ -8,7 +8,7 @@ import * as SynchronizedRef from "effect/SynchronizedRef";
 import { HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as McpProviderSession from "@vekrel/provider-core/server/mcpSession";
 
@@ -60,7 +60,7 @@ export interface McpSessionRegistryOptions {
 }
 
 /**
- * `/mcp` is outside environment auth, so idle tokens stop authenticating.
+ * `/mcp` is outside machine auth, so idle tokens stop authenticating.
  * Keep expired records until explicit revocation: a trusted provider turn can
  * refresh the token its subprocess still holds; MCP requests cannot.
  */
@@ -80,8 +80,8 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
   options: McpSessionRegistryOptions = {},
 ) {
   const crypto = yield* Crypto.Crypto;
-  const environment = yield* ServerEnvironment.ServerEnvironment;
-  const environmentId = yield* environment.getEnvironmentId;
+  const machine = yield* ServerMachine.ServerMachine;
+  const machineId = yield* machine.getMachineId;
   const httpServer = yield* HttpServer.HttpServer;
   const state = yield* SynchronizedRef.make<RegistryState>({ records: new Map() });
   const currentTimeMillis = options.now ? Effect.sync(options.now) : Clock.currentTimeMillis;
@@ -103,7 +103,7 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
       const tokenHash = yield* hashToken(rawToken);
       const browserToolsAvailable = request.browserToolsAvailable ?? true;
       const scope: McpInvocationContext.McpThreadInvocationScope = {
-        environmentId,
+        machineId,
         requestNamespace: providerSessionId,
         thread: {
           threadId: ThreadId.make(request.threadId),
@@ -126,7 +126,7 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
       });
       return {
         config: {
-          environmentId,
+          machineId,
           threadId: scope.thread.threadId,
           providerSessionId,
           providerInstanceId: scope.thread.providerInstanceId,

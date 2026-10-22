@@ -12,7 +12,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import { mergeUsage } from "@vekrel/shared/usageMerge";
 import {
-  EnvironmentId,
+  MachineId,
   ProviderDriverKind,
   ProviderInstanceId,
   UsageDay,
@@ -2053,12 +2053,12 @@ describe("UsageService", () => {
         const merged = mergeUsage(
           [
             {
-              environmentId: EnvironmentId.make("cleanup-test"),
+              machineId: MachineId.make("cleanup-test"),
               label: "test",
               summary: recreated,
             },
             {
-              environmentId: EnvironmentId.make("other-environment"),
+              machineId: MachineId.make("other-machine"),
               label: "before cleanup",
               summary: first,
             },

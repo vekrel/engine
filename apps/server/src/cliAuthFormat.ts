@@ -1,7 +1,7 @@
 import type { AuthClientMetadata, AuthClientSession, AuthPairingLink } from "@vekrel/contracts";
 import * as DateTime from "effect/DateTime";
 
-import type { IssuedBearerSession, IssuedPairingLink } from "./auth/EnvironmentAuth.ts";
+import type { IssuedBearerSession, IssuedPairingLink } from "./auth/MachineAuth.ts";
 
 const newline = "\n";
 

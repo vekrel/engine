@@ -1,6 +1,6 @@
 import { expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   OrchestratorMcpFailure,
   ProviderInstanceId,
   ProviderInteractionMode,
@@ -62,7 +62,7 @@ const shells = new Map([
 ]);
 
 const threadCaller = (threadId: ThreadId): McpInvocationContext.McpInvocationScope => ({
-  environmentId: EnvironmentId.make("environment"),
+  machineId: MachineId.make("machine"),
   requestNamespace: `provider:${threadId}`,
   thread: {
     threadId,
@@ -77,7 +77,7 @@ const threadCaller = (threadId: ThreadId): McpInvocationContext.McpInvocationSco
 const clientCaller = (
   access: McpInvocationContext.McpClientCaller["access"],
 ): McpInvocationContext.McpInvocationScope => ({
-  environmentId: EnvironmentId.make("environment"),
+  machineId: MachineId.make("machine"),
   requestNamespace: "client:session",
   thread: undefined,
   client: { sessionId: "session", label: "Claude Code", access },
@@ -124,7 +124,7 @@ const ProbeToolkit = Toolkit.make(
       interactionMode: Schema.optional(ProviderInteractionMode),
     }),
   }),
-  Tool.make("writes_environment", probe),
+  Tool.make("writes_machine", probe),
 );
 const ran = Effect.succeed({ ran: "ran" });
 const probeHandlers: McpToolAccess.Handlers<typeof ProbeToolkit.tools> = {
@@ -141,7 +141,7 @@ const probeHandlers: McpToolAccess.Handlers<typeof ProbeToolkit.tools> = {
     (input) => input,
     (_, modes) => Effect.succeed({ ran: `${modes.runtimeMode}/${modes.interactionMode}` }),
   ),
-  writes_environment: McpToolAccess.writesEnvironment(() => ran),
+  writes_machine: McpToolAccess.writesMachine(() => ran),
 };
 const layerProbeHandlers = McpToolAccess.toLayer(ProbeToolkit, probeHandlers);
 
@@ -180,7 +180,7 @@ export const refusedAtCompileTime = () => {
       writes_with_capability: unchecked,
       writes_threads: unchecked,
       starts_threads: unchecked,
-      writes_environment: unchecked,
+      writes_machine: unchecked,
     }),
   );
 };
@@ -238,7 +238,7 @@ it.effect.each([
   ["writes", readOnlyClient, {}, "capability_denied"],
   ["writes_threads", readOnlyClient, { threadId: supervisedThreadId }, "capability_denied"],
   ["starts_threads", readOnlyClient, {}, "capability_denied"],
-  ["writes_environment", readOnlyClient, {}, "capability_denied"],
+  ["writes_machine", readOnlyClient, {}, "capability_denied"],
 
   ["reads_as_caller", ended, {}, "ran"],
   ["reads_as_caller", fullAccessClient, {}, "thread_credential_required"],
@@ -257,7 +257,7 @@ it.effect.each([
   ["writes", oldProviderBackground, {}, "parent_not_active"],
   ["writes", supervisedClient, {}, "ran"],
   ["writes", previewOnly, {}, "capability_denied"],
-  ["writes_environment", previewOnly, {}, "capability_denied"],
+  ["writes_machine", previewOnly, {}, "capability_denied"],
 
   ["writes_with_capability", previewOnly, {}, "ran"],
   ["writes_with_capability", readOnlyClient, {}, "capability_denied"],
@@ -293,11 +293,11 @@ it.effect.each([
   ["starts_threads", supervisedClient, { runtimeMode: "auto" }, "runtime_mode_escalation_denied"],
   ["starts_threads", fullAccessClient, { runtimeMode: "full-access" }, "full-access/default"],
 
-  ["writes_environment", fullAccess, {}, "ran"],
-  ["writes_environment", supervised, {}, "capability_denied"],
-  ["writes_environment", plan, {}, "capability_denied"],
-  ["writes_environment", fullAccessClient, {}, "ran"],
-  ["writes_environment", supervisedClient, {}, "capability_denied"],
+  ["writes_machine", fullAccess, {}, "ran"],
+  ["writes_machine", supervised, {}, "capability_denied"],
+  ["writes_machine", plan, {}, "capability_denied"],
+  ["writes_machine", fullAccessClient, {}, "ran"],
+  ["writes_machine", supervisedClient, {}, "capability_denied"],
 ] as const)("%s from %o with %o: %s", ([tool, scope, args, expected]) =>
   call(tool, scope, args).pipe(
     Effect.map((outcome) => expect(outcome).toBe(expected)),

@@ -4,12 +4,12 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
-import * as EnvironmentAuthPolicy from "./EnvironmentAuthPolicy.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
+import * as MachineAuthPolicy from "./MachineAuthPolicy.ts";
 
-const layerEnvironmentAuthPolicy = (overrides?: Partial<ServerConfig.ServerConfig["Service"]>) =>
-  EnvironmentAuthPolicy.layer.pipe(
-    Layer.provide(ServerEnvironment.layerIdentity),
+const layerMachineAuthPolicy = (overrides?: Partial<ServerConfig.ServerConfig["Service"]>) =>
+  MachineAuthPolicy.layer.pipe(
+    Layer.provide(ServerMachine.layerIdentity),
     Layer.provide(
       Layer.effect(
         ServerConfig.ServerConfig,
@@ -26,16 +26,16 @@ const layerEnvironmentAuthPolicy = (overrides?: Partial<ServerConfig.ServerConfi
     ),
   );
 
-it.layer(NodeServices.layer)("EnvironmentAuthPolicy.layer", (it) => {
+it.layer(NodeServices.layer)("MachineAuthPolicy.layer", (it) => {
   it.effect("keeps desktop cookies port-scoped on the port a second instance lands on", () =>
     Effect.gen(function* () {
-      const policy = yield* EnvironmentAuthPolicy.EnvironmentAuthPolicy;
+      const policy = yield* MachineAuthPolicy.MachineAuthPolicy;
       const descriptor = yield* policy.getDescriptor();
 
       expect(descriptor.sessionCookieName).toBe("t3_session_3774");
     }).pipe(
       Effect.provide(
-        layerEnvironmentAuthPolicy({
+        layerMachineAuthPolicy({
           mode: "desktop",
           port: 3774,
         }),
@@ -45,14 +45,14 @@ it.layer(NodeServices.layer)("EnvironmentAuthPolicy.layer", (it) => {
 
   it.effect("uses remote-reachable policy for desktop mode when bound beyond loopback", () =>
     Effect.gen(function* () {
-      const policy = yield* EnvironmentAuthPolicy.EnvironmentAuthPolicy;
+      const policy = yield* MachineAuthPolicy.MachineAuthPolicy;
       const descriptor = yield* policy.getDescriptor();
 
       expect(descriptor.policy).toBe("remote-reachable");
       expect(descriptor.bootstrapMethods).toEqual(["desktop-bootstrap", "one-time-token"]);
     }).pipe(
       Effect.provide(
-        layerEnvironmentAuthPolicy({
+        layerMachineAuthPolicy({
           mode: "desktop",
           host: "0.0.0.0",
         }),
@@ -62,16 +62,16 @@ it.layer(NodeServices.layer)("EnvironmentAuthPolicy.layer", (it) => {
 
   it.effect("uses loopback-browser policy for loopback web hosts", () =>
     Effect.gen(function* () {
-      const policy = yield* EnvironmentAuthPolicy.EnvironmentAuthPolicy;
+      const policy = yield* MachineAuthPolicy.MachineAuthPolicy;
       const descriptor = yield* policy.getDescriptor();
 
       expect(descriptor.policy).toBe("loopback-browser");
       expect(descriptor.bootstrapMethods).toEqual(["one-time-token"]);
-      expect(descriptor.serverUpdateScope).toBe("environment:maintain");
+      expect(descriptor.serverUpdateScope).toBe("machine:maintain");
       expect(descriptor.sessionCookieName).toMatch(/^t3_session_3773_[a-f0-9]{12}$/);
     }).pipe(
       Effect.provide(
-        layerEnvironmentAuthPolicy({
+        layerMachineAuthPolicy({
           mode: "web",
           host: "127.0.0.1",
           port: 3773,

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   type OrchestrationV2ThreadProjection,
   type Project,
   ProjectId,
@@ -35,7 +35,7 @@ import * as VcsStatusBroadcaster from "../vcs/VcsStatusBroadcaster.ts";
 import type * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as WorktreeMcpService from "./WorktreeMcpService.ts";
 
-const environmentId = EnvironmentId.make("environment-worktree-test");
+const machineId = MachineId.make("machine-worktree-test");
 const threadId = ThreadId.make("thread-worktree-test");
 const projectId = ProjectId.make("project-worktree-test");
 const workspaceRoot = "/repo/project";
@@ -43,7 +43,7 @@ const workspaceRoot = "/repo/project";
 const makeScope = (
   capabilities: ReadonlySet<McpInvocationContext.McpCapability>,
 ): McpInvocationContext.McpInvocationScope => ({
-  environmentId,
+  machineId,
   requestNamespace: "provider-session-worktree-test",
   thread: {
     threadId,

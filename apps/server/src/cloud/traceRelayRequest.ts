@@ -44,8 +44,8 @@ export const traceAuthenticatedRelayRequest = <A, E, R>(
           root: Option.isNone(parent),
           sampled,
         });
-      const span = startSpan("environment.relay.request", "server", parent);
-      startSpan("EnvironmentAuth.authenticateHttpRequest", "internal", Option.some(span)).end(
+      const span = startSpan("machine.relay.request", "server", parent);
+      startSpan("MachineAuth.authenticateHttpRequest", "internal", Option.some(span)).end(
         authentication.endTime,
         Exit.void,
       );

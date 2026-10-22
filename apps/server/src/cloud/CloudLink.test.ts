@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -9,10 +9,10 @@ import { HttpClient, HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as AgentAwarenessRelay from "../relay/AgentAwarenessRelay.ts";
 import * as CliTokenManager from "./CliTokenManager.ts";
 import * as CloudLink from "./CloudLink.ts";
@@ -21,7 +21,7 @@ import * as ManagedEndpointRuntime from "./ManagedEndpointRuntime.ts";
 import {
   HOLD_WEBHOOKS_WHILE_OFFLINE_SECRET,
   PUBLISH_AGENT_ACTIVITY_SECRET,
-  RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+  RELAY_MACHINE_CREDENTIAL_SECRET,
   RELAY_URL_SECRET,
 } from "./config.ts";
 
@@ -48,7 +48,7 @@ const withService = <A, E>(
   Effect.gen(function* () {
     const stored = new Map<string, Uint8Array>([
       [RELAY_URL_SECRET, encode("https://relay.test")],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, encode("credential")],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, encode("credential")],
       [HOLD_WEBHOOKS_WHILE_OFFLINE_SECRET, encode("false")],
       [PUBLISH_AGENT_ACTIVITY_SECRET, encode("false")],
     ]);
@@ -90,15 +90,15 @@ const withService = <A, E>(
               )
             : Effect.sync(() => void stored.set(name, value)),
       }),
-      Layer.mock(ServerEnvironment.ServerEnvironment)({
-        getEnvironmentId: Effect.succeed(EnvironmentId.make("environment-1")),
+      Layer.mock(ServerMachine.ServerMachine)({
+        getMachineId: Effect.succeed(MachineId.make("machine-1")),
       }),
       Layer.mock(AgentAwarenessRelay.AgentAwarenessRelay)({ requestCatchUp: () => Effect.void }),
       Layer.mock(ManagedEndpointRuntime.CloudManagedEndpointRuntime)({}),
       Layer.mock(ConnectReachability.ConnectReachability)({
         latest: Effect.succeed(Option.none()),
       }),
-      Layer.mock(EnvironmentAuth.EnvironmentAuth)({}),
+      Layer.mock(MachineAuth.MachineAuth)({}),
       Layer.mock(CliTokenManager.CloudCliTokenManager)({}),
       Layer.mock(HttpServer.HttpServer)({
         address: NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", 3773),

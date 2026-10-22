@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   OrchestrationV2DomainEvent,
   OrchestrationV2ThreadShell,
   OrchestrationV2TurnItem,
@@ -41,12 +41,12 @@ import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import {
   isAgentActivityPublishingEnabledValue,
   PUBLISH_AGENT_ACTIVITY_SECRET,
-  RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+  RELAY_MACHINE_CREDENTIAL_SECRET,
   RELAY_ISSUER_SECRET,
   RELAY_URL_SECRET,
 } from "../cloud/config.ts";
-import { getOrCreateEnvironmentKeyPairFromSecretStore } from "../cloud/environmentKeys.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import { getOrCreateMachineKeyPairFromSecretStore } from "../cloud/machineKeys.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ThreadManagement from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import { forkParked } from "../serverActivation.ts";
@@ -191,7 +191,7 @@ function sanitizeRelayAgentActivityState(
   return detail ? { ...rest, detail } : rest;
 }
 
-function relayEnvironmentClient(token: string) {
+function relayMachineClient(token: string) {
   return HttpClient.mapRequest(HttpClientRequest.setHeader("authorization", `Bearer ${token}`));
 }
 
@@ -248,7 +248,7 @@ function signRelayAgentActivityPublishProof(input: {
 const makePublishProof = Effect.fn("makePublishProof")(function* (input: {
   readonly privateKey: string;
   readonly relayIssuer: string;
-  readonly environmentId: string;
+  readonly machineId: string;
   readonly threadId: ThreadId;
   readonly state: RelayAgentActivityState | null;
   readonly jti: string;
@@ -256,13 +256,13 @@ const makePublishProof = Effect.fn("makePublishProof")(function* (input: {
   const now = yield* DateTime.now;
   const expiresAt = DateTime.add(now, { minutes: 5 });
   const payload = {
-    iss: `t3-env:${input.environmentId}`,
+    iss: `t3-env:${input.machineId}`,
     aud: normalizeRelayIssuer(input.relayIssuer),
-    sub: input.environmentId,
+    sub: input.machineId,
     jti: input.jti,
     iat: Math.floor(now.epochMilliseconds / 1_000),
     exp: Math.floor(expiresAt.epochMilliseconds / 1_000),
-    environmentId: input.environmentId as RelayAgentActivityPublishProofPayload["environmentId"],
+    machineId: input.machineId as RelayAgentActivityPublishProofPayload["machineId"],
     threadId: input.threadId,
     state: input.state,
   } satisfies RelayAgentActivityPublishProofPayload;
@@ -288,7 +288,7 @@ function describeThreadShellForAwareness(
 }
 
 function resolveAgentAwarenessRelayPublishSnapshot(input: {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly threadId: ThreadId;
   readonly thread: Option.Option<OrchestrationV2ThreadShell>;
   readonly project: Option.Option<Project>;
@@ -315,7 +315,7 @@ function resolveAgentAwarenessRelayPublishSnapshot(input: {
     projectId: input.thread.value.projectId,
     state: sanitizeRelayAgentActivityState(
       projectThreadAwarenessV2({
-        environmentId: input.environmentId,
+        machineId: input.machineId,
         project: input.project.value,
         thread: input.thread.value,
       }),
@@ -332,7 +332,7 @@ function terminalWorkSinceStart(thread: OrchestrationV2ThreadShell, startedAt: n
 }
 
 export function resolveAgentAwarenessRelayActiveThreadIds(input: {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly startedAt: number;
   readonly projects: ReadonlyArray<Pick<Project, "id" | "title">>;
   readonly threads: ReadonlyArray<OrchestrationV2ThreadShell>;
@@ -345,7 +345,7 @@ export function resolveAgentAwarenessRelayActiveThreadIds(input: {
         return false;
       }
       const state = projectThreadAwarenessV2({
-        environmentId: input.environmentId,
+        machineId: input.machineId,
         project,
         thread,
       });
@@ -362,12 +362,12 @@ export function resolveAgentAwarenessRelayActiveThreadIds(input: {
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore.ServerSecretStore;
-  const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
+  const serverMachine = yield* ServerMachine.ServerMachine;
   const threads = yield* ThreadManagement.ThreadManagementService;
   const projects = yield* ProjectService.ProjectService;
   const crypto = yield* Crypto.Crypto;
   const scope = yield* Effect.scope;
-  const cloudLinkKeyPair = yield* getOrCreateEnvironmentKeyPairFromSecretStore(secrets);
+  const cloudLinkKeyPair = yield* getOrCreateMachineKeyPairFromSecretStore(secrets);
   const startedAt = (yield* DateTime.now).epochMilliseconds;
   const activeSnapshotPublishedRef = yield* Ref.make(false);
   const catchUpRequests = yield* Queue.dropping<void>(1);
@@ -383,13 +383,13 @@ export const make = Effect.gen(function* () {
       );
 
   const readRelayConfig = Effect.gen(function* () {
-    const [url, issuer, environmentCredential] = yield* Effect.all([
+    const [url, issuer, machineCredential] = yield* Effect.all([
       readSecretString(RELAY_URL_SECRET),
       readSecretString(RELAY_ISSUER_SECRET),
-      readSecretString(RELAY_ENVIRONMENT_CREDENTIAL_SECRET),
+      readSecretString(RELAY_MACHINE_CREDENTIAL_SECRET),
     ]);
-    return url && environmentCredential
-      ? { url, issuer: issuer ?? url, environmentCredential }
+    return url && machineCredential
+      ? { url, issuer: issuer ?? url, machineCredential }
       : null;
   });
 
@@ -399,11 +399,11 @@ export const make = Effect.gen(function* () {
 
   const makeRelayClient = (relayConfig: {
     readonly url: string;
-    readonly environmentCredential: string;
+    readonly machineCredential: string;
   }) =>
     HttpApiClient.make(RelayApi, {
       baseUrl: relayConfig.url,
-      transformClient: relayEnvironmentClient(relayConfig.environmentCredential),
+      transformClient: relayMachineClient(relayConfig.machineCredential),
     }).pipe(Effect.provide(FetchHttpClient.layer));
 
   let cachedRelayClient: Effect.Success<ReturnType<typeof makeRelayClient>> | undefined;
@@ -456,12 +456,12 @@ export const make = Effect.gen(function* () {
     if (
       publishedRelayConfig?.url !== relayConfig.url ||
       publishedRelayConfig.issuer !== relayConfig.issuer ||
-      publishedRelayConfig.environmentCredential !== relayConfig.environmentCredential
+      publishedRelayConfig.machineCredential !== relayConfig.machineCredential
     ) {
       yield* resetPublishedConnection;
       publishedRelayConfig = relayConfig;
     }
-    const environmentId = yield* serverEnvironment.getEnvironmentId;
+    const machineId = yield* serverMachine.getMachineId;
 
     const publishState = Effect.fn("relay.agent_activity.publish")(function* (input: {
       readonly projectId: string | null;
@@ -475,14 +475,14 @@ export const make = Effect.gen(function* () {
       const proof = yield* makePublishProof({
         privateKey: cloudLinkKeyPair.privateKey,
         relayIssuer: relayConfig.issuer,
-        environmentId,
+        machineId,
         threadId,
         state: input.state,
         jti: yield* crypto.randomUUIDv4(),
       });
 
       yield* Effect.logInfo("publishing agent activity for thread", {
-        environmentId,
+        machineId,
         threadId,
         projectId: input.projectId,
         statePhase: input.state?.phase ?? null,
@@ -493,7 +493,7 @@ export const make = Effect.gen(function* () {
       const response = yield* relayClient.server
         .publishAgentActivity({
           params: {
-            environmentId,
+            machineId,
             threadId,
           },
           payload: {
@@ -504,7 +504,7 @@ export const make = Effect.gen(function* () {
         .pipe(Effect.timeout("10 seconds"));
 
       yield* Effect.logInfo("agent activity publish completed", {
-        environmentId,
+        machineId,
         threadId,
         ok: response.ok,
         deliveries: deliveryStats(response.deliveries),
@@ -532,7 +532,7 @@ export const make = Effect.gen(function* () {
       ? yield* projects.getById(thread.value.projectId)
       : Option.none<Project>();
     const snapshot = resolveAgentAwarenessRelayPublishSnapshot({
-      environmentId,
+      machineId,
       threadId,
       thread,
       project,
@@ -552,7 +552,7 @@ export const make = Effect.gen(function* () {
       // and publish a tombstone immediately, skipping the deferral window.
       publishConfirmDeadlines.delete(threadId);
       yield* Effect.logDebug("agent activity publish skipped; projected state unchanged", {
-        environmentId,
+        machineId,
         threadId,
         reason: snapshot.reason,
       });
@@ -574,7 +574,7 @@ export const make = Effect.gen(function* () {
       if (deadline === undefined) {
         publishConfirmDeadlines.set(threadId, nowMs + 5_000);
         yield* Effect.logInfo("agent activity publish deferred pending confirmation", {
-          environmentId,
+          machineId,
           threadId,
           reason: snapshot.reason,
           statePhase: snapshot.state?.phase ?? null,
@@ -587,7 +587,7 @@ export const make = Effect.gen(function* () {
         return;
       }
       yield* Effect.logInfo("agent activity deferred publish confirmed", {
-        environmentId,
+        machineId,
         threadId,
         reason: snapshot.reason,
         statePhase: snapshot.state?.phase ?? null,
@@ -599,12 +599,12 @@ export const make = Effect.gen(function* () {
 
     if (snapshot.reason === "thread-not-found") {
       yield* Effect.logDebug("publishing agent activity tombstone; thread not found", {
-        environmentId,
+        machineId,
         threadId,
       });
     } else if (snapshot.reason === "project-not-found") {
       yield* Effect.logDebug("publishing agent activity tombstone; project not found", {
-        environmentId,
+        machineId,
         threadId,
         projectId: snapshot.projectId,
       });
@@ -704,13 +704,13 @@ export const make = Effect.gen(function* () {
       yield* Effect.logDebug("agent activity snapshot skipped; relay link credentials unavailable");
       return "unlinked" as const;
     }
-    const environmentId = yield* serverEnvironment.getEnvironmentId;
+    const machineId = yield* serverMachine.getMachineId;
     const [projectSnapshot, shellSnapshot] = yield* Effect.all([
       projects.snapshot,
       threads.getShellSnapshot(),
     ]);
     const activeThreadIds = resolveAgentAwarenessRelayActiveThreadIds({
-      environmentId,
+      machineId,
       startedAt,
       projects: projectSnapshot.projects,
       threads: shellSnapshot.threads,
@@ -727,10 +727,10 @@ export const make = Effect.gen(function* () {
     return "published" as const;
   });
 
-  // Many environments never link, so while unlinked the retry backs off from 5
-  // s to 60 s. A linked environment keeps the 5 s retry, because `t3 connect
+  // Many machines never link, so while unlinked the retry backs off from 5
+  // s to 60 s. A linked machine keeps the 5 s retry, because `t3 connect
   // publish` can turn publishing on from another process. Keep this untraced:
-  // an unlinked environment can retry for the lifetime of the process.
+  // an unlinked machine can retry for the lifetime of the process.
   const publishActiveThreadsOnceWhenConfigured = Effect.fnUntraced(function* (
     logEnabledWhenReady: boolean,
   ) {

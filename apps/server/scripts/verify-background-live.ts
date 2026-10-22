@@ -252,7 +252,7 @@ try {
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token: bootstrap,
-      subject_token_type: "urn:t3:params:oauth:token-type:environment-bootstrap",
+      subject_token_type: "urn:t3:params:oauth:token-type:machine-bootstrap",
       requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
     }),
   });

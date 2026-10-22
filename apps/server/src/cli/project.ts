@@ -1,8 +1,8 @@
 import {
   AuthStandardClientScopes,
   CommandId,
-  EnvironmentHttpApi,
-  EnvironmentHttpCommonError,
+  MachineHttpApi,
+  MachineHttpCommonError,
   type ProjectMutation,
   type ProjectSnapshot,
   ProjectId,
@@ -21,7 +21,7 @@ import { Argument, Command, Flag, GlobalFlag } from "effect/cli";
 import { FetchHttpClient, HttpClient, HttpClientError } from "effect/http";
 import * as HttpApiClient from "effect/http-api/HttpApiClient";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 
 import * as ServerConfig from "../config.ts";
@@ -52,7 +52,7 @@ type ProjectMutationTarget = {
 type ProjectCommandExecutionMode = "live" | "offline";
 type ProjectCliDispatchCommand = ProjectMutation;
 
-const isEnvironmentHttpCommonError = Schema.is(EnvironmentHttpCommonError);
+const isMachineHttpCommonError = Schema.is(MachineHttpCommonError);
 
 export class ProjectCommandIdGenerationError extends Schema.TaggedError<ProjectCommandIdGenerationError>()(
   "ProjectCommandIdGenerationError",
@@ -170,7 +170,7 @@ export const ProjectCommandError = Schema.Union([
 export type ProjectCommandError = typeof ProjectCommandError.Type;
 
 function projectCommandErrorFromLiveServerRequest(cause: unknown): ProjectCommandError {
-  if (isEnvironmentHttpCommonError(cause)) {
+  if (isMachineHttpCommonError(cause)) {
     return new ProjectLiveServerDeclaredResponseError({
       operation: "callLiveServer",
       code: cause.code,
@@ -216,23 +216,23 @@ const layerProjectCliRuntime = RuntimeLayer.layerProjectService.pipe(
 
 const PROJECT_CLI_LIVE_SERVER_TIMEOUT = Duration.seconds(1);
 const withProjectCliSessionToken = <A, E, R>(
-  environmentAuth: EnvironmentAuth.EnvironmentAuth["Service"],
+  machineAuth: MachineAuth.MachineAuth["Service"],
   run: (token: string) => Effect.Effect<A, E, R>,
 ) =>
   Effect.acquireUseRelease(
-    environmentAuth.issueSession({
+    machineAuth.issueSession({
       scopes: AuthStandardClientScopes,
       label: "t3 project cli",
     }),
     (issued) => run(issued.token),
-    (issued) => environmentAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
+    (issued) => machineAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
   );
 
 const withProjectCliLiveServerTimeout = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(Effect.timeout(PROJECT_CLI_LIVE_SERVER_TIMEOUT));
 
 const makeLiveServerClient = (origin: string) =>
-  HttpApiClient.make(EnvironmentHttpApi, {
+  HttpApiClient.make(MachineHttpApi, {
     baseUrl: origin,
   });
 
@@ -352,7 +352,7 @@ const getOfflineSnapshot = Effect.fn("getOfflineSnapshot")(function* () {
 
 const tryResolveLiveProjectExecutionMode = Effect.fn("tryResolveLiveProjectExecutionMode")(
   function* (
-    environmentAuth: EnvironmentAuth.EnvironmentAuth["Service"],
+    machineAuth: MachineAuth.MachineAuth["Service"],
     config: ServerConfig.ServerConfig["Service"],
   ) {
     const runtimeState = yield* readPersistedServerRuntimeState(config.serverRuntimeStatePath);
@@ -360,7 +360,7 @@ const tryResolveLiveProjectExecutionMode = Effect.fn("tryResolveLiveProjectExecu
       return Option.none<{ readonly origin: string }>();
     }
 
-    const attempt = withProjectCliSessionToken(environmentAuth, (token) =>
+    const attempt = withProjectCliSessionToken(machineAuth, (token) =>
       fetchLiveOrchestrationSnapshot(runtimeState.value.origin, token).pipe(
         Effect.as({
           origin: runtimeState.value.origin,
@@ -404,11 +404,11 @@ const runProjectMutation = Effect.fn("runProjectMutation")(function* (
   const minimumLogLevel = config.logLevel;
 
   return yield* Effect.gen(function* () {
-    const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
-    const liveMode = yield* tryResolveLiveProjectExecutionMode(environmentAuth, config);
+    const machineAuth = yield* MachineAuth.MachineAuth;
+    const liveMode = yield* tryResolveLiveProjectExecutionMode(machineAuth, config);
 
     if (Option.isSome(liveMode)) {
-      return yield* withProjectCliSessionToken(environmentAuth, (token) =>
+      return yield* withProjectCliSessionToken(machineAuth, (token) =>
         Effect.gen(function* () {
           const snapshot = yield* fetchLiveOrchestrationSnapshot(liveMode.value.origin, token);
           const output = yield* run({
@@ -445,7 +445,7 @@ const runProjectMutation = Effect.fn("runProjectMutation")(function* (
   }).pipe(
     Effect.scoped,
     Effect.provide(
-      Layer.mergeAll(EnvironmentAuth.layerRuntime, WorkspacePaths.layer).pipe(
+      Layer.mergeAll(MachineAuth.layerRuntime, WorkspacePaths.layer).pipe(
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(ServerConfig.layer(config)),
         Layer.provide(Layer.succeed(References.MinimumLogLevel, minimumLogLevel)),

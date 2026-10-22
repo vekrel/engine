@@ -1,7 +1,7 @@
 import { expect, it } from "@effect/vitest";
 import {
   DEFAULT_SERVER_SETTINGS,
-  EnvironmentId,
+  MachineId,
   ProviderInstanceId,
   ThreadId,
   type OrchestrationV2ThreadShell,
@@ -13,17 +13,17 @@ import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
 
-import * as Environment from "../../../environment/ServerEnvironment.ts";
+import * as Machine from "../../../machine/ServerMachine.ts";
 import * as ThreadCommandExecutor from "../../../orchestration-v2/ThreadCommandExecutor.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as Settings from "../../../serverSettings.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { liveThreadShell } from "../../McpToolAccess.testkit.ts";
-import * as EnvironmentHandlers from "./handlers.ts";
-import { EnvironmentToolkit } from "./tools.ts";
+import * as MachineHandlers from "./handlers.ts";
+import { MachineToolkit } from "./tools.ts";
 
-const environmentId = EnvironmentId.make("environment:preferences");
+const machineId = MachineId.make("machine:preferences");
 const threadId = ThreadId.make("thread:preferences");
 
 it.effect("refuses a preferences update when the caller's turn ends while it waits", () =>
@@ -34,7 +34,7 @@ it.effect("refuses a preferences update when the caller's turn ends while it wai
     const layerDependencies = Layer.mergeAll(
       ThreadCommandExecutor.layer,
       Layer.succeed(McpInvocationContext.McpInvocationContext, {
-        environmentId,
+        machineId,
         requestNamespace: "provider:preferences",
         thread: {
           threadId,
@@ -49,9 +49,9 @@ it.effect("refuses a preferences update when the caller's turn ends while it wai
         getThreadShell: () =>
           Ref.get(caller).pipe(Effect.tap(() => Deferred.succeed(checked, undefined))),
       }),
-      Layer.mock(Environment.ServerEnvironment)({
+      Layer.mock(Machine.ServerMachine)({
         getDescriptor: Effect.succeed({
-          environmentId,
+          machineId,
           label: "Test",
           platform: { os: "linux", arch: "x64" },
           serverVersion: "0.0.0",
@@ -65,7 +65,7 @@ it.effect("refuses a preferences update when the caller's turn ends while it wai
       }),
     );
     yield* Effect.gen(function* () {
-      const toolkit = yield* EnvironmentToolkit;
+      const toolkit = yield* MachineToolkit;
       const executor = yield* ThreadCommandExecutor.ThreadCommandExecutor;
       const held = yield* Deferred.make<void>();
       const release = yield* Deferred.make<void>();
@@ -77,7 +77,7 @@ it.effect("refuses a preferences update when the caller's turn ends while it wai
         .pipe(Effect.forkChild);
       yield* Deferred.await(held);
       const update = yield* toolkit
-        .handle("t3_environment_preferences_update", { newWorktreesStartFromOrigin: true })
+        .handle("vekrel_machine_preferences_update", { newWorktreesStartFromOrigin: true })
         .pipe(Stream.unwrap, Stream.runCollect, Effect.forkChild);
       yield* Deferred.await(checked);
       yield* Ref.update(caller, (shell) => ({ ...shell, activeRunId: null }));
@@ -88,7 +88,7 @@ it.effect("refuses a preferences update when the caller's turn ends while it wai
       expect(yield* Ref.get(updates)).toBe(0);
     }).pipe(
       Effect.provide(
-        McpToolAccess.HandlersLayer.layer(EnvironmentHandlers.layer).pipe(
+        McpToolAccess.HandlersLayer.layer(MachineHandlers.layer).pipe(
           Layer.provideMerge(layerDependencies),
         ),
       ),

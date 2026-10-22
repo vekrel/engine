@@ -1,5 +1,5 @@
 import type {
-  RelayEnvironmentLinkProofPayload,
+  RelayMachineLinkProofPayload,
   RelayLinkProofRequest,
   RelayManagedEndpointOrigin,
   RelayManagedEndpointRuntimeConfig,
@@ -105,7 +105,7 @@ export function isSupportedLinkProviderKind(request: RelayLinkProofRequest): boo
 
 export function linkProofScopes(
   request: RelayLinkProofRequest,
-): RelayEnvironmentLinkProofPayload["scopes"] {
+): RelayMachineLinkProofPayload["scopes"] {
   return request.endpoint.providerKind === "cloudflare_tunnel"
     ? ["agent_activity_notifications", "managed_tunnels"]
     : ["agent_activity_notifications"];

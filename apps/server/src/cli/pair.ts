@@ -1,7 +1,7 @@
 import {
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   AuthStandardClientScopes,
-  ExecutionEnvironmentDescriptor,
+  ExecutionMachineDescriptor,
   PortSchema,
 } from "@vekrel/contracts";
 import { resolveWorktreeT3Home } from "@vekrel/shared/devHome";
@@ -26,7 +26,7 @@ import * as Schema from "effect/Schema";
 import { Command, Flag, GlobalFlag } from "effect/cli";
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerConfig from "../config.ts";
 import { resolveBaseDir } from "../os-jank.ts";
 import {
@@ -45,7 +45,7 @@ import {
 import { authScopesFlag } from "./authScopes.ts";
 import { baseDirFlag, DurationFromString } from "./config.ts";
 
-const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/t3/environment";
+const WELL_KNOWN_MACHINE_PATH = "/.well-known/vekrel/machine";
 const PAIR_PROBE_TIMEOUT = Duration.millis(2_500);
 // Tailscale provisions an HTTPS certificate on the first request to a fresh
 // serve mapping, which can take a few seconds.
@@ -104,8 +104,8 @@ export class TailscaleServeNotEnabledError extends Schema.TaggedError<TailscaleS
   }
 }
 
-export class ServesOtherEnvironmentError extends Schema.TaggedError<ServesOtherEnvironmentError>()(
-  "ServesOtherEnvironmentError",
+export class ServesOtherMachineError extends Schema.TaggedError<ServesOtherMachineError>()(
+  "ServesOtherMachineError",
   { servePort: Schema.Number },
 ) {
   override get message(): string {
@@ -189,19 +189,19 @@ const formatPairOutput = (input: {
     "",
   ].join("\n");
 
-type EnvironmentProbeResult =
-  | { readonly _tag: "descriptor"; readonly descriptor: ExecutionEnvironmentDescriptor }
+type MachineProbeResult =
+  | { readonly _tag: "descriptor"; readonly descriptor: ExecutionMachineDescriptor }
   | { readonly _tag: "unreachable" }
   | { readonly _tag: "not-a-t3-server" };
 
-const probeEnvironmentDescriptor: (
+const probeMachineDescriptor: (
   baseUrl: string,
-) => Effect.Effect<EnvironmentProbeResult, never, HttpClient.HttpClient> = Effect.fn(
-  "pair.probeEnvironmentDescriptor",
+) => Effect.Effect<MachineProbeResult, never, HttpClient.HttpClient> = Effect.fn(
+  "pair.probeMachineDescriptor",
 )(
   function* (baseUrl: string) {
     const client = yield* HttpClient.HttpClient;
-    const request = HttpClientRequest.get(new URL(WELL_KNOWN_ENVIRONMENT_PATH, baseUrl).toString());
+    const request = HttpClientRequest.get(new URL(WELL_KNOWN_MACHINE_PATH, baseUrl).toString());
     const response = yield* client.execute(request).pipe(
       Effect.timeout(PAIR_PROBE_TIMEOUT),
       Effect.mapError(() => ({ _tag: "unreachable" }) as const),
@@ -214,7 +214,7 @@ const probeEnvironmentDescriptor: (
       return { _tag: "unreachable" } as const;
     }
     const descriptor = yield* HttpClientResponse.filterStatusOk(response).pipe(
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(ExecutionEnvironmentDescriptor)),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(ExecutionMachineDescriptor)),
       Effect.mapError(() => ({ _tag: "not-a-t3-server" }) as const),
     );
     return { _tag: "descriptor", descriptor } as const;
@@ -226,7 +226,7 @@ interface DiscoveredPairTarget {
   readonly baseDir: string;
   readonly variant: PairStateVariant;
   readonly state: PersistedServerRuntimeState;
-  readonly descriptor: ExecutionEnvironmentDescriptor;
+  readonly descriptor: ExecutionMachineDescriptor;
 }
 
 const discoverPairTarget = Effect.fn("pair.discoverPairTarget")(function* (
@@ -271,7 +271,7 @@ const discoverPairTarget = Effect.fn("pair.discoverPairTarget")(function* (
       if (!isProcessAlive(state.value.pid)) {
         continue;
       }
-      const probed = yield* probeEnvironmentDescriptor(state.value.origin);
+      const probed = yield* probeMachineDescriptor(state.value.origin);
       if (probed._tag !== "descriptor") {
         continue;
       }
@@ -343,10 +343,10 @@ const makePairServerConfig = Effect.fn(function* (input: {
   });
 });
 
-const awaitEnvironmentDescriptor = Effect.fn(function* (baseUrl: string) {
-  let last: EnvironmentProbeResult = { _tag: "unreachable" };
+const awaitMachineDescriptor = Effect.fn(function* (baseUrl: string) {
+  let last: MachineProbeResult = { _tag: "unreachable" };
   for (let attempt = 0; attempt < TAILSCALE_PROBE_ATTEMPTS; attempt += 1) {
-    last = yield* probeEnvironmentDescriptor(baseUrl);
+    last = yield* probeMachineDescriptor(baseUrl);
     if (last._tag === "descriptor") {
       return last;
     }
@@ -375,14 +375,14 @@ const resolveTailscalePairingBase = Effect.fn("pair.resolveTailscalePairingBase"
     });
 
     // Only an unreachable port, or a mapping already fronting this exact
-    // environment, is safe to (re)configure. Any other responder — T3 or not
+    // machine, is safe to (re)configure. Any other responder — T3 or not
     // — must not have its mapping silently replaced.
-    const existing = yield* probeEnvironmentDescriptor(baseUrl);
+    const existing = yield* probeMachineDescriptor(baseUrl);
     if (existing._tag === "descriptor") {
-      if (existing.descriptor.environmentId !== input.target.descriptor.environmentId) {
-        return yield* new ServesOtherEnvironmentError({ servePort: input.servePort });
+      if (existing.descriptor.machineId !== input.target.descriptor.machineId) {
+        return yield* new ServesOtherMachineError({ servePort: input.servePort });
       }
-      // Matching environment id proves the mapping reaches this server, but
+      // Matching machine id proves the mapping reaches this server, but
       // not through which port: for a dev server it may front the backend
       // (whose /.well-known also answers) while /pair only renders through
       // the web origin. Reuse as-is for regular servers; fall through and
@@ -412,10 +412,10 @@ const resolveTailscalePairingBase = Effect.fn("pair.resolveTailscalePairingBase"
       `Tailscale Serve now maps ${baseUrl} to this server and persists across restarts. Remove it with \`tailscale serve --https=${String(input.servePort)} off\`.`,
     );
 
-    const probed = yield* awaitEnvironmentDescriptor(baseUrl);
+    const probed = yield* awaitMachineDescriptor(baseUrl);
     if (probed._tag === "descriptor") {
-      if (probed.descriptor.environmentId !== input.target.descriptor.environmentId) {
-        return yield* new ServesOtherEnvironmentError({ servePort: input.servePort });
+      if (probed.descriptor.machineId !== input.target.descriptor.machineId) {
+        return yield* new ServesOtherMachineError({ servePort: input.servePort });
       }
     } else {
       notes.push(
@@ -428,13 +428,13 @@ const resolveTailscalePairingBase = Effect.fn("pair.resolveTailscalePairingBase"
 
 const mintPairingLink = Effect.fn("pair.mintPairingLink")(function* (input: {
   readonly config: ServerConfig.ServerConfig["Service"];
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly ttl: Option.Option<Duration.Duration>;
   readonly label: Option.Option<string>;
 }) {
   return yield* Effect.gen(function* () {
-    const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
-    return yield* environmentAuth.createPairingLink({
+    const machineAuth = yield* MachineAuth.MachineAuth;
+    return yield* machineAuth.createPairingLink({
       scopes: input.scopes,
       subject: "one-time-token",
       label: Option.getOrElse(input.label, () => "t3 pair"),
@@ -442,7 +442,7 @@ const mintPairingLink = Effect.fn("pair.mintPairingLink")(function* (input: {
     });
   }).pipe(
     Effect.provide(
-      EnvironmentAuth.layerRuntime.pipe(
+      MachineAuth.layerRuntime.pipe(
         Layer.provide(ServerConfig.layer(input.config)),
         Layer.provide(Layer.succeed(References.MinimumLogLevel, input.config.logLevel)),
       ),

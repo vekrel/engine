@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   EventId,
   CommandId,
   CheckpointId,
@@ -5459,14 +5459,14 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
           payload: { ...thread, pullRequests },
         });
       const project = { title: "Project" };
-      const environmentId = EnvironmentId.make("environment:watched-pull-request");
+      const machineId = MachineId.make("machine:watched-pull-request");
       const phase = Effect.gen(function* () {
         const shell = yield* store.getThreadShell(threadId);
         const listed = (yield* store.getShellSnapshot()).threads.find(
           (candidate) => candidate.id === threadId,
         );
         assert.deepEqual(listed?.pendingBackgroundTasks, shell?.pendingBackgroundTasks);
-        return shell && projectThreadAwarenessV2({ environmentId, project, thread: shell })?.phase;
+        return shell && projectThreadAwarenessV2({ machineId, project, thread: shell })?.phase;
       });
 
       yield* syncPullRequests("watched", [
@@ -5591,10 +5591,10 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
         payload: providerThread,
       });
       const project = { title: "Project" };
-      const environmentId = EnvironmentId.make("environment:held-completion");
+      const machineId = MachineId.make("machine:held-completion");
       const held = yield* store.getThreadShell(threadId);
       assert.equal(
-        held && projectThreadAwarenessV2({ environmentId, project, thread: held })?.phase,
+        held && projectThreadAwarenessV2({ machineId, project, thread: held })?.phase,
         "running",
       );
 
@@ -5609,7 +5609,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
       });
       const released = yield* store.getThreadShell(threadId);
       const state =
-        released && projectThreadAwarenessV2({ environmentId, project, thread: released });
+        released && projectThreadAwarenessV2({ machineId, project, thread: released });
       assert.equal(state?.phase, "completed");
       assert.equal(state?.updatedAt, DateTime.formatIso(releasedAt));
 

@@ -1,6 +1,6 @@
 import {
   AuthOrchestrationReadScope,
-  EnvironmentHttpApi,
+  MachineHttpApi,
   type OrchestrationProjectShell,
 } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
@@ -10,13 +10,13 @@ import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import {
-  annotateEnvironmentRequest,
-  failEnvironmentInternal,
-  failEnvironmentInvalidRequest,
-  failEnvironmentNotFound,
-  requireEnvironmentScope,
+  annotateMachineRequest,
+  failMachineInternal,
+  failMachineInvalidRequest,
+  failMachineNotFound,
+  requireMachineScope,
 } from "../auth/http.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import { traceLocalHandlerWork } from "../cloud/traceRelayRequest.ts";
 import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import * as ProjectEnrichmentService from "../project/ProjectEnrichmentService.ts";
@@ -47,11 +47,11 @@ function isThreadNotFound(error: unknown): boolean {
 }
 
 export const layer = HttpApiBuilder.group(
-  EnvironmentHttpApi,
+  MachineHttpApi,
   "orchestration",
   Effect.fnUntraced(function* (handlers) {
     const sql = yield* SqlClient.SqlClient;
-    const environment = yield* ServerEnvironment.ServerEnvironmentIdentity;
+    const machine = yield* ServerMachine.ServerMachineIdentity;
     const threadManagement = yield* ThreadManagementService.ThreadManagementService;
     const applicationEvents = yield* OrchestrationEventStore.OrchestrationEventStore;
     const projectStore = yield* ProjectStore.ProjectStoreV2;
@@ -103,9 +103,9 @@ export const layer = HttpApiBuilder.group(
         Effect.catch(
           Effect.fnUntraced(function* (error) {
             if (isThreadNotFound(error)) {
-              return yield* failEnvironmentNotFound("thread_not_found");
+              return yield* failMachineNotFound("thread_not_found");
             }
-            return yield* failEnvironmentInternal(failureReason, error);
+            return yield* failMachineInternal(failureReason, error);
           }),
         ),
       );
@@ -139,9 +139,9 @@ export const layer = HttpApiBuilder.group(
             Effect.catch(
               Effect.fnUntraced(function* (error) {
                 if (isThreadNotFound(error)) {
-                  return yield* failEnvironmentNotFound("thread_not_found");
+                  return yield* failMachineNotFound("thread_not_found");
                 }
-                return yield* failEnvironmentInternal("orchestration_thread_history_failed", error);
+                return yield* failMachineInternal("orchestration_thread_history_failed", error);
               }),
             ),
           );
@@ -151,22 +151,22 @@ export const layer = HttpApiBuilder.group(
     return handlers
       .handle(
         "shellSnapshot",
-        Effect.fn("environment.orchestration.shellSnapshot")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.orchestration.shellSnapshot")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           return yield* loadShellSnapshot().pipe(
             traceLocalHandlerWork,
             Effect.catch((cause) =>
-              failEnvironmentInternal("orchestration_snapshot_failed", cause),
+              failMachineInternal("orchestration_snapshot_failed", cause),
             ),
           );
         }),
       )
       .handle(
         "threadSnapshot",
-        Effect.fn("environment.orchestration.threadSnapshot")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.orchestration.threadSnapshot")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           const snapshot = yield* loadThreadSnapshot(
             args.params.threadId,
             "orchestration_thread_snapshot_failed",
@@ -179,21 +179,21 @@ export const layer = HttpApiBuilder.group(
       )
       .handle(
         "threadTranscript",
-        Effect.fn("environment.orchestration.threadTranscript")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.orchestration.threadTranscript")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           return yield* threadManagement.getThreadTranscript(args.params.threadId).pipe(
-            Effect.provideService(ServerEnvironment.ServerEnvironmentIdentity, environment),
+            Effect.provideService(ServerMachine.ServerMachineIdentity, machine),
             traceLocalHandlerWork,
             Effect.catch(
               Effect.fnUntraced(function* (error) {
                 if (isThreadTranscriptTooLargeError(error)) {
-                  return yield* failEnvironmentInvalidRequest("thread_transcript_too_large");
+                  return yield* failMachineInvalidRequest("thread_transcript_too_large");
                 }
                 if (isThreadNotFound(error)) {
-                  return yield* failEnvironmentNotFound("thread_not_found");
+                  return yield* failMachineNotFound("thread_not_found");
                 }
-                return yield* failEnvironmentInternal(
+                return yield* failMachineInternal(
                   "orchestration_thread_snapshot_failed",
                   error,
                 );
@@ -204,9 +204,9 @@ export const layer = HttpApiBuilder.group(
       )
       .handle(
         "threadBoundedSnapshot",
-        Effect.fn("environment.orchestration.threadBoundedSnapshot")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.orchestration.threadBoundedSnapshot")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           const snapshot = yield* loadThreadSnapshotWindow(args.params.threadId).pipe(
             traceLocalHandlerWork,
           );
@@ -225,15 +225,15 @@ export const layer = HttpApiBuilder.group(
       )
       .handle(
         "threadHistoryPage",
-        Effect.fn("environment.orchestration.threadHistoryPage")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.orchestration.threadHistoryPage")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           try {
             decodeThreadHistoryCursor(args.query.cursor);
           } catch (cause) {
             if (cause instanceof InvalidThreadHistoryCursorError)
-              return yield* failEnvironmentInvalidRequest("invalid_history_cursor");
-            return yield* failEnvironmentInternal("orchestration_thread_history_failed", cause);
+              return yield* failMachineInvalidRequest("invalid_history_cursor");
+            return yield* failMachineInternal("orchestration_thread_history_failed", cause);
           }
           return yield* threadManagement
             .getThreadHistoryPage(
@@ -247,8 +247,8 @@ export const layer = HttpApiBuilder.group(
               Effect.catch(
                 Effect.fnUntraced(function* (cause) {
                   if (isThreadNotFound(cause))
-                    return yield* failEnvironmentNotFound("thread_not_found");
-                  return yield* failEnvironmentInternal(
+                    return yield* failMachineNotFound("thread_not_found");
+                  return yield* failMachineInternal(
                     "orchestration_thread_history_failed",
                     cause,
                   );

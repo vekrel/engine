@@ -1447,30 +1447,30 @@ const readClaudeAppendSystemPromptFile = Effect.fnUntraced(function* (input: {
     );
 });
 
-export const CLAUDE_T3_MCP_TOOL_WILDCARD = "mcp__t3-code__*";
+export const CLAUDE_T3_MCP_TOOL_WILDCARD = "mcp__vekrel__*";
 
 // Must stay in sync with the Tool.Readonly annotations on OrchestratorToolkit;
 // ClaudeAdapterV2.test.ts cross-checks this list against the toolkit.
 export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
-  "mcp__t3-code__orchestrator_capabilities",
-  "mcp__t3-code__list_scheduled_tasks",
-  "mcp__t3-code__t3_thread_list",
-  "mcp__t3-code__t3_thread_wait",
-  "mcp__t3-code__t3_pending_request_list",
-  "mcp__t3-code__t3_pending_request_read",
-  "mcp__t3-code__t3_thread_configuration",
-  "mcp__t3-code__t3_thread_transfers",
-  "mcp__t3-code__t3_worktree_status",
-  "mcp__t3-code__t3_worktree_list",
-  "mcp__t3-code__t3_project_list",
-  "mcp__t3-code__t3_project_read",
-  "mcp__t3-code__t3_thread_search",
-  "mcp__t3-code__t3_preview_list",
-  "mcp__t3-code__t3_environment_read",
-  "mcp__t3-code__t3_queue_list",
-  "mcp__t3-code__t3_queue_read",
-  "mcp__t3-code__html_preview",
-  "mcp__t3-code__html_render",
+  "mcp__vekrel__orchestrator_capabilities",
+  "mcp__vekrel__list_scheduled_tasks",
+  "mcp__vekrel__t3_thread_list",
+  "mcp__vekrel__t3_thread_wait",
+  "mcp__vekrel__t3_pending_request_list",
+  "mcp__vekrel__t3_pending_request_read",
+  "mcp__vekrel__t3_thread_configuration",
+  "mcp__vekrel__t3_thread_transfers",
+  "mcp__vekrel__t3_worktree_status",
+  "mcp__vekrel__t3_worktree_list",
+  "mcp__vekrel__t3_project_list",
+  "mcp__vekrel__t3_project_read",
+  "mcp__vekrel__t3_thread_search",
+  "mcp__vekrel__t3_preview_list",
+  "mcp__vekrel__vekrel_machine_read",
+  "mcp__vekrel__t3_queue_list",
+  "mcp__vekrel__t3_queue_read",
+  "mcp__vekrel__html_preview",
+  "mcp__vekrel__html_render",
 ];
 
 // Claude Code aborts an HTTP MCP call after 60 s ("The operation timed out.")
@@ -1481,7 +1481,7 @@ export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
 export const CLAUDE_T3_MCP_TOOL_TIMEOUT_MS = 65 * 60 * 1_000;
 
 // The SDK's `allowedTools` only pre-approves tool calls; availability is the separate `tools`
-// option. Attaching the t3-code MCP server therefore always pre-approves its tools (headless
+// option. Attaching the vekrel MCP server therefore always pre-approves its tools (headless
 // modes like `dontAsk` deny anything that is not pre-approved), but read-only sandboxes
 // pre-approve only the annotated read-only orchestrator tools so a read-only session cannot
 // silently spawn threads or scheduled tasks.
@@ -1504,7 +1504,7 @@ export function claudeMcpQueryOverrides(input: {
   return {
     allowedTools: Array.from(new Set([...(input.allowedTools ?? []), ...mcpAllowedTools])),
     mcpServers: {
-      "t3-code": {
+      vekrel: {
         type: "http",
         url: session.endpoint,
         headers: {

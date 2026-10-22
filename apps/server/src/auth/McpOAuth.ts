@@ -10,7 +10,7 @@ import {
   type AuthMcpTokenRequest,
   type AuthMcpTokenResult,
   type AuthMcpClientAccess,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
 } from "@vekrel/contracts";
@@ -25,10 +25,10 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import { HttpServerRequest } from "effect/http";
 
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as McpHttpServer from "../mcp/McpHttpServer.ts";
 import type * as McpInvocationContext from "../mcp/McpInvocationContext.ts";
-import * as EnvironmentAuth from "./EnvironmentAuth.ts";
+import * as MachineAuth from "./MachineAuth.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import {
   base64UrlDecodeUtf8,
@@ -203,14 +203,14 @@ export class McpOAuth extends Context.Service<
       request: HttpServerRequest.HttpServerRequest,
       authorization: AuthorizationRequest,
     ) => Effect.Effect<
-      | { readonly csrfToken: string; readonly scopes: ReadonlyArray<AuthEnvironmentScope> }
+      | { readonly csrfToken: string; readonly scopes: ReadonlyArray<AuthMachineScope> }
       | undefined
     >;
     readonly approve: (input: {
       readonly request: HttpServerRequest.HttpServerRequest;
       readonly authorization: AuthorizationRequest;
       readonly decision: ApprovalDecision;
-    }) => Effect.Effect<string, EnvironmentAuth.ServerAuthMcpApprovalCodeError | McpOAuthPageError>;
+    }) => Effect.Effect<string, MachineAuth.ServerAuthMcpApprovalCodeError | McpOAuthPageError>;
     readonly deny: (authorization: AuthorizationRequest) => string;
     readonly exchangeCode: (input: {
       readonly request: HttpServerRequest.HttpServerRequest;
@@ -237,7 +237,7 @@ export const redirectForError = (error: McpOAuthRedirectError, issuer: string) =
   });
 
 const make = Effect.gen(function* () {
-  const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
+  const machineAuth = yield* MachineAuth.MachineAuth;
   const secretStore = yield* ServerSecretStore.ServerSecretStore;
   const crypto = yield* Crypto.Crypto;
   const signingKey = yield* secretStore
@@ -371,7 +371,7 @@ const make = Effect.gen(function* () {
     request,
     authorization,
   ) =>
-    environmentAuth.authenticateBrowserSession(request).pipe(
+    machineAuth.authenticateBrowserSession(request).pipe(
       Effect.map((session) =>
         // Approving manages access, and a session may only hand out scopes it holds.
         session.scopes.includes(AuthAccessWriteScope) &&
@@ -409,8 +409,8 @@ const make = Effect.gen(function* () {
   const approve: McpOAuth["Service"]["approve"] = Effect.fn("McpOAuth.approve")(function* (input) {
     const { decision } = input;
     if (decision._tag === "pairing-code") {
-      yield* environmentAuth.consumeMcpApprovalCode(decision.code, decision.access).pipe(
-        Effect.catchIf(EnvironmentAuth.isServerAuthInternalError, (cause) =>
+      yield* machineAuth.consumeMcpApprovalCode(decision.code, decision.access).pipe(
+        Effect.catchIf(MachineAuth.isServerAuthInternalError, (cause) =>
           Effect.logError("MCP approval code check failed.", { cause }).pipe(
             Effect.andThen(
               Effect.fail(
@@ -427,7 +427,7 @@ const make = Effect.gen(function* () {
       if (
         session === undefined ||
         !timingSafeEqualBase64Url(decision.csrfToken, session.csrfToken) ||
-        !EnvironmentAuth.mcpClientScopes(decision.access).every((scope) =>
+        !MachineAuth.mcpClientScopes(decision.access).every((scope) =>
           session.scopes.includes(scope),
         )
       ) {
@@ -494,7 +494,7 @@ const make = Effect.gen(function* () {
       ) {
         return yield* fail("invalid_grant", "The authorization code is invalid or expired.");
       }
-      const issued = yield* environmentAuth
+      const issued = yield* machineAuth
         .issueMcpClientSession({
           label: pending.clientName,
           access: pending.access,
@@ -513,7 +513,7 @@ const make = Effect.gen(function* () {
         access_token: issued.token,
         token_type: "Bearer",
         expires_in: Math.max(0, Math.floor((issued.expiresAt.epochMilliseconds - now) / 1000)),
-        scope: encodeOAuthScope(EnvironmentAuth.mcpClientScopes(pending.access)),
+        scope: encodeOAuthScope(MachineAuth.mcpClientScopes(pending.access)),
       };
     },
   );
@@ -533,16 +533,16 @@ export const layer = Layer.effect(McpOAuth, make);
 export const layerMcpClientAuthenticator = Layer.effect(
   McpHttpServer.McpClientAuthenticator,
   Effect.gen(function* () {
-    const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
-    const environment = yield* ServerEnvironment.ServerEnvironment;
-    const environmentId = yield* environment.getEnvironmentId;
+    const machineAuth = yield* MachineAuth.MachineAuth;
+    const machine = yield* ServerMachine.ServerMachine;
+    const machineId = yield* machine.getMachineId;
     return McpHttpServer.McpClientAuthenticator.of({
       authenticate: (request) =>
-        environmentAuth.authenticateMcpClient(request).pipe(
+        machineAuth.authenticateMcpClient(request).pipe(
           Effect.flatMap((client) =>
             Clock.currentTimeMillis.pipe(
               Effect.map((issuedAt): McpInvocationContext.McpInvocationScope => ({
-                environmentId,
+                machineId,
                 requestNamespace: `client:${client.sessionId}`,
                 thread: undefined,
                 client: {
@@ -560,7 +560,7 @@ export const layerMcpClientAuthenticator = Layer.effect(
             ),
           ),
           Effect.catch((error) =>
-            (EnvironmentAuth.isServerAuthCredentialError(error)
+            (MachineAuth.isServerAuthCredentialError(error)
               ? Effect.void
               : Effect.logWarning("MCP client authentication failed.", { cause: error })
             ).pipe(Effect.as(undefined)),

@@ -8,7 +8,7 @@ import * as SqlSchema from "effect/sql/SqlSchema";
 
 import {
   AuthClientMetadataDeviceType,
-  AuthEnvironmentScopes,
+  AuthMachineScopes,
   AuthSessionId,
   ClientSurface,
   ServerAuthSessionMethod,
@@ -34,7 +34,7 @@ export type AuthSessionClientMetadataRecord = typeof AuthSessionClientMetadataRe
 export const AuthSessionRecord = Schema.Struct({
   sessionId: AuthSessionId,
   subject: Schema.String,
-  scopes: AuthEnvironmentScopes,
+  scopes: AuthMachineScopes,
   method: ServerAuthSessionMethod,
   client: AuthSessionClientMetadataRecord,
   issuedAt: Schema.DateTimeUtcFromString,
@@ -47,7 +47,7 @@ export type AuthSessionRecord = typeof AuthSessionRecord.Type;
 export const CreateAuthSessionInput = Schema.Struct({
   sessionId: AuthSessionId,
   subject: Schema.String,
-  scopes: AuthEnvironmentScopes,
+  scopes: AuthMachineScopes,
   method: ServerAuthSessionMethod,
   client: AuthSessionClientMetadataRecord,
   issuedAt: Schema.DateTimeUtcFromString,
@@ -135,7 +135,7 @@ export class AuthSessionRepository extends Context.Service<
 const AuthSessionDbRow = Schema.Struct({
   sessionId: AuthSessionId,
   subject: Schema.String,
-  scopes: Schema.fromJsonString(AuthEnvironmentScopes),
+  scopes: Schema.fromJsonString(AuthMachineScopes),
   method: ServerAuthSessionMethod,
   clientLabel: Schema.NullOr(Schema.String),
   clientIpAddress: Schema.NullOr(Schema.String),

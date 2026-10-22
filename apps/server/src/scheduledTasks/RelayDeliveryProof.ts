@@ -20,7 +20,7 @@ import * as Schema from "effect/Schema";
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import { CLOUD_MINT_PUBLIC_KEY, RELAY_ISSUER_SECRET, RELAY_URL_SECRET } from "../cloud/config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 
 /** Covers the relay's 24-hour hold plus a margin. */
 const MAX_PROOF_AGE_SECONDS = 25 * 60 * 60;
@@ -43,7 +43,7 @@ export class RelayDeliveryProof extends Context.Service<
 
 const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore.ServerSecretStore;
-  const environment = yield* ServerEnvironment.ServerEnvironment;
+  const machine = yield* ServerMachine.ServerMachine;
   const verify: RelayDeliveryProof["Service"]["verify"] = Effect.fn("webhook.verifyRelayDelivery")(
     function* (input) {
       const proof = input.headers[RELAY_HOOK_DELIVERY_HEADER];
@@ -59,20 +59,20 @@ const make = Effect.gen(function* () {
       const relayUrl = text(yield* secrets.get(RELAY_URL_SECRET));
       const relayIssuer = Option.isSome(issuer) ? issuer : relayUrl;
       if (Option.isNone(publicKey) || Option.isNone(relayIssuer)) return Option.none();
-      const environmentId = yield* environment.getEnvironmentId;
+      const machineId = yield* machine.getMachineId;
       const payload = yield* verifyRelayJwt({
         publicKey: publicKey.value,
         token: proof,
         typ: RELAY_HOOK_DELIVERY_TYP,
         issuer: normalizeRelayIssuer(relayIssuer.value),
-        audience: `t3-env:${environmentId}`,
+        audience: `t3-env:${machineId}`,
         nowEpochSeconds: Math.floor((yield* Clock.currentTimeMillis) / 1_000),
         maxTokenAge: MAX_PROOF_AGE_SECONDS,
       }).pipe(Effect.map(decodePayload), Effect.orElseSucceed(Option.none));
       // The proof must name exactly this delivery, so it cannot be lifted onto another one.
       if (
         Option.isNone(payload) ||
-        payload.value.environmentId !== environmentId ||
+        payload.value.machineId !== machineId ||
         payload.value.deliveryId !== deliveryId ||
         payload.value.receivedAt !== receivedAt ||
         payload.value.hookId !== input.hookId

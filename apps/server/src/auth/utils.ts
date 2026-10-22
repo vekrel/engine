@@ -22,7 +22,7 @@ export function resolveSessionCookieName(input: {
   readonly port: number;
   readonly host: string | undefined;
   readonly instanceKey: string;
-  readonly environmentId: string;
+  readonly machineId: string;
   readonly development: boolean;
 }): string {
   if (input.mode === "desktop") {
@@ -32,7 +32,7 @@ export function resolveSessionCookieName(input: {
   const instanceHash = NodeCrypto.createHash("sha256")
     .update(
       !input.development && isRemoteReachableHost(input.host)
-        ? input.environmentId
+        ? input.machineId
         : input.instanceKey,
     )
     .digest("hex")

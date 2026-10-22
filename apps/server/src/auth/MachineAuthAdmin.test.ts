@@ -5,9 +5,9 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
-import * as EnvironmentAuth from "./EnvironmentAuth.ts";
+import * as MachineAuth from "./MachineAuth.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import * as SessionStore from "./SessionStore.ts";
 
@@ -31,29 +31,29 @@ const layerServerConfig = (
     ),
   );
 
-const layerEnvironmentAuth = (
+const layerMachineAuth = (
   overrides?: Partial<Pick<ServerConfig.ServerConfig["Service"], "desktopBootstrapToken">>,
 ) =>
-  EnvironmentAuth.layer.pipe(
+  MachineAuth.layer.pipe(
     Layer.provideMerge(ServerSecretStore.layer),
     Layer.provideMerge(SqlitePersistence.layerMemory),
-    Layer.provide(ServerEnvironment.layerIdentity),
+    Layer.provide(ServerMachine.layerIdentity),
     Layer.provide(layerServerConfig(overrides)),
   );
 
-it.layer(NodeServices.layer)("EnvironmentAuth administrative operations", (it) => {
+it.layer(NodeServices.layer)("MachineAuth administrative operations", (it) => {
   it.effect("creates, lists, and revokes client pairing links", () =>
     Effect.gen(function* () {
-      const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
+      const machineAuth = yield* MachineAuth.MachineAuth;
 
-      const created = yield* environmentAuth.createPairingLink({
+      const created = yield* machineAuth.createPairingLink({
         scopes: ["orchestration:read"],
         subject: "one-time-token",
         label: "CI phone",
       });
-      const listedBeforeRevoke = yield* environmentAuth.listPairingLinks();
-      const revoked = yield* environmentAuth.revokePairingLink(created.id);
-      const listedAfterRevoke = yield* environmentAuth.listPairingLinks();
+      const listedBeforeRevoke = yield* machineAuth.listPairingLinks();
+      const revoked = yield* machineAuth.revokePairingLink(created.id);
+      const listedAfterRevoke = yield* machineAuth.listPairingLinks();
 
       expect(created.scopes).toEqual(["orchestration:read"]);
       expect(created.credential.length).toBeGreaterThan(0);
@@ -63,21 +63,21 @@ it.layer(NodeServices.layer)("EnvironmentAuth administrative operations", (it) =
       expect(listedBeforeRevoke[0]).not.toHaveProperty("credential");
       expect(revoked).toBe(true);
       expect(listedAfterRevoke).toHaveLength(0);
-    }).pipe(Effect.provide(layerEnvironmentAuth())),
+    }).pipe(Effect.provide(layerMachineAuth())),
   );
 
   it.effect("issues bearer access token sessions without exposing raw tokens", () =>
     Effect.gen(function* () {
-      const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
+      const machineAuth = yield* MachineAuth.MachineAuth;
       const sessionCredentials = yield* SessionStore.SessionStore;
 
-      const issued = yield* environmentAuth.issueSession({
+      const issued = yield* machineAuth.issueSession({
         label: "deploy-bot",
       });
       const verified = yield* sessionCredentials.verify(issued.token);
-      const listedBeforeRevoke = yield* environmentAuth.listSessions();
-      const revoked = yield* environmentAuth.revokeSession(issued.sessionId);
-      const listedAfterRevoke = yield* environmentAuth.listSessions();
+      const listedBeforeRevoke = yield* machineAuth.listSessions();
+      const revoked = yield* machineAuth.revokeSession(issued.sessionId);
+      const listedAfterRevoke = yield* machineAuth.listSessions();
 
       expect(issued.method).toBe("bearer-access-token");
       expect(issued.scopes).toEqual(AuthStandardClientScopes);
@@ -91,6 +91,6 @@ it.layer(NodeServices.layer)("EnvironmentAuth administrative operations", (it) =
       expect("token" in (listedBeforeRevoke[0] ?? {})).toBe(false);
       expect(revoked).toBe(true);
       expect(listedAfterRevoke).toHaveLength(0);
-    }).pipe(Effect.provide(layerEnvironmentAuth())),
+    }).pipe(Effect.provide(layerMachineAuth())),
   );
 });

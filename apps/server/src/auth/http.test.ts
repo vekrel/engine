@@ -1,9 +1,9 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   AuthTokenExchangeGrantType,
-  AuthEnvironmentBootstrapTokenType,
+  AuthMachineBootstrapTokenType,
   AuthAccessTokenType,
-  EnvironmentHttpApi,
+  MachineHttpApi,
 } from "@vekrel/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Context from "effect/Context";
@@ -19,14 +19,14 @@ import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpRouter from "effect/http/HttpRouter";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
-import * as EnvironmentAuth from "./EnvironmentAuth.ts";
+import * as MachineAuth from "./MachineAuth.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import * as AuthHttp from "./http.ts";
 
 const DEV_TOKEN = "reusable-dev-auth-token-that-is-long-enough";
-class AuthTestApi extends HttpApi.make("environment").add(EnvironmentHttpApi.groups.auth) {}
+class AuthTestApi extends HttpApi.make("machine").add(MachineHttpApi.groups.auth) {}
 
 const layerConfig = Layer.effect(
   ServerConfig.ServerConfig,
@@ -41,16 +41,16 @@ const layerConfig = Layer.effect(
   }),
 ).pipe(Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-auth-http-test-" })));
 
-const layerEnvironmentAuth = EnvironmentAuth.layer.pipe(
+const layerMachineAuth = MachineAuth.layer.pipe(
   Layer.provide(SqlitePersistence.layerMemory),
   Layer.provide(ServerSecretStore.layer),
-  Layer.provide(ServerEnvironment.layerIdentity),
+  Layer.provide(ServerMachine.layerIdentity),
   Layer.provide(layerConfig),
 );
 const layerRoutes = HttpApiBuilder.layer(AuthTestApi).pipe(
   Layer.provide(AuthHttp.layer),
   Layer.provide(AuthHttp.layerAuthenticatedAuth),
-  Layer.provideMerge(layerEnvironmentAuth),
+  Layer.provideMerge(layerMachineAuth),
   Layer.provide(layerConfig),
   Layer.provideMerge(
     HttpPlatform.layer.pipe(
@@ -90,20 +90,20 @@ it.effect("sets the selected browser session cookies through the HTTP route", ()
             HttpRouter.toWebHandler(layerRoutes, { disableLogger: true }),
           ] as const,
       ),
-      ([environmentA, environmentB]) =>
+      ([machineA, machineB]) =>
         Effect.tryPromise(async () => {
-          const devResponse = await environmentA.handler(
+          const devResponse = await machineA.handler(
             postJson("/api/auth/browser-session", { credential: DEV_TOKEN }),
             requestContext,
           );
           expect(devResponse.status).toBe(200);
-          const retiredScopeResponse = await environmentA.handler(
+          const retiredScopeResponse = await machineA.handler(
             new Request("http://127.0.0.1/oauth/token", {
               method: "POST",
               body: new URLSearchParams({
                 grant_type: AuthTokenExchangeGrantType,
                 subject_token: DEV_TOKEN,
-                subject_token_type: AuthEnvironmentBootstrapTokenType,
+                subject_token_type: AuthMachineBootstrapTokenType,
                 requested_token_type: AuthAccessTokenType,
                 scope: "review:write",
               }),
@@ -121,16 +121,16 @@ it.effect("sets the selected browser session cookies through the HTTP route", ()
             expect.stringMatching(/^t3_session_[^=]*=;.*Max-Age=0/),
           );
           const devCookieHeader = devCookie?.split(";", 1)[0] ?? "";
-          const environmentBSession = await environmentB.handler(
+          const machineBSession = await machineB.handler(
             new Request("http://127.0.0.1/api/auth/session", {
               headers: { cookie: devCookieHeader },
             }),
             requestContext,
           );
-          expect(environmentBSession.status).toBe(200);
-          expect(await environmentBSession.json()).toMatchObject({ authenticated: true });
+          expect(machineBSession.status).toBe(200);
+          expect(await machineBSession.json()).toMatchObject({ authenticated: true });
 
-          const pairingResponse = await environmentA.handler(
+          const pairingResponse = await machineA.handler(
             postJson(
               "/api/auth/pairing-token",
               { scopes: ["orchestration:read"] },
@@ -140,7 +140,7 @@ it.effect("sets the selected browser session cookies through the HTTP route", ()
           );
           expect(pairingResponse.status).toBe(200);
           const pairing = (await pairingResponse.json()) as { credential: string };
-          const restrictedResponse = await environmentA.handler(
+          const restrictedResponse = await machineA.handler(
             postJson("/api/auth/browser-session", { credential: pairing.credential }),
             requestContext,
           );
@@ -150,8 +150,8 @@ it.effect("sets the selected browser session cookies through the HTTP route", ()
           expect(restrictedCookies[0]).toMatch(/^t3_session_/);
           expect(restrictedCookies[0]).not.toContain("t3_dev_session_");
         }),
-      ([environmentA, environmentB]) =>
-        Effect.promise(() => Promise.all([environmentA.dispose(), environmentB.dispose()])),
+      ([machineA, machineB]) =>
+        Effect.promise(() => Promise.all([machineA.dispose(), machineB.dispose()])),
     );
   }).pipe(Effect.provide(NodeServices.layer)),
 );

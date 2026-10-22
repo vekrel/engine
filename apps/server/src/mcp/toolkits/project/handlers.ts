@@ -229,7 +229,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
       return result.value;
     }),
   ),
-  t3_project_create: McpToolAccess.writesEnvironment(({ workspaceRoot, ...input }) =>
+  t3_project_create: McpToolAccess.writesMachine(({ workspaceRoot, ...input }) =>
     Effect.gen(function* () {
       const projects = yield* Project.ProjectService;
       if (workspaceRoot === undefined) {
@@ -273,7 +273,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         .pipe(Effect.mapError(projectFailure));
     }),
   ),
-  t3_project_update: McpToolAccess.writesEnvironment((input) =>
+  t3_project_update: McpToolAccess.writesMachine((input) =>
     Effect.gen(function* () {
       const projects = yield* Project.ProjectService;
       return yield* projects
@@ -281,7 +281,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         .pipe(Effect.mapError(projectFailure));
     }),
   ),
-  t3_project_delete: McpToolAccess.writesEnvironment((input) =>
+  t3_project_delete: McpToolAccess.writesMachine((input) =>
     Effect.gen(function* () {
       const projects = yield* Project.ProjectService;
       return yield* projects
@@ -289,7 +289,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         .pipe(Effect.mapError(projectFailure));
     }),
   ),
-  t3_project_clone: McpToolAccess.writesEnvironment((input) =>
+  t3_project_clone: McpToolAccess.writesMachine((input) =>
     Effect.gen(function* () {
       const repositories = yield* Repositories.SourceControlRepositoryService;
       return yield* repositories.cloneRepository(input).pipe(

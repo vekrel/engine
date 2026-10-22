@@ -78,12 +78,12 @@ const bootstrap = (
 const ownerFor = Effect.fn("SshDeviceHost.ownerFor")(function* (hostId: string) {
   const fs = yield* FileSystem.FileSystem;
   const server = yield* ServerConfig.ServerConfig;
-  const environmentId = yield* fs
-    .readFileString(server.environmentIdPath)
+  const machineId = yield* fs
+    .readFileString(server.machineIdPath)
     .pipe(Effect.orElseSucceed(() => server.stateDir));
   const crypto = yield* Crypto.Crypto;
   const owner = yield* crypto
-    .digest("SHA-256", new TextEncoder().encode(`${environmentId}\0${server.stateDir}\0${hostId}`))
+    .digest("SHA-256", new TextEncoder().encode(`${machineId}\0${server.stateDir}\0${hostId}`))
     .pipe(Effect.map(Hex.encode), Effect.orDie);
   return owner.slice(0, 24);
 });

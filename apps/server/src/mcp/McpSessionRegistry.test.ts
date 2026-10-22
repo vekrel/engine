@@ -1,22 +1,22 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import { HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as McpSessionRegistry from "./McpSessionRegistry.ts";
 
-const environmentId = EnvironmentId.make("environment-1");
+const machineId = MachineId.make("machine-1");
 const makeFakeHttpServer = (hostname: string, port = 43123) =>
   HttpServer.HttpServer.of({
     address: NetAddress.inetAddressFromIpStringUnsafe(hostname, port),
     serve: (() => Effect.void) as HttpServer.HttpServer["Service"]["serve"],
   });
 const fakeHttpServer = makeFakeHttpServer("127.0.0.1");
-const fakeEnvironment = ServerEnvironment.ServerEnvironment.of({
-  getEnvironmentId: Effect.succeed(environmentId),
+const fakeMachine = ServerMachine.ServerMachine.of({
+  getMachineId: Effect.succeed(machineId),
   getDescriptor: Effect.die("unused"),
 });
 
@@ -28,7 +28,7 @@ const makeRegistry = (now: () => number, httpServer = fakeHttpServer) =>
     })
     .pipe(
       Effect.provideService(HttpServer.HttpServer, httpServer),
-      Effect.provideService(ServerEnvironment.ServerEnvironment, fakeEnvironment),
+      Effect.provideService(ServerMachine.ServerMachine, fakeMachine),
       Effect.provide(NodeServices.layer),
     );
 

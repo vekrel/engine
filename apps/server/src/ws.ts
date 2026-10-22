@@ -27,7 +27,7 @@ import {
   AuthAccessStreamError,
   type AuthAccessStreamEvent,
   AuthOrchestrationOperateScope,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   type ScheduledTaskListResult,
   AuthSessionId,
   ClientConnectionMethod,
@@ -86,7 +86,7 @@ import {
   ChatAttachmentId,
   PersistChatAttachmentsError,
   RpcClientId,
-  EnvironmentAuthorizationError,
+  MachineAuthorizationError,
   type ProjectId,
   type ProviderDriverKind,
   type ProviderInstanceId,
@@ -106,7 +106,7 @@ import { RpcSerialization, RpcServer } from "effect/rpc";
 
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as ServerConfig from "./config.ts";
-import * as EnvironmentTheme from "./environmentTheme.ts";
+import * as MachineTheme from "./environmentTheme.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as ExternalLauncher from "./process/externalLauncher.ts";
 import * as ThreadManagementService from "./orchestration-v2/ThreadManagementService.ts";
@@ -210,13 +210,13 @@ import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts
 import * as ProjectCloneTracker from "./project/ProjectCloneTracker.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
 import * as WorktreeSetupTracker from "./project/WorktreeSetupTracker.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
-import * as DirectEndpoints from "./environment/DirectEndpoints.ts";
-import * as RemoteOpenTargets from "./environment/RemoteOpenTargets.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
+import * as DirectEndpoints from "./machine/DirectEndpoints.ts";
+import * as RemoteOpenTargets from "./machine/RemoteOpenTargets.ts";
 import * as DefectReporter from "./observability/DefectReporter.ts";
 import * as EventLoopMonitor from "./observability/EventLoopMonitor.ts";
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
 import { requiredScopeForDeviceList, rpcAuthorizationError } from "./auth/RpcAuthorization.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
@@ -245,7 +245,7 @@ import * as VcsDriverRegistry from "./vcs/VcsDriverRegistry.ts";
 import * as VcsProjectConfig from "./vcs/VcsProjectConfig.ts";
 import * as PairingGrantStore from "./auth/PairingGrantStore.ts";
 import * as SessionStore from "./auth/SessionStore.ts";
-import { failEnvironmentAuthInvalid, failEnvironmentInternal } from "./auth/http.ts";
+import { failMachineAuthInvalid, failMachineInternal } from "./auth/http.ts";
 import { isNetworkPath } from "@vekrel/shared/path";
 import * as RelayClient from "@vekrel/shared/relayClient";
 import { isTelemetryIdHash } from "@vekrel/shared/telemetryId";
@@ -1182,7 +1182,7 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
 );
 
 export const layerWsRpc = (
-  currentSession: EnvironmentAuth.AuthenticatedSession,
+  currentSession: MachineAuth.AuthenticatedSession,
   clientOrigin: OrchestrationClientOrigin,
   clientAnalyticsProps: Readonly<Record<string, unknown>>,
   previewAutomationBroker: PreviewAutomationBroker.PreviewAutomationBroker["Service"],
@@ -1258,7 +1258,7 @@ export const layerWsRpc = (
       const agentSessionImporter = yield* AgentSessionImporter.AgentSessionImporter;
       const checkpointDiffQuery = yield* CheckpointDiffQuery.CheckpointDiffQuery;
       const keybindings = yield* Keybindings.Keybindings;
-      const environmentTheme = yield* EnvironmentTheme.EnvironmentThemeService;
+      const machineTheme = yield* MachineTheme.MachineThemeService;
       const externalLauncher = yield* ExternalLauncher.ExternalLauncher;
       const remoteOpenTargets = yield* RemoteOpenTargets.RemoteOpenTargets;
       const directEndpoints = yield* DirectEndpoints.DirectEndpoints;
@@ -1288,7 +1288,7 @@ export const layerWsRpc = (
       const startup = yield* ServerRuntimeStartup.ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
-      const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
+      const serverMachine = yield* ServerMachine.ServerMachine;
       const backgroundPolicy = yield* BackgroundPolicy.BackgroundPolicy;
       const rpcClientIds = yield* Ref.make(new Set<RpcClientId>());
       yield* Effect.addFinalizer(() =>
@@ -1305,7 +1305,7 @@ export const layerWsRpc = (
           Effect.ignore,
         ),
       );
-      const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
+      const serverAuth = yield* MachineAuth.MachineAuth;
       const sourceControlDiscovery = yield* SourceControlDiscovery.SourceControlDiscovery;
       const otlpEndpointCheck = yield* OtlpEndpointCheck.OtlpEndpointCheck;
       const sourceControlRepositories =
@@ -1327,9 +1327,9 @@ export const layerWsRpc = (
               tasks: result.tasks.map(({ webhook: _webhook, ...task }) => task),
             };
       const authorizeEffect = <A, E, R>(
-        requiredScope: AuthEnvironmentScope,
+        requiredScope: AuthMachineScope,
         effect: Effect.Effect<A, E, R>,
-      ): Effect.Effect<A, E | EnvironmentAuthorizationError, R> =>
+      ): Effect.Effect<A, E | MachineAuthorizationError, R> =>
         currentSession.scopes.includes(requiredScope)
           ? effect
           : Effect.fail(rpcAuthorizationError(requiredScope));
@@ -1679,7 +1679,7 @@ export const layerWsRpc = (
         const settings = ServerSettings.redactServerSettingsForClient(
           yield* serverSettings.getSettings,
         );
-        const environment = yield* serverEnvironment.getDescriptor;
+        const machine = yield* serverMachine.getDescriptor;
         const auth = yield* serverAuth.getDescriptor();
         const scratchWorkspaceRoot = yield* managedFolders.scratchRoot;
         const lastEventLoopStall = yield* eventLoopMonitor.latestNoticeableStall;
@@ -1689,7 +1689,7 @@ export const layerWsRpc = (
         );
 
         return {
-          environment,
+          machine,
           auth,
           cwd: config.cwd,
           keybindingsConfigPath: config.keybindingsConfigPath,
@@ -3013,12 +3013,12 @@ export const layerWsRpc = (
               // already-shipped client decodes this stream against the old
               // event union and its whole config subscription dies on an
               // unknown member.
-              const environmentThemeUpdates =
-                input.environmentThemes === true
-                  ? environmentTheme.streamChanges.pipe(
+              const machineThemeUpdates =
+                input.machineThemes === true
+                  ? machineTheme.streamChanges.pipe(
                       Stream.map((themes) => ({
                         version: 1 as const,
-                        type: "environmentThemesUpdated" as const,
+                        type: "machineThemesUpdated" as const,
                         payload: { themes },
                       })),
                     )
@@ -3048,7 +3048,7 @@ export const layerWsRpc = (
                   providerStatuses,
                   Stream.merge(
                     settingsUpdates,
-                    Stream.merge(environmentThemeUpdates, usageLimitSourceUpdates),
+                    Stream.merge(machineThemeUpdates, usageLimitSourceUpdates),
                   ),
                 ),
               );
@@ -3159,18 +3159,18 @@ export const layer = Layer.unwrap(
             { status: 426 },
           );
         }
-        const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
+        const serverAuth = yield* MachineAuth.MachineAuth;
         const sessions = yield* SessionStore.SessionStore;
         const analytics = yield* AnalyticsService.AnalyticsService;
         const session = yield* serverAuth.authenticateWebSocketUpgrade(request).pipe(
-          Effect.catchIf(EnvironmentAuth.isServerAuthCredentialError, (error) =>
-            failEnvironmentAuthInvalid(
-              EnvironmentAuth.serverAuthCredentialReason(error),
-              EnvironmentAuth.serverAuthDpopFailureReason(error),
+          Effect.catchIf(MachineAuth.isServerAuthCredentialError, (error) =>
+            failMachineAuthInvalid(
+              MachineAuth.serverAuthCredentialReason(error),
+              MachineAuth.serverAuthDpopFailureReason(error),
             ),
           ),
-          Effect.catchIf(EnvironmentAuth.isServerAuthInternalError, (error) =>
-            failEnvironmentInternal("internal_error", error),
+          Effect.catchIf(MachineAuth.isServerAuthInternalError, (error) =>
+            failMachineInternal("internal_error", error),
           ),
         );
         const clientOrigin = readClientConnectionOrigin(request);
@@ -3258,7 +3258,7 @@ export const layer = Layer.unwrap(
                 Effect.as(HttpServerResponse.empty()),
                 Effect.catchTags({
                   SessionCredentialVerificationError: (error) =>
-                    failEnvironmentInternal("internal_error", error),
+                    failMachineInternal("internal_error", error),
                 }),
               ),
             ),
@@ -3266,8 +3266,8 @@ export const layer = Layer.unwrap(
         );
       }).pipe(
         Effect.catchTags({
-          EnvironmentAuthInvalidError: HttpServerRespondable.toResponse,
-          EnvironmentInternalError: HttpServerRespondable.toResponse,
+          MachineAuthInvalidError: HttpServerRespondable.toResponse,
+          MachineInternalError: HttpServerRespondable.toResponse,
         }),
       ),
     );

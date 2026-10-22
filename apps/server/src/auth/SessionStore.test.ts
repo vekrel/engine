@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -13,7 +13,7 @@ import * as TestClock from "effect/testing/TestClock";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as SessionStore from "./SessionStore.ts";
@@ -32,19 +32,19 @@ const layerServerConfig = (overrides?: Partial<ServerConfig.ServerConfig["Servic
     }),
   ).pipe(Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "t3-auth-session-test-" })));
 
-const layerServerEnvironment = (environmentId: EnvironmentId) =>
-  Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-    getEnvironmentId: Effect.succeed(environmentId),
+const layerServerMachine = (machineId: MachineId) =>
+  Layer.succeed(ServerMachine.ServerMachineIdentity, {
+    getMachineId: Effect.succeed(machineId),
   });
 
 const layerSessionStore = (
   overrides?: Partial<ServerConfig.ServerConfig["Service"]>,
-  environmentId = EnvironmentId.make("test-environment"),
+  machineId = MachineId.make("test-machine"),
 ) =>
   SessionStore.layer.pipe(
     Layer.provide(SqlitePersistence.layerMemory),
     Layer.provide(ServerSecretStore.layer),
-    Layer.provide(layerServerEnvironment(environmentId)),
+    Layer.provide(layerServerMachine(machineId)),
     Layer.provide(layerServerConfig(overrides)),
   );
 
@@ -69,7 +69,7 @@ const makeDiskSessionStoreLayer = Effect.fn("makeDiskSessionStoreLayer")(functio
   return SessionStore.layer.pipe(
     Layer.provide(layerPersistence),
     Layer.provide(ServerSecretStore.layer),
-    Layer.provide(layerServerEnvironment(EnvironmentId.make(baseDir))),
+    Layer.provide(layerServerMachine(MachineId.make(baseDir))),
     Layer.provide(
       layerServerConfig({
         ...paths,
@@ -133,21 +133,21 @@ it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
     }).pipe(Effect.scoped, Effect.provide(Layer.merge(layerSessionStore(), TestClock.layer()))),
   );
 
-  it.effect("keys remote cookies by environment identity instead of state directory", () =>
+  it.effect("keys remote cookies by machine identity instead of state directory", () =>
     Effect.gen(function* () {
-      const cookieName = (stateDir: string, environmentId: EnvironmentId) =>
+      const cookieName = (stateDir: string, machineId: MachineId) =>
         Effect.gen(function* () {
           const sessions = yield* SessionStore.SessionStore;
           return sessions.cookieName;
         }).pipe(
           Effect.provide(
-            layerSessionStore({ mode: "web", host: "192.168.1.50", stateDir }, environmentId),
+            layerSessionStore({ mode: "web", host: "192.168.1.50", stateDir }, machineId),
           ),
         );
 
-      const original = yield* cookieName("/srv/t3-one", EnvironmentId.make("environment-one"));
-      const moved = yield* cookieName("/srv/t3-moved", EnvironmentId.make("environment-one"));
-      const other = yield* cookieName("/srv/t3-one", EnvironmentId.make("environment-two"));
+      const original = yield* cookieName("/srv/t3-one", MachineId.make("machine-one"));
+      const moved = yield* cookieName("/srv/t3-moved", MachineId.make("machine-one"));
+      const other = yield* cookieName("/srv/t3-one", MachineId.make("machine-two"));
 
       expect(moved).toBe(original);
       expect(other).not.toBe(original);
@@ -164,7 +164,7 @@ it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
       const fromA = yield* Effect.gen(function* () {
         const sessions = yield* SessionStore.SessionStore;
         const dev = yield* sessions.verify(token);
-        const local = yield* sessions.issue({ subject: "environment-a" });
+        const local = yield* sessions.issue({ subject: "machine-a" });
         const ticket = yield* sessions.issueWebSocketToken(local.sessionId);
         yield* sessions.revoke(dev.sessionId);
         return { dev, local, ticket };
@@ -281,7 +281,7 @@ it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
         SessionStore.layer.pipe(
           Layer.provideMerge(ServerSecretStore.layer),
           Layer.provide(SqlitePersistence.layerMemory),
-          Layer.provide(layerServerEnvironment(EnvironmentId.make("test-environment"))),
+          Layer.provide(layerServerMachine(MachineId.make("test-machine"))),
           Layer.provide(layerServerConfig()),
         ),
       ),

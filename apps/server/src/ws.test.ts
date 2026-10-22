@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
   AuthSessionId,
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ThreadId,
   WS_METHODS,
@@ -35,9 +35,9 @@ import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
 import * as CodexInstallation from "./provider/CodexInstallation.ts";
 import * as DeviceService from "./device/DeviceService.ts";
-import * as DirectEndpoints from "./environment/DirectEndpoints.ts";
-import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
-import * as EnvironmentTheme from "./environmentTheme.ts";
+import * as DirectEndpoints from "./machine/DirectEndpoints.ts";
+import * as MachineAuth from "./auth/MachineAuth.ts";
+import * as MachineTheme from "./environmentTheme.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ManagedProjectFolders from "./project/ManagedProjectFolders.ts";
@@ -62,13 +62,13 @@ import * as PullRequestReviewGuideService from "./pullRequest/PullRequestReviewG
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import * as PullRequestSyncReactor from "./orchestration-v2/PullRequestSyncReactor.ts";
 import * as RelayClient from "@vekrel/shared/relayClient";
-import * as RemoteOpenTargets from "./environment/RemoteOpenTargets.ts";
+import * as RemoteOpenTargets from "./machine/RemoteOpenTargets.ts";
 import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "./secrets/SecretRequests.ts";
-import * as ServerEnvironment from "./environment/ServerEnvironment.ts";
+import * as ServerMachine from "./machine/ServerMachine.ts";
 import * as ServerLifecycleEvents from "./serverLifecycleEvents.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
 import * as ServerSelfUpdate from "./cloud/selfUpdate.ts";
@@ -306,7 +306,7 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(CommandOutputHub.CommandOutputHub)({}),
   Layer.mock(CodexInstallation.CodexInstallation)({ managedDirectory: "/unused" }),
   Layer.mock(DeviceService.DeviceService)({}),
-  Layer.mock(EnvironmentTheme.EnvironmentThemeService)({}),
+  Layer.mock(MachineTheme.MachineThemeService)({}),
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(HostResources.HostResources)({}),
   Layer.mock(McpAppRequests.McpAppRequests)({}),
@@ -411,16 +411,16 @@ it.effect(
           scratchRoot: Effect.succeedNone,
           namedProjectsRoot: process.cwd(),
         }),
-        Layer.mock(ServerEnvironment.ServerEnvironment)({
+        Layer.mock(ServerMachine.ServerMachine)({
           getDescriptor: Effect.succeed({
-            environmentId: EnvironmentId.make("config-test"),
+            machineId: MachineId.make("config-test"),
             label: "Config test",
             platform: { os: "linux", arch: "x64" },
             serverVersion: "0.0.0",
             capabilities: { repositoryIdentity: false },
           }),
         }),
-        Layer.mock(EnvironmentAuth.EnvironmentAuth)({
+        Layer.mock(MachineAuth.MachineAuth)({
           getDescriptor: () =>
             Effect.succeed({
               policy: "loopback-browser",

@@ -54,7 +54,7 @@ import { makeManagedCodexProvider } from "./CodexManagedProvider.ts";
 import { codexUsageReader } from "./codexUsage.ts";
 import * as CodexInstallation from "../CodexInstallation.ts";
 import * as ServerSecretStore from "../../auth/ServerSecretStore.ts";
-import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../../machine/ServerMachine.ts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 const decodeCodexSettings = Schema.decodeSync(CodexSettings);
 
@@ -96,7 +96,7 @@ export type CodexDriverEnv =
   | ProviderEventLoggers.ProviderEventLoggers
   | ServerConfig.ServerConfig
   | ServerSecretStore.ServerSecretStore
-  | ServerEnvironment.ServerEnvironmentIdentity
+  | ServerMachine.ServerMachineIdentity
   | CodexInstallation.CodexInstallation;
 
 export const CodexDriver: ProviderDriver<

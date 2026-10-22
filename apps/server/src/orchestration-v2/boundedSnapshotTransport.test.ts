@@ -2,10 +2,10 @@ import { assert, describe, it } from "@effect/vitest";
 import {
   AuthOrchestrationReadScope,
   AuthSessionId,
-  EnvironmentAuthenticatedAuth,
-  EnvironmentAuthenticatedPrincipal,
-  EnvironmentHttpApi,
-  EnvironmentId,
+  MachineAuthenticatedAuth,
+  MachineAuthenticatedPrincipal,
+  MachineHttpApi,
+  MachineId,
   EventId,
   MessageId,
   NodeId,
@@ -35,7 +35,7 @@ import * as HttpApi from "effect/http-api/HttpApi";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 import { Etag, HttpRouter } from "effect/http";
 
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import * as ProjectEnrichmentService from "../project/ProjectEnrichmentService.ts";
@@ -79,12 +79,12 @@ const management = Layer.unwrap(
   }),
 );
 
-class OrchestrationApi extends HttpApi.make("environment").add(
-  EnvironmentHttpApi.groups.orchestration,
+class OrchestrationApi extends HttpApi.make("machine").add(
+  MachineHttpApi.groups.orchestration,
 ) {}
-const auth = Layer.succeed(EnvironmentAuthenticatedAuth, (effect) =>
+const auth = Layer.succeed(MachineAuthenticatedAuth, (effect) =>
   effect.pipe(
-    Effect.provideService(EnvironmentAuthenticatedPrincipal, {
+    Effect.provideService(MachineAuthenticatedPrincipal, {
       sessionId: AuthSessionId.make("compact-transport"),
       subject: "compact-transport",
       method: "browser-session-cookie",
@@ -225,8 +225,8 @@ const seed = Effect.gen(function* () {
 
 const TestLayer = Layer.mergeAll(
   management,
-  Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
-    getEnvironmentId: Effect.succeed(EnvironmentId.make("compact-transport")),
+  Layer.succeed(ServerMachine.ServerMachineIdentity, {
+    getMachineId: Effect.succeed(MachineId.make("compact-transport")),
   }),
   Layer.effectDiscard(seed),
   Layer.mock(OrchestrationEventStore.OrchestrationEventStore)({}),
@@ -251,7 +251,7 @@ const withHttp = <A>(use: (get: (path: string) => Promise<Response>) => Promise<
         Effect.promise(() =>
           use((path) =>
             handler(
-              new Request(`http://environment.test${path}`, {
+              new Request(`http://machine.test${path}`, {
                 headers: {
                   [ORCHESTRATION_PROTOCOL_HEADER]: String(ORCHESTRATION_PROTOCOL_VERSION),
                 },

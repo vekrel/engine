@@ -1,10 +1,10 @@
 import {
   AuthSessionId,
   AuthStandardClientScopes,
-  AuthEnvironmentScopes,
+  AuthMachineScopes,
   type AuthClientMetadata,
   type AuthClientSession,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   type ClientSurface,
   RuntimeMode,
   type ServerAuthSessionMethod,
@@ -22,7 +22,7 @@ import * as Stream from "effect/Stream";
 import * as Option from "effect/Option";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as AuthSessions from "../persistence/AuthSessions.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import {
@@ -45,7 +45,7 @@ export interface IssuedSession {
   readonly method: ServerAuthSessionMethod;
   readonly client: AuthClientMetadata;
   readonly expiresAt: DateTime.DateTime;
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly proofKeyThumbprint?: string;
 }
 
@@ -56,7 +56,7 @@ export interface VerifiedSession {
   readonly client: AuthClientMetadata;
   readonly expiresAt?: DateTime.DateTime;
   readonly subject: string;
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly proofKeyThumbprint?: string;
   readonly runtimeModeCeiling?: RuntimeMode;
 }
@@ -372,7 +372,7 @@ export class SessionStore extends Context.Service<
       readonly ttl?: Duration.Duration;
       readonly subject?: string;
       readonly method?: ServerAuthSessionMethod;
-      readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+      readonly scopes?: ReadonlyArray<AuthMachineScope>;
       readonly client?: AuthClientMetadata;
       readonly proofKeyThumbprint?: string;
       readonly runtimeModeCeiling?: RuntimeMode;
@@ -430,7 +430,7 @@ const SessionClaims = Schema.Struct({
   kind: Schema.Literal("session"),
   sid: AuthSessionId,
   sub: Schema.String,
-  scopes: AuthEnvironmentScopes,
+  scopes: AuthMachineScopes,
   method: Schema.Literals(["browser-session-cookie", "bearer-access-token", "dpop-access-token"]),
   jkt: Schema.optionalKey(Schema.String),
   rtc: Schema.optionalKey(RuntimeMode),
@@ -485,7 +485,7 @@ function toAuthClientSession(input: Omit<AuthClientSession, "current">): AuthCli
 const make = Effect.gen(function* () {
   const crypto = yield* Crypto.Crypto;
   const serverConfig = yield* ServerConfig.ServerConfig;
-  const serverEnvironment = yield* ServerEnvironment.ServerEnvironmentIdentity;
+  const serverMachine = yield* ServerMachine.ServerMachineIdentity;
   const secretStore = yield* ServerSecretStore.ServerSecretStore;
   const authSessions = yield* AuthSessions.AuthSessionRepository;
   const signingSecret = yield* secretStore.getOrCreateRandom(SIGNING_SECRET_NAME, 32);
@@ -496,7 +496,7 @@ const make = Effect.gen(function* () {
     port: serverConfig.port,
     host: serverConfig.host,
     instanceKey: serverConfig.stateDir,
-    environmentId: yield* serverEnvironment.getEnvironmentId,
+    machineId: yield* serverMachine.getMachineId,
     development: serverConfig.devUrl !== undefined,
   } as const;
   const cookieName = resolveSessionCookieName(cookieInput);

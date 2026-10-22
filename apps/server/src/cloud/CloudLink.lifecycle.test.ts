@@ -11,8 +11,8 @@ import * as Stream from "effect/Stream";
 import { HttpClient, HttpClientResponse, HttpServer, type HttpClientRequest } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 
-import { EnvironmentId } from "@vekrel/contracts";
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import { MachineId } from "@vekrel/contracts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerConfigModule from "../config.ts";
 import { writeServiceState } from "../serviceLauncher.ts";
@@ -22,7 +22,7 @@ import {
   SERVICE_STOP_MARKER_FILE,
   type ServiceUpdateRecord,
 } from "./serviceProtocol.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as AgentAwarenessRelay from "../relay/AgentAwarenessRelay.ts";
 import { CLOUD_CLI_DESIRED_LINK_SECRET } from "./CliState.ts";
 import * as CliTokenManager from "./CliTokenManager.ts";
@@ -33,7 +33,7 @@ import {
   CLOUD_LINK_REVOKED,
   CLOUD_LINKED_USER_ID,
   decodeRuntimeConfig,
-  RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+  RELAY_MACHINE_CREDENTIAL_SECRET,
   RELAY_ISSUER_SECRET,
   RELAY_URL_SECRET,
 } from "./config.ts";
@@ -173,9 +173,9 @@ describe("releaseManagedTunnelOnShutdown", () => {
         Effect.provideService(ServerSecretStore.ServerSecretStore, harness.store),
         Effect.provideService(AgentAwarenessRelay.AgentAwarenessRelay, idleAwarenessRelay),
         Effect.provideService(
-          ServerEnvironment.ServerEnvironment,
-          ServerEnvironment.ServerEnvironment.of({
-            getEnvironmentId: Effect.succeed(EnvironmentId.make("env_123")),
+          ServerMachine.ServerMachine,
+          ServerMachine.ServerMachine.of({
+            getMachineId: Effect.succeed(MachineId.make("env_123")),
             getDescriptor: Effect.die("unused"),
           }),
         ),
@@ -204,8 +204,8 @@ describe("releaseManagedTunnelOnShutdown", () => {
           }),
         ),
         Effect.provideService(
-          EnvironmentAuth.EnvironmentAuth,
-          EnvironmentAuth.EnvironmentAuth.of({} as EnvironmentAuth.EnvironmentAuth["Service"]),
+          MachineAuth.MachineAuth,
+          MachineAuth.MachineAuth.of({} as MachineAuth.MachineAuth["Service"]),
         ),
         Effect.provideService(
           CliTokenManager.CloudCliTokenManager,
@@ -279,7 +279,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       const request = requests[0]!;
       expect(request.method).toBe("DELETE");
       expect(request.url).toBe(
-        "https://relay.example.test/v1/client/environment-links/env_123/tunnel",
+        "https://relay.example.test/v1/client/machine-links/env_123/tunnel",
       );
       expect(request.headers.authorization).toBe("Bearer cli-access-token");
       expect(values.has(CLOUD_ENDPOINT_RUNTIME_CONFIG)).toBe(false);
@@ -437,7 +437,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       ],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -450,9 +450,9 @@ describe("releaseManagedTunnelOnShutdown", () => {
       expect(requests).toHaveLength(1);
       expect(requests[0]?.method).toBe("POST");
       expect(requests[0]?.url).toBe(
-        "https://relay.example.test/v1/environments/env_123/tunnel/recovery",
+        "https://relay.example.test/v1/machines/env_123/tunnel/recovery",
       );
-      expect(requests[0]?.headers.authorization).toBe("Bearer environment-credential");
+      expect(requests[0]?.headers.authorization).toBe("Bearer machine-credential");
       const body = requests[0]?.body;
       expect(body?._tag).toBe("Uint8Array");
       if (body?._tag === "Uint8Array") {
@@ -491,7 +491,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
         yield* link.applyRelayConfig({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user-123",
-          environmentCredential: "environment-credential",
+          machineCredential: "machine-credential",
           cloudMintPublicKey:
             "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAqZ2u2LjMoAyG2QTHXmITJ9w6RzZtVUAv394XCcPV0zE=\n-----END PUBLIC KEY-----",
           endpointRuntime: config,
@@ -525,7 +525,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       ],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
       [CLOUD_CLI_DESIRED_LINK_SECRET, "managed"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
@@ -540,7 +540,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
 
       expect(requests).toHaveLength(1);
       expect(applyConfigCalls).toEqual([]);
-      expect(values.has(RELAY_ENVIRONMENT_CREDENTIAL_SECRET)).toBe(true);
+      expect(values.has(RELAY_MACHINE_CREDENTIAL_SECRET)).toBe(true);
       expect(values.has(CLOUD_ENDPOINT_RUNTIME_CONFIG)).toBe(true);
     }).pipe(
       provideReleaseHarness({
@@ -569,7 +569,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       ],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "old-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "old-credential"],
     ]);
 
     return Effect.gen(function* () {
@@ -585,7 +585,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
         requests: [],
         respond: () => {
           values.set(
-            RELAY_ENVIRONMENT_CREDENTIAL_SECRET,
+            RELAY_MACHINE_CREDENTIAL_SECRET,
             new TextEncoder().encode("replacement-credential"),
           );
           return Response.json(
@@ -602,11 +602,11 @@ describe("releaseManagedTunnelOnShutdown", () => {
     );
   });
 
-  it.effect("clears the revoked mark when the environment is linked again", () => {
+  it.effect("clears the revoked mark when the machine is linked again", () => {
     const { store } = makeMemorySecretStore([
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "revoked-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "revoked-credential"],
       [CLOUD_LINK_REVOKED, "true"],
     ]);
     const cloudMintPublicKey =
@@ -618,7 +618,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       yield* link.applyRelayConfig({
         relayUrl: "https://relay.example.test",
         cloudUserId: "user-123",
-        environmentCredential: "fresh-credential",
+        machineCredential: "fresh-credential",
         cloudMintPublicKey,
         endpointRuntime: null,
       });
@@ -720,7 +720,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
         [CLOUD_ENDPOINT_RUNTIME_CONFIG, originalConfig],
         [RELAY_URL_SECRET, "https://relay.example.test"],
         [CLOUD_LINKED_USER_ID, "user-123"],
-        [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+        [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
       ]);
       const applyConfigCalls: Array<unknown> = [];
       const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -763,7 +763,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       ],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -801,7 +801,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       [CLOUD_ENDPOINT_RUNTIME_CONFIG, oldConfig],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
       [CLOUD_LINK_REVOKED, "true"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
@@ -812,8 +812,8 @@ describe("releaseManagedTunnelOnShutdown", () => {
       expect(yield* link.recoverManagedTunnel("http://127.0.0.1:3773")).toBe(true);
       expect(requests).toHaveLength(1);
       expect(requests[0]?.method).toBe("POST");
-      expect(requests[0]?.url).toBe("https://relay.example.test/v1/environments/env_123/tunnel");
-      expect(requests[0]?.headers.authorization).toBe("Bearer environment-credential");
+      expect(requests[0]?.url).toBe("https://relay.example.test/v1/machines/env_123/tunnel");
+      expect(requests[0]?.headers.authorization).toBe("Bearer machine-credential");
       expect(applyConfigCalls).toEqual([nextConfig]);
       expect(
         Option.getOrNull(
@@ -829,8 +829,8 @@ describe("releaseManagedTunnelOnShutdown", () => {
         respond: () =>
           Response.json({
             endpoint: {
-              httpBaseUrl: "https://environment.example.test/",
-              wsBaseUrl: "wss://environment.example.test/ws",
+              httpBaseUrl: "https://machine.example.test/",
+              wsBaseUrl: "wss://machine.example.test/ws",
               providerKind: "cloudflare_tunnel",
             },
             endpointRuntime: nextConfig,
@@ -839,7 +839,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
     );
   });
 
-  it.effect("does not recover an environment without a managed tunnel credential", () => {
+  it.effect("does not recover a machine without a managed tunnel credential", () => {
     const { store } = makeMemorySecretStore([
       [CLOUD_ENDPOINT_RUNTIME_CONFIG, "old-config"],
       [RELAY_URL_SECRET, "https://relay.example.test"],
@@ -863,7 +863,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       ],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -900,7 +900,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       [CLOUD_ENDPOINT_RUNTIME_CONFIG, "old-config"],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -930,7 +930,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       [CLOUD_ENDPOINT_RUNTIME_CONFIG, "old-config"],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -950,8 +950,8 @@ describe("releaseManagedTunnelOnShutdown", () => {
         respond: () =>
           Response.json(
             {
-              _tag: "RelayEnvironmentLinkProofExpiredError",
-              code: "environment_link_proof_expired",
+              _tag: "RelayMachineLinkProofExpiredError",
+              code: "machine_link_proof_expired",
               traceId: "trace-expired",
             },
             { status: 401 },
@@ -965,7 +965,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       [CLOUD_ENDPOINT_RUNTIME_CONFIG, "old-config"],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "environment-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "machine-credential"],
     ]);
     const applyConfigCalls: Array<unknown> = [];
     const requests: Array<HttpClientRequest.HttpClientRequest> = [];
@@ -985,8 +985,8 @@ describe("releaseManagedTunnelOnShutdown", () => {
           values.set(CLOUD_ENDPOINT_RUNTIME_CONFIG, freshConfig);
           return Response.json({
             endpoint: {
-              httpBaseUrl: "https://environment.example.test/",
-              wsBaseUrl: "wss://environment.example.test/ws",
+              httpBaseUrl: "https://machine.example.test/",
+              wsBaseUrl: "wss://machine.example.test/ws",
               providerKind: "cloudflare_tunnel",
             },
             endpointRuntime: {
@@ -1005,7 +1005,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
       [CLOUD_ENDPOINT_CONFIRMED_ORIGIN, "confirmed-origin"],
       [RELAY_URL_SECRET, "https://relay.example.test"],
       [CLOUD_LINKED_USER_ID, "user-123"],
-      [RELAY_ENVIRONMENT_CREDENTIAL_SECRET, "old-credential"],
+      [RELAY_MACHINE_CREDENTIAL_SECRET, "old-credential"],
     ]);
     const failingStore: ServerSecretStore.ServerSecretStore["Service"] = {
       ...store,
@@ -1035,7 +1035,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
         link.applyRelayConfig({
           relayUrl: "https://relay.example.test",
           cloudUserId: "user-123",
-          environmentCredential: "new-credential",
+          machineCredential: "new-credential",
           cloudMintPublicKey,
           endpointRuntime: null,
         }),

@@ -1,4 +1,4 @@
-import { EnvironmentThemeFile } from "@vekrel/contracts";
+import { MachineThemeFile } from "@vekrel/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -11,31 +11,31 @@ import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "./config.ts";
-import * as EnvironmentTheme from "./environmentTheme.ts";
+import * as MachineTheme from "./environmentTheme.ts";
 import { symlinksSupported } from "@vekrel/shared/testing/symlinks";
 
-const encodeThemeFile = Schema.encodeSync(Schema.fromJsonString(EnvironmentThemeFile));
+const encodeThemeFile = Schema.encodeSync(Schema.fromJsonString(MachineThemeFile));
 
-const NIGHTFALL_THEME: EnvironmentThemeFile = {
+const NIGHTFALL_THEME: MachineThemeFile = {
   name: "Nightfall",
   appearance: "dark",
   canvas: "#1a1b26",
   accent: "#7aa2f7",
 };
 
-const SHARED_THEME: EnvironmentThemeFile = {
+const SHARED_THEME: MachineThemeFile = {
   version: 1,
   name: "Shared Light",
   appearance: "light",
   colors: { canvas: "#eff1f5", accent: "#1e66f5" },
 };
 
-const withEnvironmentThemes = <A, E>(
+const withMachineThemes = <A, E>(
   seeds: Readonly<Record<string, string>>,
   body: Effect.Effect<
     A,
     E,
-    | EnvironmentTheme.EnvironmentThemeService
+    | MachineTheme.MachineThemeService
     | ServerConfig.ServerConfig
     | FileSystem.FileSystem
     | Path.Path
@@ -45,7 +45,7 @@ const withEnvironmentThemes = <A, E>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-environment-theme-" });
+    const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3code-machine-theme-" });
     const themesDir = path.join(baseDir, "userdata", "themes");
     yield* fs.makeDirectory(themesDir, { recursive: true });
     for (const [filename, contents] of Object.entries(seeds)) {
@@ -54,7 +54,7 @@ const withEnvironmentThemes = <A, E>(
 
     return yield* body.pipe(
       Effect.provide(
-        EnvironmentTheme.layer.pipe(
+        MachineTheme.layer.pipe(
           Layer.provideMerge(ServerConfig.layerTest(process.cwd(), baseDir)),
         ),
       ),
@@ -62,26 +62,26 @@ const withEnvironmentThemes = <A, E>(
   }).pipe(Effect.scoped);
 
 const currentThemes = Effect.gen(function* () {
-  const environmentTheme = yield* EnvironmentTheme.EnvironmentThemeService;
-  return yield* environmentTheme.current;
+  const machineTheme = yield* MachineTheme.MachineThemeService;
+  return yield* machineTheme.current;
 });
 
-it.layer(NodeServices.layer)("environment theme", (it) => {
+it.layer(NodeServices.layer)("machine theme", (it) => {
   it.effect("follows the directory rather than the set read at start", () =>
-    withEnvironmentThemes(
+    withMachineThemes(
       { "nightfall.json": encodeThemeFile(NIGHTFALL_THEME) },
       Effect.gen(function* () {
-        const { environmentThemesDir } = yield* ServerConfig.ServerConfig;
+        const { machineThemesDir } = yield* ServerConfig.ServerConfig;
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
 
         yield* fs.writeFileString(
-          path.join(environmentThemesDir, "shared-light.json"),
+          path.join(machineThemesDir, "shared-light.json"),
           encodeThemeFile(SHARED_THEME),
         );
         assert.equal((yield* currentThemes).length, 2);
 
-        yield* fs.remove(path.join(environmentThemesDir, "nightfall.json"));
+        yield* fs.remove(path.join(machineThemesDir, "nightfall.json"));
         assert.deepEqual(
           (yield* currentThemes).map((theme) => theme.id),
           ["shared-light"],
@@ -91,27 +91,27 @@ it.layer(NodeServices.layer)("environment theme", (it) => {
   );
 
   it.effect("never replays a set older than the snapshot it started from", () =>
-    withEnvironmentThemes(
+    withMachineThemes(
       { "nightfall.json": encodeThemeFile(NIGHTFALL_THEME) },
       Effect.gen(function* () {
-        const environmentTheme = yield* EnvironmentTheme.EnvironmentThemeService;
-        const { environmentThemesDir } = yield* ServerConfig.ServerConfig;
+        const machineTheme = yield* MachineTheme.MachineThemeService;
+        const { machineThemesDir } = yield* ServerConfig.ServerConfig;
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
 
         yield* fs.writeFileString(
-          path.join(environmentThemesDir, "shared-light.json"),
+          path.join(machineThemesDir, "shared-light.json"),
           encodeThemeFile(SHARED_THEME),
         );
         const seen = yield* Queue.unbounded<ReadonlyArray<{ readonly id: string }>>();
-        yield* Stream.runForEach(environmentTheme.streamChanges, (themes) =>
+        yield* Stream.runForEach(machineTheme.streamChanges, (themes) =>
           Queue.offer(seen, themes),
         ).pipe(Effect.forkScoped);
         assert.deepEqual(
           (yield* Queue.take(seen)).map((theme) => theme.id),
           ["nightfall", "shared-light"],
         );
-        yield* fs.remove(path.join(environmentThemesDir, "nightfall.json"));
+        yield* fs.remove(path.join(machineThemesDir, "nightfall.json"));
         yield* currentThemes;
         assert.deepEqual(
           (yield* Queue.take(seen)).map((theme) => theme.id),
@@ -122,7 +122,7 @@ it.layer(NodeServices.layer)("environment theme", (it) => {
   );
 
   it.effect("skips invalid files while keeping valid ones", () =>
-    withEnvironmentThemes(
+    withMachineThemes(
       {
         "nightfall.json": encodeThemeFile(NIGHTFALL_THEME),
         "unresolved.json":
@@ -144,22 +144,22 @@ it.layer(NodeServices.layer)("environment theme", (it) => {
   );
 
   it.effect.skipIf(!symlinksSupported)("ignores a symlinked theme file", () =>
-    withEnvironmentThemes(
+    withMachineThemes(
       {},
       Effect.gen(function* () {
-        const { environmentThemesDir } = yield* ServerConfig.ServerConfig;
+        const { machineThemesDir } = yield* ServerConfig.ServerConfig;
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
-        const outside = path.join(environmentThemesDir, "..", "outside.json");
+        const outside = path.join(machineThemesDir, "..", "outside.json");
         yield* fs.writeFileString(outside, encodeThemeFile(NIGHTFALL_THEME));
-        yield* fs.symlink(outside, path.join(environmentThemesDir, "nightfall.json"));
+        yield* fs.symlink(outside, path.join(machineThemesDir, "nightfall.json"));
         assert.deepEqual(yield* currentThemes, []);
       }),
     ),
   );
 
   it.effect("does not charge skipped files against the total size limit", () =>
-    withEnvironmentThemes(
+    withMachineThemes(
       {
         ...Object.fromEntries(
           Array.from({ length: 7 }, (_, index) => [`junk-${index}.json`, "{".repeat(30_000)]),

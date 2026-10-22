@@ -9,7 +9,7 @@ import {
   AuthSessionId,
   PREVIEW_STREAM_HOST_SETUP_CLOSE_CODE,
   PreviewStreamHostSetup,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
 } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -20,7 +20,7 @@ import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import { HttpRouter, HttpServer } from "effect/http";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as PreviewBrowserHost from "./PreviewBrowserHost.ts";
 import * as ServerBrowser from "./ServerBrowser.ts";
 import { routeLayer } from "./ServerBrowserStream.ts";
@@ -28,11 +28,11 @@ import { routeLayer } from "./ServerBrowserStream.ts";
 const platformLayer = NodeHttpPlatform.layer.pipe(Layer.provideMerge(NodeServices.layer));
 
 const makeAuth = (
-  scopes: ReadonlyArray<AuthEnvironmentScope>,
-  error?: EnvironmentAuth.ServerAuthCredentialError,
+  scopes: ReadonlyArray<AuthMachineScope>,
+  error?: MachineAuth.ServerAuthCredentialError,
 ) => {
   const requests: string[] = [];
-  const layer = Layer.mock(EnvironmentAuth.EnvironmentAuth, {
+  const layer = Layer.mock(MachineAuth.MachineAuth, {
     authenticateWebSocketUpgrade: (request) => {
       requests.push(request.originalUrl);
       return error
@@ -229,7 +229,7 @@ it.effect("sends replies ahead of stale frames and only the newest frame after a
 it.effect.each([
   { scopes: [], error: undefined, status: 403 },
   { scopes: [AuthOrchestrationOperateScope], error: undefined, status: 403 },
-  { scopes: [], error: new EnvironmentAuth.ServerAuthMissingCredentialError({}), status: 401 },
+  { scopes: [], error: new MachineAuth.ServerAuthMissingCredentialError({}), status: 401 },
 ])("rejects unauthorized stream connections before attaching a viewer (%s)", (testCase) =>
   Effect.gen(function* () {
     const auth = makeAuth(testCase.scopes, testCase.error);
@@ -288,7 +288,7 @@ it.effect("serves a tab's download only to an authorized session", () =>
       answerFileChooser: () => Effect.succeed(false),
       attachViewer: () => Effect.die("unused"),
     });
-    const serve = (scopes: ReadonlyArray<AuthEnvironmentScope>, url: string) =>
+    const serve = (scopes: ReadonlyArray<AuthMachineScope>, url: string) =>
       Effect.gen(function* () {
         const handler = yield* Effect.acquireRelease(
           Effect.sync(() =>
@@ -337,7 +337,7 @@ it.effect("passes uploaded files to the page's open picker and needs operate sco
         }),
       attachViewer: () => Effect.die("unused"),
     });
-    const upload = (scopes: ReadonlyArray<AuthEnvironmentScope>, chooser: string) =>
+    const upload = (scopes: ReadonlyArray<AuthMachineScope>, chooser: string) =>
       Effect.gen(function* () {
         const handler = yield* Effect.acquireRelease(
           Effect.sync(() =>

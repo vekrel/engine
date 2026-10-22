@@ -1,7 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - plain local servers stand in for LAN services.
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
 import * as McpProviderSessions from "@vekrel/provider-core/server/McpProviderSessions";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Deferred from "effect/Deferred";
@@ -192,7 +192,7 @@ describe("HtmlRender", () => {
       const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
       const threadId = ThreadId.make("thread-html-render");
       const session = {
-        environmentId: EnvironmentId.make("html-render-environment"),
+        machineId: MachineId.make("html-render-machine"),
         threadId,
         providerSessionId: "first-credential",
         providerInstanceId: ProviderInstanceId.make("claude"),

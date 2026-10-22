@@ -3,7 +3,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   DeviceHostUnavailableError,
   DeviceId,
-  EnvironmentId,
+  MachineId,
   ProviderInstanceId,
   ThreadId,
 } from "@vekrel/contracts";
@@ -19,10 +19,10 @@ import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as McpToolAccessTestkit from "./McpToolAccess.testkit.ts";
 
-const environmentId = EnvironmentId.make("environment-device-test");
+const machineId = MachineId.make("machine-device-test");
 const threadId = ThreadId.make("thread-device-test");
 const invocation = (capabilities: ReadonlyArray<McpInvocationContext.McpCapability>) => ({
-  environmentId,
+  machineId,
   requestNamespace: "provider-session-device-test",
   thread: {
     threadId,

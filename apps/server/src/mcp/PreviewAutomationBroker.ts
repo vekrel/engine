@@ -78,7 +78,7 @@ export class PreviewAutomationBroker extends Context.Service<
 interface ClientConnection {
   readonly clientId: string;
   readonly connectionId: string;
-  readonly environmentId: PreviewAutomationHost["environmentId"];
+  readonly machineId: PreviewAutomationHost["machineId"];
   readonly supportedOperations: ReadonlySet<PreviewAutomationOperation>;
   readonly focused: boolean;
   readonly preferred: boolean;
@@ -108,7 +108,7 @@ interface HostAssignment {
 
 interface PreviewAutomationRequestErrorContext {
   readonly operation: PreviewAutomationOperation;
-  readonly environmentId: McpInvocationContext.McpInvocationScope["environmentId"];
+  readonly machineId: McpInvocationContext.McpInvocationScope["machineId"];
   readonly threadId: McpInvocationContext.McpThreadCaller["threadId"];
   readonly providerSessionId: string;
   readonly providerInstanceId: McpInvocationContext.McpThreadCaller["providerInstanceId"];
@@ -172,7 +172,7 @@ const selectorDiagnosticsFromInput = (
  * share one current tab, tab budget, and tab ownership across chats.
  */
 const hostAssignmentKey = (scope: McpInvocationContext.McpThreadInvocationScope): string =>
-  `${scope.environmentId}\u0000${scope.thread.providerSessionId}\u0000${scope.thread.threadId}`;
+  `${scope.machineId}\u0000${scope.thread.providerSessionId}\u0000${scope.thread.threadId}`;
 
 const isPreviewTabId = Schema.is(PreviewTabId);
 const decodeControlReason = Schema.decodeUnknownOption(PreviewAutomationControlReason);
@@ -400,7 +400,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
     const connection: ClientConnection = {
       clientId,
       connectionId,
-      environmentId: host.environmentId,
+      machineId: host.machineId,
       supportedOperations: new Set(host.supportedOperations ?? PREVIEW_AUTOMATION_V1_OPERATIONS),
       focused: false,
       preferred: options?.preferred ?? false,
@@ -451,7 +451,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
       const currentHost = current.clients.get(host.clientId);
       if (
         !currentHost ||
-        currentHost.environmentId !== host.environmentId ||
+        currentHost.machineId !== host.machineId ||
         currentHost.connectionId !== host.connectionId
       ) {
         return current;
@@ -514,7 +514,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
       const assignmentKey = hostAssignmentKey(input.scope);
       const assigned = assignments.get(assignmentKey);
       const assignedConnection = assigned ? current.clients.get(assigned.clientId) : undefined;
-      const hasLiveAssignment = assignedConnection?.environmentId === input.scope.environmentId;
+      const hasLiveAssignment = assignedConnection?.machineId === input.scope.machineId;
       // Keep one provider session on one physical desktop runtime so a
       // multi-step browser interaction cannot jump between independent Electron
       // cookie/DOM state.
@@ -533,7 +533,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
             : Array.from(current.clients.values())
                 .filter(
                   (host) =>
-                    host.environmentId === input.scope.environmentId &&
+                    host.machineId === input.scope.machineId &&
                     supportsOperation(host, input.operation),
                 )
                 .sort(
@@ -550,7 +550,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
         if (!hasLiveAssignment) assignments.delete(assignmentKey);
         return [undefined, { ...current, assignments }] as const;
       }
-      // The environment host may install Chromium on its first open (up to
+      // The machine host may install Chromium on its first open (up to
       // ten minutes). Keep that request alive without replaying its effects.
       const timeoutMs =
         input.timeoutMs ?? (input.operation === "open" && connection.preferred ? 660_000 : 15_000);
@@ -574,7 +574,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
       const selectorDiagnostics = selectorDiagnosticsFromInput(input.input);
       const context: PreviewAutomationRequestErrorContext = {
         operation: input.operation,
-        environmentId: input.scope.environmentId,
+        machineId: input.scope.machineId,
         threadId: input.scope.thread.threadId,
         providerSessionId: input.scope.thread.providerSessionId,
         providerInstanceId: input.scope.thread.providerInstanceId,
@@ -595,7 +595,7 @@ export const make = Effect.gen(function* PreviewAutomationBrokerMake() {
     if (!route) {
       return yield* new PreviewAutomationNoAvailableHostError({
         operation: input.operation,
-        environmentId: input.scope.environmentId,
+        machineId: input.scope.machineId,
         threadId: input.scope.thread.threadId,
         providerSessionId: input.scope.thread.providerSessionId,
         providerInstanceId: input.scope.thread.providerInstanceId,

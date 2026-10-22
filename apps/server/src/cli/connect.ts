@@ -1,9 +1,9 @@
 import {
   AuthRelayReadScope,
   AuthRelayWriteScope,
-  type AuthEnvironmentScope,
-  type EnvironmentConnectReachability,
-  EnvironmentHttpApi,
+  type AuthMachineScope,
+  type MachineConnectReachability,
+  MachineHttpApi,
   formatConnectReachable,
   type RelayClientInstallProgressEvent,
   type RelayClientInstallProgressStage,
@@ -29,7 +29,7 @@ import { Command, Flag, GlobalFlag, Prompt } from "effect/cli";
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 import * as HttpApiClient from "effect/http-api/HttpApiClient";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as BootService from "../cloud/bootService.ts";
 import * as CliState from "../cloud/CliState.ts";
@@ -46,7 +46,7 @@ import {
 import { relayUrlConfig } from "../cloud/publicConfig.ts";
 import * as RelayTracing from "../cloud/relayTracing.ts";
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ExternalLauncher from "../process/externalLauncher.ts";
 import { readPersistedServerRuntimeState } from "../serverRuntimeState.ts";
 import { projectLocationFlags, resolveCliAuthConfig } from "./config.ts";
@@ -150,7 +150,7 @@ interface CloudCliStatus {
   readonly relayClient: RelayClient.RelayClientStatus;
   readonly linkMode: CliState.CliDesiredLinkMode;
   /** `null` when no server answered the live check, or none ran because no tunnel is wanted. */
-  readonly reachability: EnvironmentConnectReachability | null;
+  readonly reachability: MachineConnectReachability | null;
 }
 
 function formatRelayClientStatus(executable: RelayClient.RelayClientStatus): ReadonlyArray<string> {
@@ -193,18 +193,18 @@ function formatCloudStatus(status: CloudCliStatus, options?: { readonly json?: b
   const nextStep = !status.authenticated
     ? "Run `t3 connect link` to authorize and enable T3 Connect."
     : status.revoked
-      ? "Run `t3 connect link` to link this environment again."
+      ? "Run `t3 connect link` to link this machine again."
       : !status.desired
         ? "Run `t3 connect link` to enable T3 Connect."
         : !status.linked
-          ? "Start T3 to provision the environment link and launch its managed tunnel."
+          ? "Start T3 to provision the machine link and launch its managed tunnel."
           : undefined;
 
   return [
     "T3 Connect",
     `  Exposure: ${status.desired ? "enabled" : "disabled"}`,
     `  Authorization: ${status.authenticated ? "stored credential" : "missing"}`,
-    `  Environment link: ${provisioned}`,
+    `  Machine link: ${provisioned}`,
     `  Relay: ${status.relayUrl ?? "not provisioned"}`,
     `  Publish agent activity: ${status.publishAgentActivity ? "enabled" : "disabled"}`,
     ...formatRelayClientStatus(status.relayClient),
@@ -280,18 +280,18 @@ export const acquireRelayClientForLink = Effect.fn("cloud.cli.acquire_relay_clie
 );
 
 const withCloudCliSessionToken = <A, E, R>(
-  environmentAuth: EnvironmentAuth.EnvironmentAuth["Service"],
-  scope: AuthEnvironmentScope,
+  machineAuth: MachineAuth.MachineAuth["Service"],
+  scope: AuthMachineScope,
   run: (token: string) => Effect.Effect<A, E, R>,
 ) =>
   Effect.acquireUseRelease(
-    environmentAuth.issueSession({
+    machineAuth.issueSession({
       scopes: [scope],
       subject: "cloud-cli",
       label: "t3 connect cli",
     }),
     (issued) => run(issued.token),
-    (issued) => environmentAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
+    (issued) => machineAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
   );
 
 type LiveCloudActionResult =
@@ -306,10 +306,10 @@ const runLiveCloudUnlink = Effect.fn("cloud.cli.run_live_unlink")(function* () {
     return { status: "not-running" } satisfies LiveCloudActionResult;
   }
 
-  const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
+  const machineAuth = yield* MachineAuth.MachineAuth;
   const result = yield* Effect.exit(
-    withCloudCliSessionToken(environmentAuth, AuthRelayWriteScope, (token) =>
-      HttpApiClient.make(EnvironmentHttpApi, {
+    withCloudCliSessionToken(machineAuth, AuthRelayWriteScope, (token) =>
+      HttpApiClient.make(MachineHttpApi, {
         baseUrl: runtimeState.value.origin,
       }).pipe(
         Effect.flatMap((client) =>
@@ -334,9 +334,9 @@ const checkLiveReachability = Effect.fn("cloud.cli.check_live_reachability")(fun
   const config = yield* ServerConfig.ServerConfig;
   const runtimeState = yield* readPersistedServerRuntimeState(config.serverRuntimeStatePath);
   if (Option.isNone(runtimeState)) return null;
-  const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
-  return yield* withCloudCliSessionToken(environmentAuth, AuthRelayReadScope, (token) =>
-    HttpApiClient.make(EnvironmentHttpApi, { baseUrl: runtimeState.value.origin }).pipe(
+  const machineAuth = yield* MachineAuth.MachineAuth;
+  return yield* withCloudCliSessionToken(machineAuth, AuthRelayReadScope, (token) =>
+    HttpApiClient.make(MachineHttpApi, { baseUrl: runtimeState.value.origin }).pipe(
       Effect.flatMap((client) =>
         client.connect.checkReachability({ headers: { authorization: `Bearer ${token}` } }),
       ),
@@ -367,7 +367,7 @@ const waitForReachability = Effect.fn("cloud.cli.wait_for_reachability")(functio
   yield* Console.log("\nChecking that other devices can reach this machine...");
   const deadline =
     (yield* Clock.currentTimeMillis) + Duration.toMillis(CLOUD_CLI_REACHABILITY_WAIT);
-  let last: EnvironmentConnectReachability | null = null;
+  let last: MachineConnectReachability | null = null;
   while (true) {
     last = (yield* checkLiveReachability()) ?? last;
     if (last?.status === "reachable") {
@@ -396,7 +396,7 @@ type RelayUnlinkResult =
   | { readonly status: "revoked" }
   | { readonly status: "not-linked" };
 
-type CloudDisconnectOperation = "live-server-unlink" | "relay-environment-unlink";
+type CloudDisconnectOperation = "live-server-unlink" | "relay-machine-unlink";
 
 const logCloudDisconnectFailure = (
   operation: CloudDisconnectOperation,
@@ -411,19 +411,19 @@ const logCloudDisconnectFailure = (
     }),
   );
 
-const unlinkRelayEnvironment = Effect.fn("cloud.cli.unlink_relay_environment")(function* () {
+const unlinkRelayMachine = Effect.fn("cloud.cli.unlink_relay_machine")(function* () {
   const tokens = yield* CliTokenManager.CloudCliTokenManager;
   const token = yield* tokens.getExisting;
   if (Option.isNone(token)) {
     return { status: "not-authenticated" } satisfies RelayUnlinkResult;
   }
 
-  const environment = yield* ServerEnvironment.ServerEnvironmentIdentity;
-  const environmentId = yield* environment.getEnvironmentId;
+  const machine = yield* ServerMachine.ServerMachineIdentity;
+  const machineId = yield* machine.getMachineId;
   const relayUrl = yield* relayUrlConfig;
   const httpClient = yield* HttpClient.HttpClient;
   const response = yield* HttpClientRequest.delete(
-    `${relayUrl}/v1/client/environment-links/${encodeURIComponent(environmentId)}`,
+    `${relayUrl}/v1/client/machine-links/${encodeURIComponent(machineId)}`,
   ).pipe(
     HttpClientRequest.bearerToken(token.value.accessToken),
     httpClient.execute,
@@ -462,21 +462,21 @@ const reportCloudDisconnectResults = Effect.fn("cloud.cli.report_disconnect_resu
 
     if (Exit.isFailure(input.relayResult)) {
       yield* logCloudDisconnectFailure(
-        "relay-environment-unlink",
+        "relay-machine-unlink",
         input.clearAuthorization,
         input.relayResult.cause,
       );
       yield* Console.warn(
         input.clearAuthorization
-          ? "Could not revoke the relay-side environment record before signing out.\nThe stored CLI authorization was still removed locally."
-          : "Could not revoke the relay-side environment record yet.\nRun `t3 connect unlink` again when the relay is reachable, or deregister it from the T3 Connect page of your T3 account.",
+          ? "Could not revoke the relay-side machine record before signing out.\nThe stored CLI authorization was still removed locally."
+          : "Could not revoke the relay-side machine record yet.\nRun `t3 connect unlink` again when the relay is reachable, or deregister it from the T3 Connect page of your T3 account.",
       );
     } else if (input.relayResult.value.status === "not-authenticated") {
       yield* Console.warn(
-        "The relay-side environment record was not revoked.\nDeregister it from the T3 Connect page of your T3 account, or run `t3 connect login` and retry.",
+        "The relay-side machine record was not revoked.\nDeregister it from the T3 Connect page of your T3 account, or run `t3 connect login` and retry.",
       );
     } else if (input.relayResult.value.status === "revoked") {
-      yield* Console.log("Revoked the relay-side environment record.");
+      yield* Console.log("Revoked the relay-side machine record.");
     }
   },
 );
@@ -486,7 +486,7 @@ const disconnectCloud = Effect.fn("cloud.cli.disconnect")(function* (options: {
 }) {
   yield* CliState.setCliDesiredCloudLink(false);
   const liveResult = yield* runLiveCloudUnlink();
-  const relayResult = yield* Effect.exit(unlinkRelayEnvironment());
+  const relayResult = yield* Effect.exit(unlinkRelayMachine());
   yield* CliState.clearPersistedCloudLink;
 
   if (options.clearAuthorization) {
@@ -515,14 +515,14 @@ const runCloudCommand = Effect.fn("cloud.cli.run_cloud_command")(function* <A, E
     | ServerSecretStore.ServerSecretStore
     | CliTokenManager.CloudCliTokenManager
     | RelayClient.RelayClient
-    | EnvironmentAuth.EnvironmentAuth
+    | MachineAuth.MachineAuth
     | BootService.BootService
     | Crypto.Crypto
     | FileSystem.FileSystem
     | HttpClient.HttpClient
     | Prompt.Environment
     | ServerConfig.ServerConfig
-    | ServerEnvironment.ServerEnvironmentIdentity
+    | ServerMachine.ServerMachineIdentity
   >,
   options?: {
     readonly quietLogs?: boolean;
@@ -538,7 +538,7 @@ const runCloudCommand = Effect.fn("cloud.cli.run_cloud_command")(function* <A, E
       Layer.provide(ExternalLauncher.layer),
     ),
     RelayClient.layerCloudflared({ baseDir: config.baseDir }),
-    EnvironmentAuth.layerRuntime,
+    MachineAuth.layerRuntime,
     CliService.layer(config),
     RelayTracing.layerHeadlessRelayClient,
   ).pipe(
@@ -555,7 +555,7 @@ function formatRelayClientReady(version: string): string {
   return `✓ Relay client ready · cloudflared ${version}`;
 }
 
-const linkEnvironmentForConnect = Effect.fn("cloud.cli.link_environment")(function* (options: {
+const linkMachineForConnect = Effect.fn("cloud.cli.link_machine")(function* (options: {
   readonly headless: boolean;
   readonly publishOnly?: boolean;
 }) {
@@ -578,7 +578,7 @@ const linkEnvironmentForConnect = Effect.fn("cloud.cli.link_environment")(functi
   yield* CliState.setCliDesiredCloudLink(true, publishOnly ? "publish_only" : "managed");
   if (yield* CliState.dropRevokedCloudLink) {
     yield* Console.log(
-      "Removed the link T3 Connect no longer accepts. The next start links this environment again.",
+      "Removed the link T3 Connect no longer accepts. The next start links this machine again.",
     );
   }
   if (publishOnly) {
@@ -610,18 +610,18 @@ const connectLinkCommand = Command.make("link", {
   headless: headlessFlag,
   publishOnly: Flag.Boolean("publish-only").pipe(
     Flag.withDescription(
-      "Link to publish agent activity only — no managed tunnel. Reach this environment out of band (e.g. Tailscale).",
+      "Link to publish agent activity only — no managed tunnel. Reach this machine out of band (e.g. Tailscale).",
     ),
     Flag.withDefault(false),
   ),
 }).pipe(
-  Command.withDescription("Authorize this environment for T3 Connect on next start."),
+  Command.withDescription("Authorize this machine for T3 Connect on next start."),
   Command.withHandler((flags) =>
     runCloudCommand(
       flags,
       Effect.gen(function* () {
         yield* Console.log("T3 Connect\n");
-        const linked = yield* linkEnvironmentForConnect(flags);
+        const linked = yield* linkMachineForConnect(flags);
         if (linked) {
           const serveCommand = yield* resolveCliCommand("serve");
           yield* Console.log(
@@ -721,7 +721,7 @@ const connectPublishCommand = Command.make("publish", {
         if (!enabled) {
           // If enabling scheduled a publish-only link that hasn't been
           // provisioned yet, disabling must cancel it too — otherwise the next
-          // start still links an environment whose only purpose was publishing.
+          // start still links a machine whose only purpose was publishing.
           // A pending managed link is left alone; it exists for the tunnel.
           const linkedNow = Option.isSome(yield* secrets.get(CLOUD_LINKED_USER_ID));
           if (!linkedNow && (yield* CliState.readCliDesiredLinkMode) === "publish_only") {
@@ -740,7 +740,7 @@ const connectPublishCommand = Command.make("publish", {
 
         if (!(yield* tokens.hasCredential)) {
           yield* Console.log(
-            "Run `t3 connect login` first so this environment can be authorized to publish.",
+            "Run `t3 connect login` first so this machine can be authorized to publish.",
           );
           return;
         }
@@ -756,7 +756,7 @@ const connectPublishCommand = Command.make("publish", {
         }
         yield* CliState.setCliDesiredCloudLink(true, "publish_only");
         yield* Console.log(
-          "Restart T3 to finish authorizing this environment to publish (no managed tunnel is created).",
+          "Restart T3 to finish authorizing this machine to publish (no managed tunnel is created).",
         );
       }),
     ),
@@ -815,7 +815,7 @@ export const connectCommand = Command.make("connect", {
       flags,
       Effect.gen(function* () {
         yield* Console.log("T3 Connect\n");
-        const linked = yield* linkEnvironmentForConnect(flags);
+        const linked = yield* linkMachineForConnect(flags);
         if (!linked) {
           return;
         }

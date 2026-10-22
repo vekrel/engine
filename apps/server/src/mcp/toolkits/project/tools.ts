@@ -45,7 +45,7 @@ const shared = {
 const ProjectListTool = Tool.make("t3_project_list", {
   ...shared,
   description:
-    "List registered projects in this environment. Pages use the current project snapshot and may shift between calls.",
+    "List registered projects in this machine. Pages use the current project snapshot and may shift between calls.",
   parameters: Schema.Struct({
     cursor: Schema.optional(NonNegativeInt),
     limit: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
@@ -60,7 +60,7 @@ const ProjectListTool = Tool.make("t3_project_list", {
 const ProjectReadTool = Tool.make("t3_project_read", {
   ...shared,
   description:
-    "Read a registered project in this environment, including its workspace and saved scripts.",
+    "Read a registered project in this machine, including its workspace and saved scripts.",
   parameters: Schema.Struct({ projectId: ProjectId }),
 })
   .annotate(Tool.Readonly, true)
@@ -110,7 +110,7 @@ const ThreadLaunchTool = Tool.make("t3_thread_launch", {
     scratch: Schema.optional(
       Schema.Boolean.annotate({
         description:
-          "Launch without a project, in its own folder under the environment's Scratch project. Not with projectId or workspaceStrategy.",
+          "Launch without a project, in its own folder under the machine's Scratch project. Not with projectId or workspaceStrategy.",
       }),
     ),
     title: TrimmedNonEmptyString,

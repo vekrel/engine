@@ -1,23 +1,23 @@
 import {
   AuthOrchestrationReadScope,
-  EnvironmentHttpApi,
+  MachineHttpApi,
   requiredScopesForProjectMutation,
 } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 
 import {
-  annotateEnvironmentRequest,
-  failEnvironmentInternal,
-  failEnvironmentInvalidRequest,
-  requireEnvironmentScope,
+  annotateMachineRequest,
+  failMachineInternal,
+  failMachineInvalidRequest,
+  requireMachineScope,
 } from "../auth/http.ts";
 import { traceLocalHandlerWork } from "../cloud/traceRelayRequest.ts";
 import * as ServerRuntimeStartup from "../serverRuntimeStartup.ts";
 import * as ProjectService from "./ProjectService.ts";
 import { projectMutationOperation } from "./ProjectMutation.ts";
 
-const failProjectMutation = Effect.fn("environment.projects.failMutation")(function* (
+const failProjectMutation = Effect.fn("machine.projects.failMutation")(function* (
   cause: ProjectService.ProjectServiceError | ServerRuntimeStartup.ServerRuntimeStartupError,
 ) {
   if (
@@ -25,13 +25,13 @@ const failProjectMutation = Effect.fn("environment.projects.failMutation")(funct
     cause._tag === "ProjectConflictError" ||
     cause._tag === "ProjectNotEmptyError"
   ) {
-    return yield* failEnvironmentInvalidRequest("invalid_command");
+    return yield* failMachineInvalidRequest("invalid_command");
   }
-  return yield* failEnvironmentInternal("project_mutation_failed", cause);
+  return yield* failMachineInternal("project_mutation_failed", cause);
 });
 
 export const layer = HttpApiBuilder.group(
-  EnvironmentHttpApi,
+  MachineHttpApi,
   "projects",
   Effect.fnUntraced(function* (handlers) {
     const projects = yield* ProjectService.ProjectService;
@@ -40,21 +40,21 @@ export const layer = HttpApiBuilder.group(
     return handlers
       .handle(
         "snapshot",
-        Effect.fn("environment.projects.snapshot")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
-          yield* requireEnvironmentScope(AuthOrchestrationReadScope);
+        Effect.fn("machine.projects.snapshot")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
+          yield* requireMachineScope(AuthOrchestrationReadScope);
           return yield* projects.snapshot.pipe(
             traceLocalHandlerWork,
-            Effect.catch((cause) => failEnvironmentInternal("project_snapshot_failed", cause)),
+            Effect.catch((cause) => failMachineInternal("project_snapshot_failed", cause)),
           );
         }),
       )
       .handle(
         "mutate",
-        Effect.fn("environment.projects.mutate")(function* (args) {
-          yield* annotateEnvironmentRequest(args.endpoint.name);
+        Effect.fn("machine.projects.mutate")(function* (args) {
+          yield* annotateMachineRequest(args.endpoint.name);
           for (const scope of requiredScopesForProjectMutation(args.payload)) {
-            yield* requireEnvironmentScope(scope);
+            yield* requireMachineScope(scope);
           }
           const operation = projectMutationOperation(projects, args.payload);
           return yield* startup

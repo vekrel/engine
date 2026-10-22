@@ -862,7 +862,7 @@ export const make = Effect.gen(function* () {
       }
 
       const sourceMessage =
-        message ?? (files === null ? "No transcript directory on this environment." : null);
+        message ?? (files === null ? "No transcript directory on this machine." : null);
       sources.push({
         fingerprint: { hostId: sourceHostId ?? hostId, provider, resolvedHomePath: dir, volumeId },
         status:

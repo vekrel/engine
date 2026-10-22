@@ -1,7 +1,7 @@
 /**
  * The hub binds loopback and is never reachable directly: serve-sim exposes a shell-exec route
  * and serve-emu's action routes are unauthenticated, so the only way to a device stream is
- * through this route, which requires an environment session with read scope (operate scope for
+ * through this route, which requires a machine session with read scope (operate scope for
  * input and tuning).
  */
 import { AuthOrchestrationReadScope, AuthOrchestrationOperateScope } from "@vekrel/contracts";

@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as SqlSchema from "effect/sql/SqlSchema";
 
-import { AuthEnvironmentScopes } from "@vekrel/contracts";
+import { AuthMachineScopes } from "@vekrel/contracts";
 
 import {
   type AuthPairingLinkRepositoryError,
@@ -19,7 +19,7 @@ export const AuthPairingLinkRecord = Schema.Struct({
   id: Schema.String,
   credential: Schema.String,
   method: Schema.Literals(["desktop-bootstrap", "one-time-token"]),
-  scopes: Schema.fromJsonString(AuthEnvironmentScopes),
+  scopes: Schema.fromJsonString(AuthMachineScopes),
   subject: Schema.String,
   label: Schema.NullOr(Schema.String),
   proofKeyThumbprint: Schema.NullOr(Schema.String),
@@ -34,7 +34,7 @@ export const CreateAuthPairingLinkInput = Schema.Struct({
   id: Schema.String,
   credential: Schema.String,
   method: Schema.Literals(["desktop-bootstrap", "one-time-token"]),
-  scopes: AuthEnvironmentScopes,
+  scopes: AuthMachineScopes,
   subject: Schema.String,
   label: Schema.NullOr(Schema.String),
   proofKeyThumbprint: Schema.NullOr(Schema.String),
@@ -46,7 +46,7 @@ export type CreateAuthPairingLinkInput = typeof CreateAuthPairingLinkInput.Type;
 export const ConsumeAuthPairingLinkInput = Schema.Struct({
   credential: Schema.String,
   proofKeyThumbprint: Schema.NullOr(Schema.String),
-  requestedScopes: Schema.optionalKey(AuthEnvironmentScopes),
+  requestedScopes: Schema.optionalKey(AuthMachineScopes),
   consumedAt: Schema.DateTimeUtcFromString,
   now: Schema.DateTimeUtcFromString,
 });

@@ -67,7 +67,7 @@ const requireDeviceAccess = McpInvocationContext.requireThreadMcpCapability("dev
   Effect.mapError(
     () =>
       new DeviceToolUnavailableError({
-        reason: "Agent device access is turned off for this environment.",
+        reason: "Agent device access is turned off for this machine.",
       }),
   ),
 );

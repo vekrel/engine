@@ -12,7 +12,7 @@ import {
   ProjectMutation,
   AuthSettingsWriteScope,
   AuthProvidersManageScope,
-  AuthEnvironmentMaintainScope,
+  AuthMachineMaintainScope,
   AuthFilesystemReadScope,
   AuthFilesystemWriteScope,
   AuthDiagnosticsReadScope,
@@ -24,8 +24,8 @@ import {
   AuthTerminalOperateScope,
   ORCHESTRATION_V2_WS_METHODS,
   AuthTerminalReadScope,
-  type AuthEnvironmentScope,
-  EnvironmentAuthorizationError,
+  type AuthMachineScope,
+  MachineAuthorizationError,
   RpcScopeAuthorization,
   WS_METHODS,
   WsRpcGroup,
@@ -75,9 +75,9 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.providerInstallCancel]: AuthProvidersManageScope,
   [WS_METHODS.providerInstallSubscribe]: AuthOrchestrationReadScope,
   [WS_METHODS.providerInstallRemove]: AuthProvidersManageScope,
-  [WS_METHODS.serverUpdateServer]: AuthEnvironmentMaintainScope,
-  [WS_METHODS.serverUpdateServerWithProgress]: AuthEnvironmentMaintainScope,
-  [WS_METHODS.serverCommitDesktopUpdate]: AuthEnvironmentMaintainScope,
+  [WS_METHODS.serverUpdateServer]: AuthMachineMaintainScope,
+  [WS_METHODS.serverUpdateServerWithProgress]: AuthMachineMaintainScope,
+  [WS_METHODS.serverCommitDesktopUpdate]: AuthMachineMaintainScope,
   [WS_METHODS.serverUpsertKeybinding]: AuthSettingsWriteScope,
   [WS_METHODS.serverRemoveKeybinding]: AuthSettingsWriteScope,
   [WS_METHODS.serverGetStorageCleanupReport]: AuthOrchestrationReadScope,
@@ -106,9 +106,9 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.serverRetryResourceTelemetry]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverGetUsageSummary]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverRefreshUsageRates]: AuthDiagnosticsReadScope,
-  [WS_METHODS.serverSignalProcess]: AuthEnvironmentMaintainScope,
+  [WS_METHODS.serverSignalProcess]: AuthMachineMaintainScope,
   [WS_METHODS.serverReportClientActivity]: AuthOrchestrationReadScope,
-  [WS_METHODS.serverReportHostPowerState]: AuthEnvironmentMaintainScope,
+  [WS_METHODS.serverReportHostPowerState]: AuthMachineMaintainScope,
   [WS_METHODS.serverGetBackgroundPolicy]: AuthOrchestrationReadScope,
   [WS_METHODS.scheduledTasksList]: AuthOrchestrationReadScope,
   [WS_METHODS.scheduledTasksSubscribe]: AuthOrchestrationReadScope,
@@ -208,9 +208,9 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.subscribeServerLifecycle]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeAuthAccess]: AuthAccessReadScope,
   [WS_METHODS.subscribeBackgroundPolicy]: AuthOrchestrationReadScope,
-} as const satisfies Readonly<Record<WsRpcMethod, AuthEnvironmentScope>>;
+} as const satisfies Readonly<Record<WsRpcMethod, AuthMachineScope>>;
 
-export function requiredScopeForRpcMethod(method: string): AuthEnvironmentScope {
+export function requiredScopeForRpcMethod(method: string): AuthMachineScope {
   if (!Object.hasOwn(RPC_REQUIRED_SCOPES, method)) {
     throw new Error(`RPC method ${method} has no declared authorization scope.`);
   }
@@ -221,8 +221,8 @@ export function requiredScopeForRpcMethod(method: string): AuthEnvironmentScope 
   return requiredScope;
 }
 
-export const rpcAuthorizationError = (requiredScope: AuthEnvironmentScope) =>
-  new EnvironmentAuthorizationError({
+export const rpcAuthorizationError = (requiredScope: AuthMachineScope) =>
+  new MachineAuthorizationError({
     message: `The authenticated token is missing required scope: ${requiredScope}.`,
     ...authScopeRequiredResponse(requiredScope),
   });
@@ -247,9 +247,9 @@ const decodeProjectMutation = Schema.decodeUnknownSync(ProjectMutation);
 const requiredScopesForRpcCall = (
   method: string,
   payload: unknown,
-): ReadonlyArray<AuthEnvironmentScope> => {
+): ReadonlyArray<AuthMachineScope> => {
   if (method === WS_METHODS.serverRetryResourceTelemetry) {
-    return [AuthEnvironmentMaintainScope, AuthDiagnosticsReadScope];
+    return [AuthMachineMaintainScope, AuthDiagnosticsReadScope];
   }
   if (method === WS_METHODS.assetsCreateUrl) {
     const { resource } = Schema.decodeUnknownSync(AssetCreateUrlInput)(payload);
@@ -276,7 +276,7 @@ const requiredScopesForRpcCall = (
  * is the one place to observe requests without wrapping each handler.
  */
 export const layer = (
-  scopes: ReadonlyArray<AuthEnvironmentScope>,
+  scopes: ReadonlyArray<AuthMachineScope>,
   onAuthorized?: (method: string, payload: unknown) => Effect.Effect<void>,
 ) =>
   Layer.succeed(RpcScopeAuthorization)((effect, { rpc, payload }) => {
@@ -289,7 +289,7 @@ export const layer = (
   });
 
 /** Retrying can install or restart tools even though ordinary listing is readable. */
-export const requiredScopeForDeviceList = (input: DeviceListInput): AuthEnvironmentScope =>
+export const requiredScopeForDeviceList = (input: DeviceListInput): AuthMachineScope =>
   input.retryHostId || input.updateTool
     ? AuthOrchestrationOperateScope
     : AuthOrchestrationReadScope;

@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
 import * as References from "effect/References";
 import { Argument, Command, Flag, GlobalFlag } from "effect/cli";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 
 import {
   formatIssuedPairingCredential,
@@ -23,9 +23,9 @@ import {
   resolveCliAuthConfig,
 } from "./config.ts";
 
-const runWithEnvironmentAuth = Effect.fn("auth.runWithEnvironmentAuth")(function* <A, E>(
+const runWithMachineAuth = Effect.fn("auth.runWithMachineAuth")(function* <A, E>(
   flags: CliAuthLocationFlags,
-  run: (environmentAuth: EnvironmentAuth.EnvironmentAuth["Service"]) => Effect.Effect<A, E>,
+  run: (machineAuth: MachineAuth.MachineAuth["Service"]) => Effect.Effect<A, E>,
   options?: {
     readonly quietLogs?: boolean;
   },
@@ -34,11 +34,11 @@ const runWithEnvironmentAuth = Effect.fn("auth.runWithEnvironmentAuth")(function
   const config = yield* resolveCliAuthConfig(flags, logLevel);
   const minimumLogLevel = options?.quietLogs ? "Error" : config.logLevel;
   return yield* Effect.gen(function* () {
-    const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
-    return yield* run(environmentAuth);
+    const machineAuth = yield* MachineAuth.MachineAuth;
+    return yield* run(machineAuth);
   }).pipe(
     Effect.provide(
-      Layer.mergeAll(EnvironmentAuth.layerRuntime).pipe(
+      Layer.mergeAll(MachineAuth.layerRuntime).pipe(
         Layer.provide(ServerConfig.layer(config)),
         Layer.provide(Layer.succeed(References.MinimumLogLevel, minimumLogLevel)),
       ),
@@ -87,11 +87,11 @@ const pairingCreateCommand = Command.make("create", {
 }).pipe(
   Command.withDescription("Issue a new client pairing token."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(
+    runWithMachineAuth(
       flags,
-      (environmentAuth) =>
+      (machineAuth) =>
         Effect.gen(function* () {
-          const issued = yield* environmentAuth.createPairingLink({
+          const issued = yield* machineAuth.createPairingLink({
             scopes: flags.scopes,
             subject: "one-time-token",
             ...(Option.isSome(flags.ttl) ? { ttl: flags.ttl.value } : {}),
@@ -116,12 +116,12 @@ const pairingListCommand = Command.make("list", {
 }).pipe(
   Command.withDescription("List active client pairing tokens without revealing their secrets."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(
+    runWithMachineAuth(
       flags,
-      (environmentAuth) =>
+      (machineAuth) =>
         Effect.gen(function* () {
-          const pairingLinks = yield* environmentAuth.listPairingLinks({
-            excludeSubjects: [EnvironmentAuth.INTERNAL_ADMINISTRATIVE_BOOTSTRAP_SUBJECT],
+          const pairingLinks = yield* machineAuth.listPairingLinks({
+            excludeSubjects: [MachineAuth.INTERNAL_ADMINISTRATIVE_BOOTSTRAP_SUBJECT],
           });
           yield* Console.log(formatPairingCredentialList(pairingLinks, { json: flags.json }));
         }),
@@ -138,9 +138,9 @@ const pairingRevokeCommand = Command.make("revoke", {
 }).pipe(
   Command.withDescription("Revoke an active client pairing token."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(flags, (environmentAuth) =>
+    runWithMachineAuth(flags, (machineAuth) =>
       Effect.gen(function* () {
-        const revoked = yield* environmentAuth.revokePairingLink(flags.id);
+        const revoked = yield* machineAuth.revokePairingLink(flags.id);
         yield* Console.log(
           revoked
             ? `Revoked pairing credential ${flags.id}.\n`
@@ -167,11 +167,11 @@ const sessionIssueCommand = Command.make("issue", {
 }).pipe(
   Command.withDescription("Issue a scoped bearer access token for headless or remote clients."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(
+    runWithMachineAuth(
       flags,
-      (environmentAuth) =>
+      (machineAuth) =>
         Effect.gen(function* () {
-          const issued = yield* environmentAuth.issueSession({
+          const issued = yield* machineAuth.issueSession({
             scopes: flags.scopes,
             ...(Option.isSome(flags.ttl) ? { ttl: flags.ttl.value } : {}),
             ...(Option.isSome(flags.label) ? { label: flags.label.value } : {}),
@@ -197,11 +197,11 @@ const sessionListCommand = Command.make("list", {
 }).pipe(
   Command.withDescription("List active sessions without revealing bearer tokens."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(
+    runWithMachineAuth(
       flags,
-      (environmentAuth) =>
+      (machineAuth) =>
         Effect.gen(function* () {
-          const sessions = yield* environmentAuth.listSessions();
+          const sessions = yield* machineAuth.listSessions();
           yield* Console.log(formatSessionList(sessions, { json: flags.json }));
         }),
       {
@@ -220,9 +220,9 @@ const sessionRevokeCommand = Command.make("revoke", {
 }).pipe(
   Command.withDescription("Revoke an active session."),
   Command.withHandler((flags) =>
-    runWithEnvironmentAuth(flags, (environmentAuth) =>
+    runWithMachineAuth(flags, (machineAuth) =>
       Effect.gen(function* () {
-        const revoked = yield* environmentAuth.revokeSession(flags.sessionId);
+        const revoked = yield* machineAuth.revokeSession(flags.sessionId);
         yield* Console.log(
           revoked
             ? `Revoked session ${flags.sessionId}.\n`

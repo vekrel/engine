@@ -1,6 +1,6 @@
 import {
   type AuthMcpClientAccess,
-  type EnvironmentId,
+  type MachineId,
   McpCapabilityUnavailableError,
   OrchestratorMcpFailure,
   PreviewAutomationUnavailableError,
@@ -45,7 +45,7 @@ export const clientRuntimeModeCeiling = (client: McpClientCaller | undefined): R
  * preview, worktree handoff) need `thread`.
  */
 export interface McpInvocationScope {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly capabilities: ReadonlySet<McpCapability>;
   readonly issuedAt: number;
   readonly requestNamespace: string;
@@ -67,7 +67,7 @@ const missingCapability = (
   capability: McpCapability,
 ): PreviewAutomationUnavailableError | McpCapabilityUnavailableError => {
   const fields = {
-    environmentId: invocation.environmentId,
+    machineId: invocation.machineId,
     ...(invocation.thread === undefined
       ? {}
       : {

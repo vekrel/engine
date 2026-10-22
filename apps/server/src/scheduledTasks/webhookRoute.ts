@@ -1,4 +1,4 @@
-import { EnvironmentHttpApi } from "@vekrel/contracts";
+import { MachineHttpApi } from "@vekrel/contracts";
 import * as ByteSize from "effect/ByteSize";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -24,7 +24,7 @@ const json = (status: number, body: Record<string, string>, outcome: string) =>
   HttpServerResponse.jsonUnsafe(body, { status, headers: { [WEBHOOK_OUTCOME_HEADER]: outcome } });
 
 export const layer = HttpApiBuilder.group(
-  EnvironmentHttpApi,
+  MachineHttpApi,
   "webhooks",
   Effect.fnUntraced(function* (handlers) {
     const scheduledTasks = yield* ScheduledTaskService.ScheduledTaskService;

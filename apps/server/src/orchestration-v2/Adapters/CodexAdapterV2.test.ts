@@ -8,7 +8,7 @@ import {
   CommandId,
   CheckpointId,
   CodexSettings,
-  EnvironmentId,
+  MachineId,
   MessageId,
   type ModelSelection,
   NodeId,
@@ -1116,7 +1116,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     Effect.gen(function* () {
       const scenario = "launch-mcp-servers";
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
-        environmentId: EnvironmentId.make("environment-codex-mcp"),
+        machineId: MachineId.make("machine-codex-mcp"),
         threadId: ThreadId.make(`thread-${scenario}`),
         providerSessionId: `provider-session-${scenario}`,
         providerInstanceId: ProviderInstanceId.make("codex"),
@@ -1147,7 +1147,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           config: {
             "tools.update_plan.enabled": true,
             mcp_optional_startup_grace_ms: 10_000,
-            "mcp_servers.t3-code": {
+            "mcp_servers.vekrel": {
               url: "http://127.0.0.1:43123/mcp",
               tool_timeout_sec: 3_900,
               http_headers: { Authorization: "Bearer secret-codex-token" },
@@ -1163,7 +1163,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     ),
   );
 
-  // regression: #15839 launch-arg MCP servers survive the thread's t3-code server
+  // regression: #15839 launch-arg MCP servers survive the thread's vekrel server
   it.effect("replays historical and dotted MCP config while enforcing other thread config", () =>
     Effect.gen(function* () {
       const recordedServer = {
@@ -1172,7 +1172,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
       };
       const currentConfig = {
         "tools.update_plan.enabled": true,
-        "mcp_servers.t3-code": {
+        "mcp_servers.vekrel": {
           url: "http://127.0.0.1:42000/mcp",
           http_headers: { Authorization: "Bearer current-token" },
         },
@@ -1755,7 +1755,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         });
         const harness = yield* makeCodexReplayHarness(transcript);
         yield* (yield* McpProviderSessions.McpProviderSessions).set({
-          environmentId: EnvironmentId.make("test"),
+          machineId: MachineId.make("test"),
           threadId: harness.threadId,
           providerSessionId: "context-session",
           providerInstanceId: ProviderInstanceId.make("codex"),

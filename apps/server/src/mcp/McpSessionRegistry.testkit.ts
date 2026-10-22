@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
@@ -10,7 +10,7 @@ export const layer = Layer.succeed(
     issue: ({ threadId, providerInstanceId }) =>
       Effect.succeed({
         config: {
-          environmentId: EnvironmentId.make("environment:mcp-test"),
+          machineId: MachineId.make("machine:mcp-test"),
           threadId,
           providerSessionId: `mcp-test:${threadId}`,
           providerInstanceId,

@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   isProviderNativeSubagentThread,
   MessageId,
   type ModelSelection,
@@ -280,7 +280,7 @@ describe("orchestrator MCP toolkit", () => {
             );
 
           const invocation: McpInvocationContext.McpInvocationScope = {
-            environmentId: EnvironmentId.make("environment:mcp-replay"),
+            machineId: MachineId.make("machine:mcp-replay"),
             requestNamespace: "mcp-provider-session-replay-parent",
             thread: {
               threadId: parentThreadId,

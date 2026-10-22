@@ -11,7 +11,7 @@ import {
   type AuthClientMetadata,
   type AuthClientSession,
   type AuthCreatePairingCredentialInput,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
   type AuthMcpClientAccess,
   type AuthPairingLink,
   type AuthPairingCredentialResult,
@@ -35,9 +35,9 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ServerConfig from "../config.ts";
-import * as EnvironmentAuthPolicy from "./EnvironmentAuthPolicy.ts";
+import * as MachineAuthPolicy from "./MachineAuthPolicy.ts";
 import * as PairingGrantStore from "./PairingGrantStore.ts";
 import * as ServerSecretStore from "./ServerSecretStore.ts";
 import * as SessionStore from "./SessionStore.ts";
@@ -52,7 +52,7 @@ export const INTERNAL_ADMINISTRATIVE_BOOTSTRAP_SUBJECT = "administrative-bootstr
 export interface IssuedPairingLink {
   readonly id: string;
   readonly credential: string;
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly subject: string;
   readonly label?: string;
   readonly createdAt: DateTime.Utc;
@@ -63,7 +63,7 @@ export interface IssuedBearerSession {
   readonly sessionId: AuthSessionId;
   readonly token: string;
   readonly method: "bearer-access-token";
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly subject: string;
   readonly client: AuthClientMetadata;
   readonly expiresAt: DateTime.Utc;
@@ -79,7 +79,7 @@ const MCP_CLIENT_SESSION_TTL = Duration.days(30);
 
 export const mcpClientScopes = (
   access: AuthMcpClientAccess,
-): ReadonlyArray<AuthEnvironmentScope> =>
+): ReadonlyArray<AuthMachineScope> =>
   access === "read-only"
     ? [AuthOrchestrationReadScope]
     : access === "full-access"
@@ -101,7 +101,7 @@ export interface AuthenticatedSession {
   readonly sessionId: AuthSessionId;
   readonly subject: string;
   readonly method: ServerAuthSessionMethod;
-  readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+  readonly scopes: ReadonlyArray<AuthMachineScope>;
   readonly proofKeyThumbprint?: string;
   readonly expiresAt?: DateTime.DateTime;
 }
@@ -291,7 +291,7 @@ export class ServerAuthLinkedCloudAccountMissingError extends Schema.TaggedError
   {},
 ) {
   override get message(): string {
-    return "Cloud linked user is not installed for this environment.";
+    return "Cloud linked user is not installed for this machine.";
   }
 }
 
@@ -311,7 +311,7 @@ export class ServerAuthCloudMintPublicKeyMissingError extends Schema.TaggedError
   {},
 ) {
   override get message(): string {
-    return "Cloud mint public key is not installed for this environment.";
+    return "Cloud mint public key is not installed for this machine.";
   }
 }
 
@@ -320,7 +320,7 @@ export class ServerAuthCloudRelayIssuerMissingError extends Schema.TaggedError<S
   {},
 ) {
   override get message(): string {
-    return "Cloud relay issuer is not installed for this environment.";
+    return "Cloud relay issuer is not installed for this machine.";
   }
 }
 
@@ -462,8 +462,8 @@ export class ServerAuthForbiddenOperationError extends Schema.TaggedError<Server
   }
 }
 
-export class EnvironmentAuth extends Context.Service<
-  EnvironmentAuth,
+export class MachineAuth extends Context.Service<
+  MachineAuth,
   {
     readonly getDescriptor: () => Effect.Effect<ServerAuthDescriptor>;
     readonly getSessionState: (
@@ -484,7 +484,7 @@ export class EnvironmentAuth extends Context.Service<
     >;
     readonly exchangeBootstrapCredentialForAccessToken: (
       credential: string,
-      requestedScopes: ReadonlyArray<AuthEnvironmentScope> | undefined,
+      requestedScopes: ReadonlyArray<AuthMachineScope> | undefined,
       requestMetadata: AuthClientMetadata,
       input?: {
         readonly proofKeyThumbprint?: string;
@@ -496,7 +496,7 @@ export class EnvironmentAuth extends Context.Service<
     readonly createPairingLink: (input?: {
       readonly ttl?: Duration.Duration;
       readonly label?: string;
-      readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+      readonly scopes?: ReadonlyArray<AuthMachineScope>;
       readonly subject?: string;
       readonly proofKeyThumbprint?: string;
       readonly purpose?: "startup";
@@ -515,7 +515,7 @@ export class EnvironmentAuth extends Context.Service<
     readonly issueSession: (input?: {
       readonly ttl?: Duration.Duration;
       readonly subject?: string;
-      readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
+      readonly scopes?: ReadonlyArray<AuthMachineScope>;
       readonly label?: string;
     }) => Effect.Effect<IssuedBearerSession, ServerAuthInternalError>;
     readonly listSessions: () => Effect.Effect<
@@ -579,7 +579,7 @@ export class EnvironmentAuth extends Context.Service<
       request: HttpServerRequest.HttpServerRequest,
     ) => Effect.Effect<AuthenticatedSession, ServerAuthCredentialError | ServerAuthInternalError>;
   }
->()("vekrel-engine/auth/EnvironmentAuth") {}
+>()("vekrel-engine/auth/MachineAuth") {}
 
 type BootstrapExchangeResult = {
   readonly response: AuthBrowserSessionResult;
@@ -723,7 +723,7 @@ function isBrowserOriginAllowed(
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
-  const policy = yield* EnvironmentAuthPolicy.EnvironmentAuthPolicy;
+  const policy = yield* MachineAuthPolicy.MachineAuthPolicy;
   const bootstrapCredentials = yield* PairingGrantStore.PairingGrantStore;
   const sessions = yield* SessionStore.SessionStore;
   const secretStore = yield* ServerSecretStore.ServerSecretStore;
@@ -837,7 +837,7 @@ export const make = Effect.gen(function* () {
     );
   };
 
-  const getSessionState: EnvironmentAuth["Service"]["getSessionState"] = (request) =>
+  const getSessionState: MachineAuth["Service"]["getSessionState"] = (request) =>
     authenticateRequest(request).pipe(
       Effect.map(
         (session) =>
@@ -855,11 +855,11 @@ export const make = Effect.gen(function* () {
           auth: descriptor,
         } satisfies AuthSessionState),
       ),
-      Effect.withSpan("EnvironmentAuth.getSessionState"),
+      Effect.withSpan("MachineAuth.getSessionState"),
     );
 
-  const createBrowserSession: EnvironmentAuth["Service"]["createBrowserSession"] = Effect.fn(
-    "EnvironmentAuth.createBrowserSession",
+  const createBrowserSession: MachineAuth["Service"]["createBrowserSession"] = Effect.fn(
+    "MachineAuth.createBrowserSession",
   )(function* (credential, requestMetadata, previousSessionToken) {
     if (devAuth?.matches(credential)) {
       return yield* sessions.verify(credential).pipe(
@@ -882,7 +882,7 @@ export const make = Effect.gen(function* () {
             ),
           ),
         ),
-        Effect.withSpan("EnvironmentAuth.createBrowserSession"),
+        Effect.withSpan("MachineAuth.createBrowserSession"),
       );
     }
     const previousSession =
@@ -930,7 +930,7 @@ export const make = Effect.gen(function* () {
     credential: string,
     input?: {
       readonly proofKeyThumbprint?: string;
-      readonly requestedScopes?: ReadonlyArray<AuthEnvironmentScope>;
+      readonly requestedScopes?: ReadonlyArray<AuthMachineScope>;
     },
   ): Effect.Effect<
     ResolvedBootstrapGrant,
@@ -960,7 +960,7 @@ export const make = Effect.gen(function* () {
     );
   };
 
-  const exchangeBootstrapCredentialForAccessToken: EnvironmentAuth["Service"]["exchangeBootstrapCredentialForAccessToken"] =
+  const exchangeBootstrapCredentialForAccessToken: MachineAuth["Service"]["exchangeBootstrapCredentialForAccessToken"] =
     (credential, requestedScopes, requestMetadata, input) => {
       return resolveBootstrapGrant(credential, {
         ...input,
@@ -1018,12 +1018,12 @@ export const make = Effect.gen(function* () {
             ),
           ),
         ),
-        Effect.withSpan("EnvironmentAuth.exchangeBootstrapCredentialForAccessToken"),
+        Effect.withSpan("MachineAuth.exchangeBootstrapCredentialForAccessToken"),
       );
     };
 
   const issuePairingCredentialForSubject = (input: {
-    readonly scopes: ReadonlyArray<AuthEnvironmentScope>;
+    readonly scopes: ReadonlyArray<AuthMachineScope>;
     readonly subject: string;
     readonly label?: string;
     readonly purpose?: "startup";
@@ -1045,8 +1045,8 @@ export const make = Effect.gen(function* () {
       ),
     );
 
-  const createPairingLink: EnvironmentAuth["Service"]["createPairingLink"] = Effect.fn(
-    "EnvironmentAuth.createPairingLink",
+  const createPairingLink: MachineAuth["Service"]["createPairingLink"] = Effect.fn(
+    "MachineAuth.createPairingLink",
   )(
     function* (input) {
       const createdAt = yield* DateTime.now;
@@ -1071,7 +1071,7 @@ export const make = Effect.gen(function* () {
     Effect.mapError((cause) => new ServerAuthPairingLinkCreationError({ cause })),
   );
 
-  const listPairingLinks: EnvironmentAuth["Service"]["listPairingLinks"] = (input) =>
+  const listPairingLinks: MachineAuth["Service"]["listPairingLinks"] = (input) =>
     bootstrapCredentials.listActive().pipe(
       Effect.map((pairingLinks) => {
         const excludedSubjects = input?.excludeSubjects ?? [
@@ -1085,16 +1085,16 @@ export const make = Effect.gen(function* () {
           );
       }),
       Effect.mapError((cause) => new ServerAuthPairingLinksListError({ cause })),
-      Effect.withSpan("EnvironmentAuth.listPairingLinks"),
+      Effect.withSpan("MachineAuth.listPairingLinks"),
     );
 
-  const revokePairingLink: EnvironmentAuth["Service"]["revokePairingLink"] = (id) =>
+  const revokePairingLink: MachineAuth["Service"]["revokePairingLink"] = (id) =>
     bootstrapCredentials.revoke(id).pipe(
       Effect.mapError((cause) => new ServerAuthPairingLinkRevocationError({ cause })),
-      Effect.withSpan("EnvironmentAuth.revokePairingLink"),
+      Effect.withSpan("MachineAuth.revokePairingLink"),
     );
 
-  const issueSession: EnvironmentAuth["Service"]["issueSession"] = (input) =>
+  const issueSession: MachineAuth["Service"]["issueSession"] = (input) =>
     sessions
       .issue({
         subject: input?.subject ?? DEFAULT_SESSION_SUBJECT,
@@ -1120,38 +1120,38 @@ export const make = Effect.gen(function* () {
             }) satisfies IssuedBearerSession,
         ),
         Effect.mapError((cause) => new ServerAuthSessionTokenIssueError({ cause })),
-        Effect.withSpan("EnvironmentAuth.issueSession"),
+        Effect.withSpan("MachineAuth.issueSession"),
       );
 
-  const listSessions: EnvironmentAuth["Service"]["listSessions"] = () =>
+  const listSessions: MachineAuth["Service"]["listSessions"] = () =>
     sessions.listActive().pipe(
       Effect.map((activeSessions) => activeSessions.toSorted(bySessionPriority)),
       Effect.mapError((cause) => new ServerAuthSessionsListError({ cause })),
-      Effect.withSpan("EnvironmentAuth.listSessions"),
+      Effect.withSpan("MachineAuth.listSessions"),
     );
 
-  const revokeSession: EnvironmentAuth["Service"]["revokeSession"] = (sessionId) =>
+  const revokeSession: MachineAuth["Service"]["revokeSession"] = (sessionId) =>
     sessions.revoke(sessionId).pipe(
       Effect.mapError((cause) => new ServerAuthSessionRevocationError({ cause })),
-      Effect.withSpan("EnvironmentAuth.revokeSession"),
+      Effect.withSpan("MachineAuth.revokeSession"),
     );
 
-  const revokeOtherSessionsExcept: EnvironmentAuth["Service"]["revokeOtherSessionsExcept"] = (
+  const revokeOtherSessionsExcept: MachineAuth["Service"]["revokeOtherSessionsExcept"] = (
     sessionId,
   ) =>
     sessions.revokeAllExcept(sessionId).pipe(
       Effect.mapError((cause) => new ServerAuthOtherSessionsRevocationError({ cause })),
-      Effect.withSpan("EnvironmentAuth.revokeOtherSessionsExcept"),
+      Effect.withSpan("MachineAuth.revokeOtherSessionsExcept"),
     );
 
-  const issuePairingCredential: EnvironmentAuth["Service"]["issuePairingCredential"] = (input) =>
+  const issuePairingCredential: MachineAuth["Service"]["issuePairingCredential"] = (input) =>
     issuePairingCredentialForSubject({
       scopes: input?.scopes ?? AuthStandardClientScopes,
       subject: "one-time-token",
       ...(input?.label ? { label: input.label } : {}),
-    }).pipe(Effect.withSpan("EnvironmentAuth.issuePairingCredential"));
+    }).pipe(Effect.withSpan("MachineAuth.issuePairingCredential"));
 
-  const issueStartupPairingCredential: EnvironmentAuth["Service"]["issueStartupPairingCredential"] =
+  const issueStartupPairingCredential: MachineAuth["Service"]["issueStartupPairingCredential"] =
     () => {
       const fallback = issuePairingCredentialForSubject({
         scopes: AuthStandardClientScopes,
@@ -1159,7 +1159,7 @@ export const make = Effect.gen(function* () {
         purpose: "startup",
       });
       if (!devAuth) {
-        return fallback.pipe(Effect.withSpan("EnvironmentAuth.issueStartupPairingCredential"));
+        return fallback.pipe(Effect.withSpan("MachineAuth.issueStartupPairingCredential"));
       }
       return sessions.verify(devAuth.credential).pipe(
         Effect.map(
@@ -1176,11 +1176,11 @@ export const make = Effect.gen(function* () {
             ? fallback
             : Effect.fail(new ServerAuthPairingLinkCreationError({ cause })),
         ),
-        Effect.withSpan("EnvironmentAuth.issueStartupPairingCredential"),
+        Effect.withSpan("MachineAuth.issueStartupPairingCredential"),
       );
     };
 
-  const listClientSessions: EnvironmentAuth["Service"]["listClientSessions"] = (currentSessionId) =>
+  const listClientSessions: MachineAuth["Service"]["listClientSessions"] = (currentSessionId) =>
     listSessions().pipe(
       Effect.map((clientSessions) =>
         clientSessions.map((clientSession): AuthClientSession => ({
@@ -1189,11 +1189,11 @@ export const make = Effect.gen(function* () {
           current: clientSession.sessionId === currentSessionId,
         })),
       ),
-      Effect.withSpan("EnvironmentAuth.listClientSessions"),
+      Effect.withSpan("MachineAuth.listClientSessions"),
     );
 
-  const revokeClientSession: EnvironmentAuth["Service"]["revokeClientSession"] = Effect.fn(
-    "EnvironmentAuth.revokeClientSession",
+  const revokeClientSession: MachineAuth["Service"]["revokeClientSession"] = Effect.fn(
+    "MachineAuth.revokeClientSession",
   )(function* (currentSessionId, targetSessionId) {
     if (currentSessionId === targetSessionId) {
       return yield* new ServerAuthForbiddenOperationError({});
@@ -1201,14 +1201,14 @@ export const make = Effect.gen(function* () {
     return yield* revokeSession(targetSessionId);
   });
 
-  const revokeOtherClientSessions: EnvironmentAuth["Service"]["revokeOtherClientSessions"] = (
+  const revokeOtherClientSessions: MachineAuth["Service"]["revokeOtherClientSessions"] = (
     currentSessionId,
   ) =>
     revokeOtherSessionsExcept(currentSessionId).pipe(
-      Effect.withSpan("EnvironmentAuth.revokeOtherClientSessions"),
+      Effect.withSpan("MachineAuth.revokeOtherClientSessions"),
     );
 
-  const issueStartupPairingUrl: EnvironmentAuth["Service"]["issueStartupPairingUrl"] = (baseUrl) =>
+  const issueStartupPairingUrl: MachineAuth["Service"]["issueStartupPairingUrl"] = (baseUrl) =>
     issueStartupPairingCredential().pipe(
       Effect.map((issued) => {
         const url = new URL(baseUrl);
@@ -1217,10 +1217,10 @@ export const make = Effect.gen(function* () {
         url.hash = new URLSearchParams([["token", issued.credential]]).toString();
         return url.toString();
       }),
-      Effect.withSpan("EnvironmentAuth.issueStartupPairingUrl"),
+      Effect.withSpan("MachineAuth.issueStartupPairingUrl"),
     );
 
-  const issueWebSocketTicket: EnvironmentAuth["Service"]["issueWebSocketTicket"] = (session) =>
+  const issueWebSocketTicket: MachineAuth["Service"]["issueWebSocketTicket"] = (session) =>
     sessions.issueWebSocketToken(session.sessionId).pipe(
       Effect.mapError((cause) => new ServerAuthWebSocketTokenIssueError({ cause })),
       Effect.map(
@@ -1230,16 +1230,16 @@ export const make = Effect.gen(function* () {
             expiresAt: DateTime.toUtc(issued.expiresAt),
           }) satisfies AuthWebSocketTicketResult,
       ),
-      Effect.withSpan("EnvironmentAuth.issueWebSocketTicket"),
+      Effect.withSpan("MachineAuth.issueWebSocketTicket"),
     );
 
-  const authenticateHttpRequest: EnvironmentAuth["Service"]["authenticateHttpRequest"] = (
+  const authenticateHttpRequest: MachineAuth["Service"]["authenticateHttpRequest"] = (
     request,
   ) =>
-    authenticateRequest(request).pipe(Effect.withSpan("EnvironmentAuth.authenticateHttpRequest"));
+    authenticateRequest(request).pipe(Effect.withSpan("MachineAuth.authenticateHttpRequest"));
 
-  const authenticateWebSocketUpgrade: EnvironmentAuth["Service"]["authenticateWebSocketUpgrade"] =
-    Effect.fn("EnvironmentAuth.authenticateWebSocketUpgrade")(function* (request) {
+  const authenticateWebSocketUpgrade: MachineAuth["Service"]["authenticateWebSocketUpgrade"] =
+    Effect.fn("MachineAuth.authenticateWebSocketUpgrade")(function* (request) {
       const requestUrl = HttpServerRequest.toURL(request);
       if (Option.isSome(requestUrl)) {
         const websocketTicket = requestUrl.value.searchParams.get(WEBSOCKET_TICKET_QUERY_PARAM);
@@ -1261,7 +1261,7 @@ export const make = Effect.gen(function* () {
       return yield* authenticateRequest(request);
     });
 
-  const authenticateMcpClient: EnvironmentAuth["Service"]["authenticateMcpClient"] = (request) => {
+  const authenticateMcpClient: MachineAuth["Service"]["authenticateMcpClient"] = (request) => {
     const token = parseBearerToken(request);
     if (token === null) return Effect.fail(new ServerAuthMissingCredentialError({}));
     return sessions.verify(token).pipe(
@@ -1281,11 +1281,11 @@ export const make = Effect.gen(function* () {
               }),
             ),
       ),
-      Effect.withSpan("EnvironmentAuth.authenticateMcpClient"),
+      Effect.withSpan("MachineAuth.authenticateMcpClient"),
     );
   };
 
-  const issueMcpClientSession: EnvironmentAuth["Service"]["issueMcpClientSession"] = (input) =>
+  const issueMcpClientSession: MachineAuth["Service"]["issueMcpClientSession"] = (input) =>
     sessions
       .issue({
         subject: MCP_CLIENT_SUBJECT,
@@ -1302,10 +1302,10 @@ export const make = Effect.gen(function* () {
           expiresAt: issued.expiresAt,
         })),
         Effect.mapError((cause) => new ServerAuthSessionTokenIssueError({ cause })),
-        Effect.withSpan("EnvironmentAuth.issueMcpClientSession"),
+        Effect.withSpan("MachineAuth.issueMcpClientSession"),
       );
 
-  const authenticateBrowserSession: EnvironmentAuth["Service"]["authenticateBrowserSession"] = (
+  const authenticateBrowserSession: MachineAuth["Service"]["authenticateBrowserSession"] = (
     request,
   ) => {
     const credential = resolveRequestCredential(request);
@@ -1317,11 +1317,11 @@ export const make = Effect.gen(function* () {
         (session) => session.method === "browser-session-cookie",
         () => new ServerAuthInvalidCredentialError({ diagnostic: "Not a browser session." }),
       ),
-      Effect.withSpan("EnvironmentAuth.authenticateBrowserSession"),
+      Effect.withSpan("MachineAuth.authenticateBrowserSession"),
     );
   };
 
-  const consumeMcpApprovalCode: EnvironmentAuth["Service"]["consumeMcpApprovalCode"] = (
+  const consumeMcpApprovalCode: MachineAuth["Service"]["consumeMcpApprovalCode"] = (
     code,
     access,
   ) =>
@@ -1339,12 +1339,12 @@ export const make = Effect.gen(function* () {
             ? Effect.void
             : Effect.fail(new ServerAuthMcpApprovalCodeError({ reason: "insufficient_scope" })),
       ),
-      Effect.withSpan("EnvironmentAuth.consumeMcpApprovalCode"),
+      Effect.withSpan("MachineAuth.consumeMcpApprovalCode"),
     );
 
-  return EnvironmentAuth.of({
+  return MachineAuth.of({
     getDescriptor: () =>
-      Effect.succeed(descriptor).pipe(Effect.withSpan("EnvironmentAuth.getDescriptor")),
+      Effect.succeed(descriptor).pipe(Effect.withSpan("MachineAuth.getDescriptor")),
     getSessionState,
     createBrowserSession,
     exchangeBootstrapCredentialForAccessToken,
@@ -1371,15 +1371,15 @@ export const make = Effect.gen(function* () {
   });
 });
 
-export const layer = Layer.effect(EnvironmentAuth, make).pipe(
+export const layer = Layer.effect(MachineAuth, make).pipe(
   Layer.provideMerge(PairingGrantStore.layer),
   Layer.provideMerge(SessionStore.layer),
-  Layer.provideMerge(EnvironmentAuthPolicy.layer),
+  Layer.provideMerge(MachineAuthPolicy.layer),
 );
 
 const layerStorage = Layer.mergeAll(ServerSecretStore.layer, SqlitePersistence.layerConfig);
 
 export const layerRuntime = layer.pipe(
   Layer.provideMerge(layerStorage),
-  Layer.provideMerge(ServerEnvironment.layerIdentity),
+  Layer.provideMerge(ServerMachine.layerIdentity),
 );

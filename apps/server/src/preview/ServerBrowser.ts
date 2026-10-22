@@ -73,7 +73,7 @@ import type {
 import { PENDING_ATTACHMENT_THREAD_SEGMENT } from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
 import { resolveRootCliCommand } from "../cli/invocation.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as PreviewAutomationBroker from "../mcp/PreviewAutomationBroker.ts";
 import * as DesktopBrowserChannel from "./DesktopBrowserChannel.ts";
 import * as PreviewManager from "./Manager.ts";
@@ -459,7 +459,7 @@ const make = Effect.gen(function* () {
   const host = { platform: yield* HostProcess.Platform, arch: yield* HostProcess.Architecture };
   const manager = yield* PreviewManager.PreviewManager;
   const broker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
-  const environment = yield* ServerEnvironment.ServerEnvironment;
+  const machine = yield* ServerMachine.ServerMachine;
   const previewBrowser = yield* PreviewBrowser.PreviewBrowser;
   const desktopChannel = yield* DesktopBrowserChannel.DesktopBrowserChannel;
   const runFork = Effect.runForkWith(yield* Effect.context<never>());
@@ -579,11 +579,11 @@ const make = Effect.gen(function* () {
     const connectionId = hostConnectionId;
     if (connectionId === null) return;
     runFork(
-      environment.getEnvironmentId.pipe(
-        Effect.flatMap((environmentId) =>
+      machine.getMachineId.pipe(
+        Effect.flatMap((machineId) =>
           broker.focusHost({
             clientId: SERVER_HOST_CLIENT_ID,
-            environmentId,
+            machineId,
             connectionId,
             focused: true,
             liveTabs: [...tabs.values()].map((tab) => ({
@@ -1767,7 +1767,7 @@ const make = Effect.gen(function* () {
           throw new ServerBrowserPage.ServerBrowserOperationError(
             desktop ? "PreviewAutomationExecutionError" : "PreviewAutomationTabNotFoundError",
             desktop
-              ? "This tab belongs to the desktop runtime. This environment's server browser cannot control desktop tabs. Omit tabId to open a server tab instead."
+              ? "This tab belongs to the desktop runtime. This machine's server browser cannot control desktop tabs. Omit tabId to open a server tab instead."
               : "The requested server preview tab does not exist.",
           );
         }
@@ -2490,12 +2490,12 @@ const make = Effect.gen(function* () {
     Effect.repeat(Schedule.spaced(IDLE_SWEEP_INTERVAL)),
     Effect.forkScoped,
   );
-  const environmentId = yield* environment.getEnvironmentId;
+  const machineId = yield* machine.getMachineId;
   const hostSession = broker
     .connect(
       {
         clientId: SERVER_HOST_CLIENT_ID,
-        environmentId,
+        machineId,
         supportedOperations: [...PREVIEW_AUTOMATION_SERVER_OPERATIONS],
       },
       { preferred: true },

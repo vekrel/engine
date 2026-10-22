@@ -60,7 +60,7 @@ describe("session cookie isolation", () => {
       port: 5775,
       host: "127.0.0.1",
       instanceKey: "/tmp/t3-agent-one",
-      environmentId: "environment-one",
+      machineId: "machine-one",
       development: true,
     });
     const second = resolveSessionCookieName({
@@ -68,7 +68,7 @@ describe("session cookie isolation", () => {
       port: 5775,
       host: "127.0.0.1",
       instanceKey: "/tmp/t3-agent-two",
-      environmentId: "environment-two",
+      machineId: "machine-two",
       development: true,
     });
 
@@ -84,7 +84,7 @@ describe("session cookie isolation", () => {
       port: 3773,
       host: "192.168.1.50",
       instanceKey: "/srv/t3-one",
-      environmentId: "environment-one",
+      machineId: "machine-one",
       development: false,
     });
     const second = resolveSessionCookieName({
@@ -92,7 +92,7 @@ describe("session cookie isolation", () => {
       port: 5775,
       host: "192.168.1.50",
       instanceKey: "/srv/t3-two",
-      environmentId: "environment-two",
+      machineId: "machine-two",
       development: false,
     });
 
@@ -107,7 +107,7 @@ describe("session cookie isolation", () => {
       port: 8080,
       host: "0.0.0.0",
       instanceKey: "/srv/t3",
-      environmentId: "environment-one",
+      machineId: "machine-one",
       development: false,
     });
     const second = resolveSessionCookieName({
@@ -115,7 +115,7 @@ describe("session cookie isolation", () => {
       port: 9090,
       host: "app.example.com",
       instanceKey: "/srv/t3",
-      environmentId: "environment-one",
+      machineId: "machine-one",
       development: false,
     });
 

@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   NodeId,
   type OrchestrationV2ThreadProjection,
   type OrchestrationV2ThreadShell,
@@ -34,7 +34,7 @@ const layerOrchestratorService = OrchestratorMcpService.layer.pipe(
   Layer.provide(Layer.mock(GitVcsDriver.GitVcsDriver)({})),
 );
 
-const environmentId = EnvironmentId.make("environment-mcp-orchestrator-detail");
+const machineId = MachineId.make("machine-mcp-orchestrator-detail");
 const projectId = ProjectId.make("project-mcp-orchestrator-detail");
 const parentThreadId = ThreadId.make("thread-mcp-orchestrator-parent");
 const childThreadId = ThreadId.make("thread-mcp-orchestrator-child");
@@ -49,7 +49,7 @@ const customCodexInstanceId = ProviderInstanceId.make("codex-custom-workspace");
 const parentInstanceId = ProviderInstanceId.make("codex");
 
 const makeScope = (): McpInvocationContext.McpInvocationScope => ({
-  environmentId,
+  machineId,
   requestNamespace: "provider-session-mcp-orchestrator-detail",
   thread: {
     threadId: parentThreadId,

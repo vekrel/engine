@@ -1,4 +1,4 @@
-import type { EnvironmentMachineKind } from "@vekrel/contracts";
+import type { MachineKind } from "@vekrel/contracts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -9,7 +9,7 @@ const DMI_ROOT = "/sys/class/dmi/id";
 const KERNEL_RELEASE_PATH = "/proc/sys/kernel/osrelease";
 
 // SMBIOS 3.x System Enclosure types (table 17).
-const DMI_CHASSIS_KINDS: Readonly<Record<string, EnvironmentMachineKind>> = {
+const DMI_CHASSIS_KINDS: Readonly<Record<string, MachineKind>> = {
   "3": "desktop",
   "4": "desktop",
   "5": "desktop",
@@ -67,7 +67,7 @@ function normalize(value: string | null | undefined): string | null {
   return trimmed && trimmed.length > 0 ? trimmed : null;
 }
 
-function machineKindFromAppleProductName(name: string): EnvironmentMachineKind | null {
+function machineKindFromAppleProductName(name: string): MachineKind | null {
   const normalized = name.trim().toLowerCase().replaceAll(/\s+/g, "");
   if (normalized.startsWith("macmini")) return "mac-mini";
   if (normalized.startsWith("macstudio")) return "mac-studio";
@@ -80,7 +80,7 @@ function machineKindFromDmi(input: {
   readonly chassisType: string | null;
   readonly sysVendor: string | null;
   readonly productName: string | null;
-}): EnvironmentMachineKind | null {
+}): MachineKind | null {
   const productName = input.productName ?? "";
   const vendorAndProduct = `${input.sysVendor ?? ""} ${productName}`.toLowerCase();
   if (VIRTUALIZATION_MARKERS.some((marker) => vendorAndProduct.includes(marker))) {
@@ -149,7 +149,7 @@ const detectLinuxMachineKind = Effect.fn("detectLinuxMachineKind")(function* () 
   return machineKindFromDmi({ chassisType, sysVendor, productName });
 });
 
-export const detectServerEnvironmentMachineKind = Effect.fn("detectServerEnvironmentMachineKind")(
+export const detectServerMachineKind = Effect.fn("detectServerMachineKind")(
   function* () {
     const platform = yield* HostProcess.Platform;
     switch (platform) {

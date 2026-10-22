@@ -2,13 +2,13 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import {
   AuthAccessTokenType,
-  AuthEnvironmentBootstrapTokenType,
+  AuthMachineBootstrapTokenType,
   AuthTokenExchangeGrantType,
-  EnvironmentHttpApi,
-  EnvironmentId,
+  MachineHttpApi,
+  MachineId,
 } from "@vekrel/contracts";
 import {
-  RelayEnvironmentLinkProofPayload,
+  RelayMachineLinkProofPayload,
   type RelayLinkProofRequest,
 } from "@vekrel/contracts/relay";
 import * as Effect from "effect/Effect";
@@ -25,11 +25,11 @@ import * as NetAddress from "effect/net/NetAddress";
 import { decodeJwt, importSPKI, jwtVerify } from "jose";
 import { RELAY_LINK_PROOF_TYP } from "@vekrel/shared/relayJwt";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as AuthHttp from "../auth/http.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as AgentAwarenessRelay from "../relay/AgentAwarenessRelay.ts";
 import * as CliTokenManager from "./CliTokenManager.ts";
@@ -46,16 +46,16 @@ const proofRequest: RelayLinkProofRequest = {
   relayIssuer: "https://relay.example.test",
   endpoint: {
     providerKind: "cloudflare_tunnel",
-    httpBaseUrl: "https://environment.example.test",
-    wsBaseUrl: "wss://environment.example.test",
+    httpBaseUrl: "https://machine.example.test",
+    wsBaseUrl: "wss://machine.example.test",
   },
   origin: { localHttpHost: "127.0.0.1", localHttpPort: 3773 },
 };
-const decodeLinkProofPayload = Schema.decodeUnknownSync(RelayEnvironmentLinkProofPayload);
+const decodeLinkProofPayload = Schema.decodeUnknownSync(RelayMachineLinkProofPayload);
 
-class LinkProofTestApi extends HttpApi.make("environment").add(
-  EnvironmentHttpApi.groups.auth,
-  EnvironmentHttpApi.groups.connect,
+class LinkProofTestApi extends HttpApi.make("machine").add(
+  MachineHttpApi.groups.auth,
+  MachineHttpApi.groups.connect,
 ) {}
 
 const layerConfig = Layer.effect(
@@ -80,13 +80,13 @@ const layerLinkProofRoutes = HttpApiBuilder.layer(LinkProofTestApi).pipe(
   Layer.provide(
     Layer.mock(ConnectReachability.ConnectReachability)({ latest: Effect.succeed(Option.none()) }),
   ),
-  Layer.provide(EnvironmentAuth.layer),
+  Layer.provide(MachineAuth.layer),
   Layer.provide([
     SqlitePersistence.layerMemory,
-    ServerEnvironment.layerIdentity,
-    Layer.mock(ServerEnvironment.ServerEnvironment)({
+    ServerMachine.layerIdentity,
+    Layer.mock(ServerMachine.ServerMachine)({
       getDescriptor: Effect.succeed({
-        environmentId: EnvironmentId.make("wsl-environment"),
+        machineId: MachineId.make("wsl-machine"),
         label: "WSL",
         platform: { os: "linux", arch: "x64" },
         serverVersion: "0.0.0-test",
@@ -144,7 +144,7 @@ const withLinkProofClient = async (
         body: new URLSearchParams({
           grant_type: AuthTokenExchangeGrantType,
           subject_token: credential,
-          subject_token_type: AuthEnvironmentBootstrapTokenType,
+          subject_token_type: AuthMachineBootstrapTokenType,
           requested_token_type: AuthAccessTokenType,
           ...(scope ? { scope } : {}),
         }),
@@ -173,11 +173,11 @@ describe("link proof over a non-loopback desktop transport", () => {
       const payload = decodeLinkProofPayload(decodeJwt(proof));
       const verified = await jwtVerify(
         proof,
-        await importSPKI(payload.environmentPublicKey, "EdDSA"),
+        await importSPKI(payload.machinePublicKey, "EdDSA"),
         {
           algorithms: ["EdDSA"],
           typ: RELAY_LINK_PROOF_TYP,
-          issuer: "t3-env:wsl-environment",
+          issuer: "t3-env:wsl-machine",
           audience: proofRequest.relayIssuer,
         },
       );

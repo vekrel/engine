@@ -13,6 +13,6 @@ export const layerHeadlessRelayClient = RelayTracing.layer(relayClientTracingCon
 export const layerServerRelayBroker = RelayTracing.layer(relayClientTracingConfig, {
   serviceName: "t3code-server",
   runtime: "node",
-  client: "environment-server",
+  client: "machine-server",
   component: "relay-broker",
 });

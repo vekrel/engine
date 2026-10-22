@@ -3,7 +3,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import {
   DEFAULT_SERVER_SETTINGS,
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
@@ -40,7 +40,7 @@ it.effect.each([
       };
       const effective = resolveProjectSettings(settings, projectId).settings;
       const scope: McpInvocationContext.McpInvocationScope = {
-        environmentId: EnvironmentId.make("preview-controls-environment"),
+        machineId: MachineId.make("preview-controls-machine"),
         requestNamespace: "preview-controls-provider-session",
         thread: {
           threadId,

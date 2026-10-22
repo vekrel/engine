@@ -30,7 +30,7 @@ export class ScratchUnavailableError extends Schema.TaggedError<ScratchUnavailab
   {},
 ) {
   override get message(): string {
-    return "Threads without a project are not available on this environment.";
+    return "Threads without a project are not available on this machine.";
   }
 }
 

@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { FetchHttpClient } from "effect/http";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import { makeCodexChatGptAuth } from "./CodexChatGptAuth.ts";
 
 export function subscribeChatGptHandoff(
@@ -28,7 +28,7 @@ export function subscribeChatGptHandoff(
             bytes.delete(key);
           }),
         create: () => Effect.die("Handoff does not create persistent secrets."),
-        getOrCreateRandom: () => Effect.die("Handoff uses the destination environment identity."),
+        getOrCreateRandom: () => Effect.die("Handoff uses the destination machine identity."),
       });
       const auth = yield* makeCodexChatGptAuth({
         ...endpoints,
@@ -39,9 +39,9 @@ export function subscribeChatGptHandoff(
       }).pipe(
         Effect.provideService(ServerSecretStore.ServerSecretStore, store),
         Effect.provideService(
-          ServerEnvironment.ServerEnvironmentIdentity,
-          ServerEnvironment.ServerEnvironmentIdentity.of({
-            getEnvironmentId: Effect.succeed(input.environmentId),
+          ServerMachine.ServerMachineIdentity,
+          ServerMachine.ServerMachineIdentity.of({
+            getMachineId: Effect.succeed(input.machineId),
           }),
         ),
         Effect.provide(FetchHttpClient.layer),

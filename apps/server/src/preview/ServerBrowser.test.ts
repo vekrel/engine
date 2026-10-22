@@ -6,7 +6,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import { it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   PreviewTabId,
   ProviderInstanceId,
   ThreadId,
@@ -26,7 +26,7 @@ import type { BrowserContext, Page } from "playwright-core";
 import { beforeEach, expect, vi } from "vite-plus/test";
 
 import * as ServerConfig from "../config.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as Broker from "../mcp/PreviewAutomationBroker.ts";
 import * as DesktopChannel from "./DesktopBrowserChannel.ts";
 import * as Manager from "./Manager.ts";
@@ -238,7 +238,7 @@ const testThread = {
   providerInstanceId: ProviderInstanceId.make("codex"),
 };
 const scope = {
-  environmentId: EnvironmentId.make("browser-test-environment"),
+  machineId: MachineId.make("browser-test-machine"),
   thread: testThread,
   client: undefined,
   requestNamespace: "browser-test",
@@ -252,8 +252,8 @@ const asSession = (providerSessionId: string) => ({
 const dependencies = Layer.mergeAll(
   Broker.layer,
   Manager.layer,
-  Layer.succeed(ServerEnvironment.ServerEnvironment, {
-    getEnvironmentId: Effect.succeed(scope.environmentId),
+  Layer.succeed(ServerMachine.ServerMachine, {
+    getMachineId: Effect.succeed(scope.machineId),
     getDescriptor: Effect.die("unused descriptor"),
   }),
   Layer.succeed(PreviewBrowser.PreviewBrowser, {

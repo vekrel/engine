@@ -79,7 +79,7 @@ const refuseReadOnlyClient = McpInvocationContext.McpInvocationContext.pipe(
           new OrchestratorMcpFailure({
             code: "capability_denied",
             message:
-              "This tool changes the environment, and this MCP client was approved for read-only access.",
+              "This tool changes the machine, and this MCP client was approved for read-only access.",
           }),
         )
       : Effect.void,
@@ -194,13 +194,13 @@ export const startsThreads = <P, A, E, R>(
   );
 
 const fullAccessRequired =
-  "Changing projects or environment settings needs a live full-access/default calling thread or a full-access client.";
+  "Changing projects or machine settings needs a live full-access/default calling thread or a full-access client.";
 
 /**
  * `check` re-checks the caller wherever the handler waits before writing, such
  * as for a lock, since the caller's modes can change meanwhile.
  */
-export const writesEnvironment = <P, A, E, R>(
+export const writesMachine = <P, A, E, R>(
   handle: (
     params: P,
     check: Effect.Effect<Caller, OrchestratorMcpFailure, CheckServices>,

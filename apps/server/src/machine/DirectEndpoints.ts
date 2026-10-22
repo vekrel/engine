@@ -32,7 +32,7 @@ export class DirectEndpoints extends Context.Service<
   {
     readonly resolve: () => Effect.Effect<ReadonlyArray<ServerDirectEndpoint>>;
   }
->()("vekrel-engine/environment/DirectEndpoints") {}
+>()("vekrel-engine/machine/DirectEndpoints") {}
 
 /**
  * These routes are plain HTTP and carry the client's credential, so a public

@@ -28,7 +28,7 @@ import * as ProviderCredentialStore from "./ProviderCredentialStore.ts";
 import { withChatGptSessionLock } from "./CodexChatGptSessionLock.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 
 const isSetupError = Schema.is(ProviderSetupError);
 const RESOURCE = "https://api.openai.com/v1";
@@ -167,8 +167,8 @@ export const makeCodexChatGptAuth = Effect.fn("makeCodexChatGptAuth")(function* 
   environmentLocks.set(store.binding.key, lock);
   const withSessionLock = <A, E, R>(task: Effect.Effect<A, E, R>) =>
     withChatGptSessionLock(secrets.directory, store.binding.key, options.instanceId, task);
-  const environment = yield* ServerEnvironment.ServerEnvironmentIdentity;
-  const hostId = `urn:uuid:${yield* environment.getEnvironmentId}`;
+  const machine = yield* ServerMachine.ServerMachineIdentity;
+  const hostId = `urn:uuid:${yield* machine.getMachineId}`;
   const resource = options.resource ?? RESOURCE;
   const failure = (operation: string, detail: string) =>
     new ProviderSetupError({ instanceId: options.instanceId, operation, detail });
@@ -312,7 +312,7 @@ export const makeCodexChatGptAuth = Effect.fn("makeCodexChatGptAuth")(function* 
       }
     }
     return {
-      accountCountScope: Option.isSome(settings) ? "environment" : "provider_instance",
+      accountCountScope: Option.isSome(settings) ? "machine" : "provider_instance",
       connectedAccountCount: accounts.size,
       connectedConnectionCount: connections.size,
       savedConnectionCount: savedConnections.size,

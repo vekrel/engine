@@ -3,7 +3,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { AgentScope } from "@vekrel/shared/AgentScope";
 import {
-  EnvironmentId,
+  MachineId,
   type ModelSelection,
   type OrchestrationV2AppThread,
   type OrchestrationV2DomainEvent,
@@ -33,7 +33,7 @@ import { TestClock } from "effect/testing";
 import { HttpServer } from "effect/http";
 
 import { ProviderWorkspaceMissingError } from "../provider/Errors.ts";
-import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
+import * as ServerMachine from "../machine/ServerMachine.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSession from "@vekrel/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@vekrel/provider-core/server/McpProviderSessions";
@@ -575,8 +575,8 @@ const fakeHttpServer = HttpServer.HttpServer.of({
   serve: (() => Effect.void) as HttpServer.HttpServer["Service"]["serve"],
 });
 
-const fakeEnvironment = ServerEnvironment.ServerEnvironment.of({
-  getEnvironmentId: Effect.succeed(EnvironmentId.make("environment-provider-session-manager")),
+const fakeMachine = ServerMachine.ServerMachine.of({
+  getMachineId: Effect.succeed(MachineId.make("machine-provider-session-manager")),
   getDescriptor: Effect.die("unused"),
 });
 
@@ -585,7 +585,7 @@ const layerTestMcpRegistry = Layer.effect(
   McpSessionRegistry.__testing.make(),
 ).pipe(
   Layer.provide(Layer.succeed(HttpServer.HttpServer, fakeHttpServer)),
-  Layer.provide(Layer.succeed(ServerEnvironment.ServerEnvironment, fakeEnvironment)),
+  Layer.provide(Layer.succeed(ServerMachine.ServerMachine, fakeMachine)),
   Layer.provide(NodeServices.layer),
 );
 

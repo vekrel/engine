@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   type OrchestratorMcpCapabilitiesResult,
@@ -161,7 +161,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-ack"),
+        machineId: MachineId.make("machine:mcp-ack"),
         requestNamespace: "provider-session:mcp-ack",
         thread: {
           threadId: parentThreadId,
@@ -261,7 +261,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-restart"),
+        machineId: MachineId.make("machine:mcp-restart"),
         requestNamespace: "provider-session:mcp-restart",
         thread: {
           threadId: parentThreadId,
@@ -345,7 +345,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-cancel"),
+        machineId: MachineId.make("machine:mcp-cancel"),
         requestNamespace: "provider-session:mcp-cancel",
         thread: {
           threadId: parentThreadId,
@@ -441,7 +441,7 @@ describe("OrchestratorMcpService", () => {
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
         );
         const scope: McpInvocationScope = {
-          environmentId: EnvironmentId.make("environment:mcp-orphan"),
+          machineId: MachineId.make("machine:mcp-orphan"),
           requestNamespace: "provider-session:mcp-orphan",
           thread: {
             threadId: parentThreadId,
@@ -532,7 +532,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-cancel-failed"),
+        machineId: MachineId.make("machine:mcp-cancel-failed"),
         requestNamespace: "provider-session:mcp-cancel-failed",
         thread: {
           threadId: parentThreadId,
@@ -617,7 +617,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-cancel-dispose-failed"),
+        machineId: MachineId.make("machine:mcp-cancel-dispose-failed"),
         requestNamespace: "provider-session:mcp-cancel-dispose-failed",
         thread: {
           threadId: parentThreadId,
@@ -703,7 +703,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-cancel-dispose-failed"),
+        machineId: MachineId.make("machine:mcp-cancel-dispose-failed"),
         requestNamespace: "provider-session:mcp-cancel-dispose-failed",
         thread: {
           threadId: parentThreadId,
@@ -836,7 +836,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
       );
       const scope: McpInvocationScope = {
-        environmentId: EnvironmentId.make("environment:mcp-cancel-grandchild"),
+        machineId: MachineId.make("machine:mcp-cancel-grandchild"),
         requestNamespace: "provider-session:mcp-cancel-grandchild",
         thread: {
           threadId: parentThreadId,
@@ -901,7 +901,7 @@ describe("OrchestratorMcpService provider resolution", () => {
   const antigravityInstanceId = ProviderInstanceId.make("antigravity");
 
   const scope: McpInvocationScope = {
-    environmentId: EnvironmentId.make("environment:mcp-providers"),
+    machineId: MachineId.make("machine:mcp-providers"),
     requestNamespace: "provider-session:mcp-providers",
     thread: {
       threadId: parentThreadId,
@@ -2058,7 +2058,7 @@ describe("OrchestratorMcpService provider resolution", () => {
       ...overrides,
     });
     const supervisedClient: McpInvocationScope = {
-      environmentId: EnvironmentId.make("environment:scheduled"),
+      machineId: MachineId.make("machine:scheduled"),
       requestNamespace: "client:scheduled",
       thread: undefined,
       client: {
@@ -2492,7 +2492,7 @@ describe("OrchestratorMcpService thread lookup", () => {
   const launched = liveThreadShell(ThreadId.make(`mcp:${bareId}`));
   const deletedLaunched = { ...launched, deletedAt: DateTime.makeUnsafe("2026-10-05T00:00:00Z") };
   const client: McpInvocationScope = {
-    environmentId: EnvironmentId.make("environment:thread-lookup"),
+    machineId: MachineId.make("machine:thread-lookup"),
     requestNamespace: "client:thread-lookup",
     thread: undefined,
     client: { sessionId: "thread-lookup", label: "Claude Code", access: "full-access" },

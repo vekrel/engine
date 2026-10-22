@@ -4,12 +4,12 @@ import {
   AuthOrchestrationOperateScope,
   AuthSessionId,
   LOCAL_DEVICE_HOST_ID,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
 } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { HttpClient, HttpClientResponse, HttpRouter } from "effect/http";
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import type * as DeviceHost from "./DeviceHost.ts";
 import * as DeviceService from "./DeviceService.ts";
 import * as DeviceHubProxy from "./DeviceHubProxy.ts";
@@ -20,9 +20,9 @@ afterEach(async () => {
 });
 
 const fixture = (
-  scopes: ReadonlyArray<AuthEnvironmentScope>,
+  scopes: ReadonlyArray<AuthMachineScope>,
   fail = false,
-  authError?: EnvironmentAuth.ServerAuthCredentialError | EnvironmentAuth.ServerAuthInternalError,
+  authError?: MachineAuth.ServerAuthCredentialError | MachineAuth.ServerAuthInternalError,
   upstream?: DeviceHost.DeviceHostReady["upstream"],
 ) => {
   let finalized = 0;
@@ -45,7 +45,7 @@ const fixture = (
   const { handler, dispose } = HttpRouter.toWebHandler(
     DeviceHubProxy.layer.pipe(
       Layer.provideMerge(
-        Layer.succeed(EnvironmentAuth.EnvironmentAuth, {
+        Layer.succeed(MachineAuth.MachineAuth, {
           authenticateWebSocketUpgrade: () =>
             authError
               ? Effect.fail(authError)
@@ -55,7 +55,7 @@ const fixture = (
                   method: "bearer-access-token",
                   scopes,
                 }),
-        } as unknown as EnvironmentAuth.EnvironmentAuth["Service"]),
+        } as unknown as MachineAuth.MachineAuth["Service"]),
       ),
       Layer.provideMerge(
         Layer.succeed(DeviceService.DeviceService, {
@@ -187,7 +187,7 @@ describe("device hub proxy", () => {
     );
     const routed = await handler(
       new Request("http://t3.test/api/device-hub/vendor/serve-sim/api?device=udid-1&hostId=eas", {
-        headers: { authorization: "Bearer environment-token" },
+        headers: { authorization: "Bearer machine-token" },
       }),
     );
     expect(routed.status).toBe(200);
@@ -216,9 +216,9 @@ describe("device hub proxy", () => {
 });
 
 it.each([
-  [new EnvironmentAuth.ServerAuthMissingCredentialError({}), 401],
+  [new MachineAuth.ServerAuthMissingCredentialError({}), 401],
   [
-    new EnvironmentAuth.ServerAuthSessionCredentialValidationError({
+    new MachineAuth.ServerAuthSessionCredentialValidationError({
       cause: new Error("private credential diagnostic"),
     }),
     500,

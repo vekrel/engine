@@ -144,7 +144,7 @@ async function install(name, version, entry) {
     console.log(JSON.stringify({ nodePath: process.execPath, platforms, tools: versions() })); return;
   }
   fs.mkdirSync(state, { recursive: true, mode: 0o700 });
-  // Serialize starts and stops for this environment/host owner, including agent startup.
+  // Serialize starts and stops for this machine/host owner, including agent startup.
   const hostLock = path.join(state, 'runtime.lock');
   const releaseHost = await acquireLock(hostLock);
   try {

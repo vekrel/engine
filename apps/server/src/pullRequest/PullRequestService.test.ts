@@ -3125,7 +3125,7 @@ it.effect("partial host viewed writes invalidate marks but keep the diff cached"
   }),
 );
 
-const environmentViewedProvider = (
+const machineViewedProvider = (
   revisions: Map<string, string>,
   asked: Array<ReadonlyArray<string>>,
   unreadable: ReadonlySet<string> = new Set(),
@@ -3138,7 +3138,7 @@ const environmentViewedProvider = (
       mergeMethods: ["merge"],
       search: true,
       reactions: true,
-      viewedFiles: "environment",
+      viewedFiles: "machine",
       review: FULL_REVIEW,
       reviewers: FULL_REVIEWERS,
     },
@@ -3157,7 +3157,7 @@ const environmentViewedProvider = (
     },
   });
 
-const environmentViewedService = (
+const machineViewedService = (
   revisions: Map<string, string>,
   asked: Array<ReadonlyArray<string>>,
   unreadable: ReadonlySet<string> = new Set(),
@@ -3172,7 +3172,7 @@ const environmentViewedService = (
         provider: SourceControlProviderKind.make("gitlab"),
       }),
     ],
-    providers: [environmentViewedProvider(revisions, asked, unreadable)],
+    providers: [machineViewedProvider(revisions, asked, unreadable)],
   });
 
 const GITLAB_REFERENCE = {
@@ -3304,7 +3304,7 @@ it.effect("keeps hosted Forgejo marks with their repository instead of the servi
       projects,
       providers: [
         {
-          ...environmentViewedProvider(new Map([["same.ts", "blob"]]), []),
+          ...machineViewedProvider(new Map([["same.ts", "blob"]]), []),
           kind: SourceControlProviderKind.make("forgejo"),
         },
       ],
@@ -3373,7 +3373,7 @@ it.effect("keeps hosted Forgejo marks with their repository instead of the servi
 it.effect("keeps viewed files itself for a host that keeps none of its own", () =>
   Effect.gen(function* () {
     const asked: Array<ReadonlyArray<string>> = [];
-    const service = yield* environmentViewedService(
+    const service = yield* machineViewedService(
       new Map([
         ["src/a.ts", "blob-a"],
         ["src/b.ts", "blob-b"],
@@ -3415,7 +3415,7 @@ it.effect("reports a file pushed to since it was cleared as changed", () =>
       ["src/a.ts", "blob-a"],
       ["src/b.ts", "blob-b"],
     ]);
-    const service = yield* environmentViewedService(revisions, []);
+    const service = yield* machineViewedService(revisions, []);
 
     yield* service.setFilesViewed({
       ...GITLAB_REFERENCE,
@@ -3440,7 +3440,7 @@ it.effect("reports a file pushed to since it was cleared as changed", () =>
 
 it.effect("keeps a deleted file cleared, which the head has no version of at all", () =>
   Effect.gen(function* () {
-    const service = yield* environmentViewedService(new Map(), []);
+    const service = yield* machineViewedService(new Map(), []);
 
     yield* service.setFilesViewed({
       ...GITLAB_REFERENCE,
@@ -3459,7 +3459,7 @@ it.effect("leaves a mark alone when the host could not say what the head has of 
       ["src/a.ts", "blob-a"],
       ["src/past-the-cut.ts", "blob-b"],
     ]);
-    const service = yield* environmentViewedService(
+    const service = yield* machineViewedService(
       revisions,
       [],
       new Set(["src/past-the-cut.ts"]),
@@ -3489,7 +3489,7 @@ it.effect("leaves a mark alone when the host could not say what the head has of 
 it.effect("forgets what the head had of a marked file once a mutation moves the head", () =>
   Effect.gen(function* () {
     const revisions = new Map([["src/a.ts", "blob-a"]]);
-    const service = yield* environmentViewedService(revisions, []);
+    const service = yield* machineViewedService(revisions, []);
 
     yield* service.setFilesViewed({
       ...GITLAB_REFERENCE,
@@ -3526,7 +3526,7 @@ it.effect("finishes two presses on one file in the order they were made", () =>
             mergeMethods: ["merge"],
             search: true,
             reactions: true,
-            viewedFiles: "environment",
+            viewedFiles: "machine",
             review: FULL_REVIEW,
             reviewers: FULL_REVIEWERS,
           },
@@ -3575,12 +3575,12 @@ const azureViewedService = (projects: ReadonlyArray<OrchestrationProjectShell>) 
           mergeMethods: ["merge"],
           search: true,
           reactions: true,
-          viewedFiles: "environment",
+          viewedFiles: "machine",
           review: FULL_REVIEW,
           reviewers: FULL_REVIEWERS,
         },
-        getFilesViewed: () => Effect.die("the host keeps no marks of this environment's own"),
-        setFilesViewed: () => Effect.die("the host keeps no marks of this environment's own"),
+        getFilesViewed: () => Effect.die("the host keeps no marks of this machine's own"),
+        setFilesViewed: () => Effect.die("the host keeps no marks of this machine's own"),
         getFileRevisions: (input) =>
           Effect.succeed({ revisions: new Map(input.paths.map((path) => [path, "blob-a"])) }),
       }),
@@ -3625,9 +3625,9 @@ it.effect("keeps the marks of two Azure repositories of the same name apart", ()
   }),
 );
 
-it.effect("keeps environment marks apart from another change request's", () =>
+it.effect("keeps machine marks apart from another change request's", () =>
   Effect.gen(function* () {
-    const service = yield* environmentViewedService(new Map([["src/a.ts", "blob-a"]]), []);
+    const service = yield* machineViewedService(new Map([["src/a.ts", "blob-a"]]), []);
 
     yield* service.setFilesViewed({
       ...GITLAB_REFERENCE,
@@ -3639,7 +3639,7 @@ it.effect("keeps environment marks apart from another change request's", () =>
   }),
 );
 
-const environmentViewedServiceWithViewer = (
+const machineViewedServiceWithViewer = (
   revisions: Map<string, string>,
   getViewer: PullRequestProviderApi["getViewer"],
 ) =>
@@ -3653,12 +3653,12 @@ const environmentViewedServiceWithViewer = (
         provider: SourceControlProviderKind.make("gitlab"),
       }),
     ],
-    providers: [{ ...environmentViewedProvider(revisions, []), getViewer }],
+    providers: [{ ...machineViewedProvider(revisions, []), getViewer }],
   });
 
 it.effect("keeps one reader's marks on a host that names nobody", () =>
   Effect.gen(function* () {
-    const service = yield* environmentViewedServiceWithViewer(
+    const service = yield* machineViewedServiceWithViewer(
       new Map([["src/a.ts", "blob-a"]]),
       () => Effect.succeed(""),
     );
@@ -3681,7 +3681,7 @@ it.effect("carries a bounded number of its own marks and says it held more", () 
       { length: PullRequestFilesViewed.MAX_FILES_VIEWED_ROWS + 40 },
       (_, at) => `src/f${String(at).padStart(4, "0")}.ts`,
     );
-    const service = yield* environmentViewedService(
+    const service = yield* machineViewedService(
       new Map(paths.map((path) => [path, "blob"] as const)),
       asked,
     );

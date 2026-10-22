@@ -1,6 +1,6 @@
 import { expect, it } from "@effect/vitest";
 import {
-  EnvironmentId,
+  MachineId,
   McpCapabilityUnavailableError,
   PreviewAutomationUnavailableError,
   ProviderInstanceId,
@@ -12,7 +12,7 @@ import * as McpInvocationContext from "./McpInvocationContext.ts";
 
 it.effect("reports other missing capabilities with the neutral error", () => {
   const invocation: McpInvocationContext.McpInvocationScope = {
-    environmentId: EnvironmentId.make("environment-1"),
+    machineId: MachineId.make("machine-1"),
     requestNamespace: "provider-session-1",
     thread: {
       threadId: ThreadId.make("thread-1"),
@@ -45,7 +45,7 @@ it.effect("reports other missing capabilities with the neutral error", () => {
 
 it.effect("refuses thread-owned capabilities to a caller signed in from outside a thread", () => {
   const invocation: McpInvocationContext.McpInvocationScope = {
-    environmentId: EnvironmentId.make("environment-1"),
+    machineId: MachineId.make("machine-1"),
     requestNamespace: "client:session-1",
     thread: undefined,
     client: { sessionId: "session-1", label: "Claude Code", access: "auto" },
@@ -59,7 +59,7 @@ it.effect("refuses thread-owned capabilities to a caller signed in from outside 
       Effect.flip,
     );
     expect(error).toBeInstanceOf(PreviewAutomationUnavailableError);
-    expect(error).toMatchObject({ capability: "preview", environmentId: "environment-1" });
+    expect(error).toMatchObject({ capability: "preview", machineId: "machine-1" });
     expect(error.threadId).toBeUndefined();
   });
 });

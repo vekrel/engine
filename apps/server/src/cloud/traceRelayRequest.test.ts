@@ -25,7 +25,7 @@ describe("relay request tracing", () => {
         },
       });
       const request = HttpServerRequest.fromWeb(
-        new Request("https://environment.example.test/api/t3-cloud/mint-credential", {
+        new Request("https://machine.example.test/api/t3-cloud/mint-credential", {
           headers: {
             traceparent: "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
           },
@@ -58,10 +58,10 @@ describe("relay request tracing boundary", () => {
           },
         });
       const request = HttpServerRequest.fromWeb(
-        new Request("https://environment.example.test/api/orchestration/threads/thread-1"),
+        new Request("https://machine.example.test/api/orchestration/threads/thread-1"),
       );
 
-      const handler = Effect.fn("environment.orchestration.threadSnapshot")(function* () {
+      const handler = Effect.fn("machine.orchestration.threadSnapshot")(function* () {
         yield* Effect.void.pipe(
           Effect.withSpan("sql.execute"),
           Effect.withSpan("ServerSecretStore.get"),
@@ -76,9 +76,9 @@ describe("relay request tracing boundary", () => {
       );
 
       expect(productSpans).toEqual([
-        "environment.relay.request",
-        "EnvironmentAuth.authenticateHttpRequest",
-        "environment.orchestration.threadSnapshot",
+        "machine.relay.request",
+        "MachineAuth.authenticateHttpRequest",
+        "machine.orchestration.threadSnapshot",
       ]);
       expect(localSpans).toEqual(["ServerSecretStore.get", "sql.execute"]);
     }),

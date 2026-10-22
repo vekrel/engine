@@ -26,7 +26,7 @@ import * as Stdio from "effect/Stdio";
 import * as Stream from "effect/Stream";
 import { Argument, Command, Flag, GlobalFlag } from "effect/cli";
 
-import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as MachineAuth from "../auth/MachineAuth.ts";
 import * as ServerConfig from "../config.ts";
 import { mcpToolSession, type McpToolSession } from "../mcp/AcpMcpStdioBridge.ts";
 import { readPersistedServerRuntimeState } from "../serverRuntimeState.ts";
@@ -214,9 +214,9 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
       return yield* new ThreadServerNotRunningError({ baseDir: config.baseDir });
     }
     const origin = runtimeState.value.origin;
-    const environmentAuth = yield* EnvironmentAuth.EnvironmentAuth;
+    const machineAuth = yield* MachineAuth.MachineAuth;
     const issued = yield* Effect.acquireRelease(
-      environmentAuth.issueMcpClientSession({
+      machineAuth.issueMcpClientSession({
         label: "t3 thread cli",
         // The CLI runs as the machine's owner. New threads still start at
         // the project's default mode, never at this ceiling by default.
@@ -224,7 +224,7 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
         client: { deviceType: "bot" },
       }),
       (session) =>
-        environmentAuth.revokeSession(session.sessionId).pipe(Effect.ignore({ log: true })),
+        machineAuth.revokeSession(session.sessionId).pipe(Effect.ignore({ log: true })),
     );
     const session = yield* mcpToolSession({
       endpoint: new URL("/mcp", origin).href,
@@ -235,7 +235,7 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
   }).pipe(
     Effect.scoped,
     Effect.provide(
-      EnvironmentAuth.layerRuntime.pipe(
+      MachineAuth.layerRuntime.pipe(
         Layer.provide(ServerConfig.layer(config)),
         Layer.provide(Layer.succeed(References.MinimumLogLevel, config.logLevel)),
       ),

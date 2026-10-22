@@ -7,7 +7,7 @@ import {
   ChatFileAttachment,
   ChatImageAttachment,
   CheckpointId,
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   ProviderInstanceId,
@@ -2309,7 +2309,7 @@ it.layer(McpProviderSessions.layer)("OpenCode2 adapter", (it) => {
     Effect.gen(function* () {
       const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
       yield* mcpSessions.set({
-        environmentId: EnvironmentId.make("environment:opencode2-adapter"),
+        machineId: MachineId.make("machine:opencode2-adapter"),
         threadId,
         providerSessionId: "mcp:opencode2-adapter",
         providerInstanceId: instanceId,
@@ -2367,7 +2367,7 @@ it.layer(McpProviderSessions.layer)("OpenCode2 adapter", (it) => {
       const server = "t3-code-aa73fa1e03099934";
       const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
       yield* mcpSessions.set({
-        environmentId: EnvironmentId.make("environment:opencode2-adapter"),
+        machineId: MachineId.make("machine:opencode2-adapter"),
         threadId: child,
         providerSessionId: "mcp:opencode2-adapter",
         providerInstanceId: instanceId,
