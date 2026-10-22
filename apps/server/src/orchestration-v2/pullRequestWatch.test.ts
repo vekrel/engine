@@ -2,7 +2,7 @@ import type {
   PullRequestCheck,
   PullRequestComment,
   ThreadPullRequestWatch,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import { assert, describe, it } from "@effect/vitest";
 
 import { PULL_REQUEST_WATCH_WAKE_LIMIT, evaluatePullRequestWatch } from "./pullRequestWatch.ts";

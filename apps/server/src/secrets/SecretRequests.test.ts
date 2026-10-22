@@ -6,7 +6,7 @@ import {
   type OrchestrationV2ServerCommand,
   ThreadId,
   TurnItemId,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Metric from "effect/Metric";

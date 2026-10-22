@@ -5,7 +5,7 @@ import {
   RunId,
   TurnItemId,
   type OrchestrationV2ThreadStreamItem,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import { it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

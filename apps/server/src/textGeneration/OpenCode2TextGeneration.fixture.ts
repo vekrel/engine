@@ -2,7 +2,7 @@
  * (A deny-all session is refused on the free tier: the spike's
  * `text_generation` recording.)
  */
-import type { ProviderReplayEntry } from "@t3tools/contracts";
+import type { ProviderReplayEntry } from "@vekrel/contracts";
 
 export const OPENCODE2_TITLE_GENERATION: ReadonlyArray<ProviderReplayEntry> = [
   { type: "expect_outbound", label: "event.subscribe", frame: { type: "event.subscribe" } },

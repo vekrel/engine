@@ -30,9 +30,9 @@ const isRepoRootTestRun = process.cwd() === import.meta.dirname;
 
 const RESTRICTED_IMPORT_PATHS = [
   {
-    name: "@t3tools/client-runtime",
+    name: "@vekrel/client-runtime",
     message:
-      "Import from an explicit @t3tools/client-runtime/* subpath. The package has no root export.",
+      "Import from an explicit @vekrel/client-runtime/* subpath. The package has no root export.",
   },
   {
     name: "@pierre/diffs/react",

@@ -1,4 +1,4 @@
-import { VcsUnsupportedOperationError, type CheckpointRef } from "@t3tools/contracts";
+import { VcsUnsupportedOperationError, type CheckpointRef } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -75,7 +75,7 @@ export class CheckpointStore extends Context.Service<
       input: DeleteCheckpointRefsInput,
     ) => Effect.Effect<void, CheckpointStoreError>;
   }
->()("t3/checkpointing/CheckpointStore") {}
+>()("vekrel-engine/checkpointing/CheckpointStore") {}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {

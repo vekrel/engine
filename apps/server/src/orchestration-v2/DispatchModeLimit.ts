@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode, RuntimeMode, ThreadId } from "@t3tools/contracts";
+import type { ProviderInteractionMode, RuntimeMode, ThreadId } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import type * as Ref from "effect/Ref";
 
@@ -22,7 +22,7 @@ export interface DispatchModeLimitValue extends DispatchModes {
 }
 
 export const DispatchModeLimit = Context.Reference<DispatchModeLimitValue | undefined>(
-  "t3/orchestration-v2/DispatchModeLimit",
+  "vekrel-engine/orchestration-v2/DispatchModeLimit",
   { defaultValue: () => undefined },
 );
 

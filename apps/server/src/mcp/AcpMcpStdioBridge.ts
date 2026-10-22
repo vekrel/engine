@@ -8,7 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { discardResponseBody, responsePayloads } from "@t3tools/shared/mcpResponsePayloads";
+import { discardResponseBody, responsePayloads } from "@vekrel/shared/mcpResponsePayloads";
 
 /**
  * ACP agents must support stdio MCP servers, while optional http/sse support is

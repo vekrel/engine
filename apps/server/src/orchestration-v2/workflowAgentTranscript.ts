@@ -8,7 +8,7 @@
  */
 import * as NodePath from "node:path";
 
-import { OrchestrationWorkflowFileError } from "@t3tools/contracts";
+import { OrchestrationWorkflowFileError } from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -41,7 +41,7 @@ export const WorkflowAgentTranscriptReadObserver = Context.Reference<
     readonly endOffset: number;
     readonly lineCount: number;
   }) => Effect.Effect<void>
->("t3/orchestration/WorkflowAgentTranscriptReadObserver", {
+>("vekrel-engine/orchestration/WorkflowAgentTranscriptReadObserver", {
   defaultValue: () => () => Effect.void,
 });
 

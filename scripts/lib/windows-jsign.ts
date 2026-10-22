@@ -21,7 +21,7 @@ export class JsignFailedError extends Schema.TaggedError<JsignFailedError>()("Js
 
 export const signWithJsign = Effect.fn("signWithJsign")(function* (file: string) {
   const { jsign, endpoint, account, profile } = yield* Config.all({
-    jsign: Config.String("T3CODE_JSIGN").pipe(Config.withDefault("jsign")),
+    jsign: Config.String("VEKREL_JSIGN").pipe(Config.withDefault("jsign")),
     endpoint: Config.String("AZURE_TRUSTED_SIGNING_ENDPOINT"),
     account: Config.String("AZURE_TRUSTED_SIGNING_ACCOUNT_NAME"),
     profile: Config.String("AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME"),

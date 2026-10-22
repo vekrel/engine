@@ -9,7 +9,7 @@ import {
   TurnItemId,
   type ProviderDriverKind,
   type OrchestrationV2DomainEvent,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as DateTime from "effect/DateTime";
 import {
   diagnosticOutput,

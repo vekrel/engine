@@ -3,7 +3,7 @@ import * as NodeAssert from "node:assert/strict";
 import {
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
   T3_CODE_ORCHESTRATION_SECTIONS,
-} from "@t3tools/provider-core/server/orchestrationInstructions";
+} from "@vekrel/provider-core/server/orchestrationInstructions";
 import { describe, it } from "vite-plus/test";
 
 import {

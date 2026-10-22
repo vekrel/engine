@@ -1,16 +1,16 @@
 import type {
   OrchestrationV2ContextHandoff,
   OrchestrationV2ProviderThread,
-} from "@t3tools/contracts";
-import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
-import { ContextHandoffBudgetError } from "@t3tools/provider-core/server/failure";
+} from "@vekrel/contracts";
+import type * as ProviderAdapter from "@vekrel/provider-core/server/ProviderAdapter";
+import { ContextHandoffBudgetError } from "@vekrel/provider-core/server/failure";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
   historyCost,
   renderHistory,
   selectHistory,
-} from "@t3tools/provider-core/server/handoffBudget";
+} from "@vekrel/provider-core/server/handoffBudget";
 
 /**
  * Persist before/after injection: an ambiguous pending delivery requires a fresh native thread.

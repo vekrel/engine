@@ -1,4 +1,4 @@
-import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@vekrel/shared/nodeSqliteClient";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -101,7 +101,7 @@ export class DatabaseMaintenance extends Context.Service<
       databasePath: string,
     ) => Effect.Effect<void, DatabaseInUseError | LegacyDatabaseRemoveError>;
   }
->()("t3/persistence/DatabaseMaintenance") {}
+>()("vekrel-engine/persistence/DatabaseMaintenance") {}
 
 const isDomainError = Schema.is(
   Schema.Union([DatabaseMissingError, DatabaseInUseError, DatabaseProjectionsInvalidError]),

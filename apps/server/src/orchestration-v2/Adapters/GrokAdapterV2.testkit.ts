@@ -1,21 +1,21 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { GrokSettings } from "@t3tools/provider-grok/settings";
+import { GrokSettings } from "@vekrel/provider-grok/settings";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
+import * as HostProcess from "@vekrel/shared/HostProcess";
+import { resolveSelfInvocation } from "@vekrel/shared/nodeRuntime";
 
-import * as TestProviderHost from "@t3tools/provider-testing/TestProviderHost";
-import { GROK_ACP_CANCEL_META, GROK_ACP_INITIALIZE_META } from "@t3tools/provider-grok/testing";
-import { makeXAiPromptCompletionRuntime } from "@t3tools/provider-grok/testing";
-import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
-import * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
+import * as TestProviderHost from "@vekrel/provider-testing/TestProviderHost";
+import { GROK_ACP_CANCEL_META, GROK_ACP_INITIALIZE_META } from "@vekrel/provider-grok/testing";
+import { makeXAiPromptCompletionRuntime } from "@vekrel/provider-grok/testing";
+import * as IdAllocator from "@vekrel/provider-core/server/IdAllocator";
+import * as ProviderContinuationRequests from "@vekrel/provider-core/server/ProviderContinuationRequests";
 import * as ProviderAdapterRegistry from "../ProviderAdapterRegistry.ts";
-import type { ProviderReplayGate } from "@t3tools/provider-testing/replayGate";
+import type { ProviderReplayGate } from "@vekrel/provider-testing/replayGate";
 import type { OrchestratorV2ProviderReplayHarness } from "../testkit/ProviderReplayHarness.ts";
 import {
   type AcpReplayTranscript,
@@ -28,7 +28,7 @@ import {
   GROK_DEFAULT_INSTANCE_ID,
   GROK_PROVIDER,
   makeGrokAdapterV2,
-} from "@t3tools/provider-grok/testing";
+} from "@vekrel/provider-grok/testing";
 
 const DEFAULT_GROK_SETTINGS = Schema.decodeUnknownSync(GrokSettings)({});
 

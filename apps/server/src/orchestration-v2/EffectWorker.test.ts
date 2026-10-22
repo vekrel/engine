@@ -11,7 +11,7 @@ import {
   RunId,
   ThreadId,
   VcsProcessExitError,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";

@@ -11,7 +11,7 @@ import {
   readTailscaleStatus,
   type TailscaleCommandError,
   type TailscaleStderrDiagnostic,
-} from "@t3tools/tailscale";
+} from "@vekrel/tailscale";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type { ChildProcessSpawner } from "effect/process";

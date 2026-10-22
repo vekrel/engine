@@ -1,5 +1,5 @@
 import { resolveManagedCodexHomeLayout } from "./CodexManagedHome.ts";
-import { CodexSettings, ProviderSetupError, type ProviderInstanceId } from "@t3tools/contracts";
+import { CodexSettings, ProviderSetupError, type ProviderInstanceId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -94,7 +94,7 @@ export const makeCodexManagedRuntime = Effect.fn("makeCodexManagedRuntime")(func
       ACCESS_TOKEN: credentials.accessToken,
       CODEX_HOME: homePath,
     };
-    delete environment.T3CODE_CODEX_LAUNCH_ARGS;
+    delete environment.VEKREL_CODEX_LAUNCH_ARGS;
     delete environment.OPENAI_API_KEY;
     delete environment.OPENAI_BASE_URL;
     return {

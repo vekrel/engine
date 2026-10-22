@@ -1,11 +1,11 @@
-import type { ClaudeSettings } from "@t3tools/contracts";
+import type { ClaudeSettings } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
-import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
-import * as HostProcess from "@t3tools/shared/HostProcess";
+import { expandHomePath } from "@vekrel/provider-core/server/pathExpansion";
+import * as HostProcess from "@vekrel/shared/HostProcess";
 
 const quotePath = Schema.encodeSync(Schema.fromJsonString(Schema.String));
 

@@ -13,7 +13,7 @@ import {
   RunId,
   RuntimeRequestId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
@@ -250,7 +250,7 @@ export interface EffectOutboxV2Shape {
 }
 
 export class EffectOutboxV2 extends Context.Service<EffectOutboxV2, EffectOutboxV2Shape>()(
-  "t3/orchestration-v2/EffectOutbox/EffectOutboxV2",
+  "vekrel-engine/orchestration-v2/EffectOutbox/EffectOutboxV2",
 ) {}
 
 type EffectRow = {

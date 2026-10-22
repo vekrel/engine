@@ -1,4 +1,4 @@
-import { SourceControlProviderKind } from "@t3tools/contracts";
+import { SourceControlProviderKind } from "@vekrel/contracts";
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
@@ -25,7 +25,7 @@ import type {
   GitActionProgressEvent,
   GitPreparePullRequestThreadInput,
   ModelSelection,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 
 import {
   DEFAULT_SERVER_SETTINGS,
@@ -40,31 +40,31 @@ import {
   TextGenerationError,
   ThreadId,
   TurnItemId,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as DateTime from "effect/DateTime";
-import { decodeGitHubPullRequestListJson } from "@t3tools/source-control-github/server/gitHubPullRequests";
-import * as GitHubChangeRequestTemplate from "@t3tools/source-control-github/server/gitHubChangeRequestTemplate";
-import * as HostProcess from "@t3tools/shared/HostProcess";
-import * as GitLabCli from "@t3tools/source-control-gitlab/server/GitLabCli";
-import type * as SourceControlHost from "@t3tools/source-control-core/server/SourceControlHost";
-import * as TestSourceControlHost from "@t3tools/source-control-testing/TestSourceControlHost";
+import { decodeGitHubPullRequestListJson } from "@vekrel/source-control-github/server/gitHubPullRequests";
+import * as GitHubChangeRequestTemplate from "@vekrel/source-control-github/server/gitHubChangeRequestTemplate";
+import * as HostProcess from "@vekrel/shared/HostProcess";
+import * as GitLabCli from "@vekrel/source-control-gitlab/server/GitLabCli";
+import type * as SourceControlHost from "@vekrel/source-control-core/server/SourceControlHost";
+import * as TestSourceControlHost from "@vekrel/source-control-testing/TestSourceControlHost";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import {
   fromRunner,
   decodeJsonReply,
-} from "@t3tools/provider-core/server/textGenerationOperations";
+} from "@vekrel/provider-core/server/textGenerationOperations";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 import * as VcsProjectConfig from "../vcs/VcsProjectConfig.ts";
 import * as GitWorkflowService from "./GitWorkflowService.ts";
-import * as ForgejoSourceControlProvider from "@t3tools/source-control-forgejo/server/ForgejoSourceControlProvider";
-import * as GitLabSourceControlProvider from "@t3tools/source-control-gitlab/server/GitLabSourceControlProvider";
+import * as ForgejoSourceControlProvider from "@vekrel/source-control-forgejo/server/ForgejoSourceControlProvider";
+import * as GitLabSourceControlProvider from "@vekrel/source-control-gitlab/server/GitLabSourceControlProvider";
 import {
   ForgejoPullRequestSchema,
   toForgejoChangeRequest,
-} from "@t3tools/source-control-forgejo/server/forgejoPullRequests";
-import type { SourceControlProvider } from "@t3tools/source-control-core/server/SourceControlProvider";
+} from "@vekrel/source-control-forgejo/server/forgejoPullRequests";
+import type { SourceControlProvider } from "@vekrel/source-control-core/server/SourceControlProvider";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as ServerConfig from "../config.ts";
 import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";

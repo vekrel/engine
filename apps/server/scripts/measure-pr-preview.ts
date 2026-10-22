@@ -11,9 +11,9 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import { FetchHttpClient, HttpClient } from "effect/http";
 
-import * as GitHubPullRequestApi from "@t3tools/source-control-github/server/GitHubPullRequestApi";
-import * as GitHubPullRequestProvider from "@t3tools/source-control-github/server/GitHubPullRequestProvider";
-import * as GitHubRest from "@t3tools/source-control-github/server/GitHubRest";
+import * as GitHubPullRequestApi from "@vekrel/source-control-github/server/GitHubPullRequestApi";
+import * as GitHubPullRequestProvider from "@vekrel/source-control-github/server/GitHubPullRequestProvider";
+import * as GitHubRest from "@vekrel/source-control-github/server/GitHubRest";
 import * as ServerConfig from "../src/config.ts";
 import * as ServerSettings from "../src/serverSettings.ts";
 import * as ServerSourceControlHost from "../src/sourceControl/ServerSourceControlHost.ts";

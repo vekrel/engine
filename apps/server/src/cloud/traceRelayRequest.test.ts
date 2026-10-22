@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Tracer from "effect/Tracer";
 import { HttpServerRequest } from "effect/http";
-import { RelayClientTracer } from "@t3tools/shared/relayTracing";
+import { RelayClientTracer } from "@vekrel/shared/relayTracing";
 
 import {
   traceAuthenticatedRelayRequest,

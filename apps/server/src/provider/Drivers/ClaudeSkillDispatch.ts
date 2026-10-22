@@ -1,4 +1,4 @@
-import type { ServerProviderSkill } from "@t3tools/contracts";
+import type { ServerProviderSkill } from "@vekrel/contracts";
 
 /**
  * Claude Code's only user-side invocation is a text block whose first character

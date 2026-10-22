@@ -9,12 +9,12 @@ import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { resolveSpawnCommand } from "@vekrel/shared/shell";
 import {
   collectUint8StreamText,
   decodeUtf8,
   type CollectedUint8StreamText,
-} from "@t3tools/provider-core/server/collectStreamText";
+} from "@vekrel/provider-core/server/collectStreamText";
 
 export interface ProcessRunInput {
   readonly command: string;
@@ -143,14 +143,14 @@ export class ProcessRunner extends Context.Service<
   {
     readonly run: (input: ProcessRunInput) => Effect.Effect<ProcessRunOutput, ProcessRunError>;
   }
->()("t3/processRunner") {}
+>()("vekrel-engine/processRunner") {}
 
 const DEFAULT_TIMEOUT = "60 seconds";
 // Keep SIGTERM-ignoring helpers from blocking timeouts or graceful shutdown.
 const FORCE_KILL_AFTER = "1 second";
 const DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 
-export { isWindowsCommandNotFound } from "@t3tools/provider-core/server/snapshotProbe";
+export { isWindowsCommandNotFound } from "@vekrel/provider-core/server/snapshotProbe";
 
 const collectText = Effect.fnUntraced(function* (input: {
   readonly command: string;

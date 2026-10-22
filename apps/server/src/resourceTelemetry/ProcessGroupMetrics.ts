@@ -1,4 +1,4 @@
-import type { ResourceTelemetryProcess } from "@t3tools/contracts";
+import type { ResourceTelemetryProcess } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Metric from "effect/Metric";

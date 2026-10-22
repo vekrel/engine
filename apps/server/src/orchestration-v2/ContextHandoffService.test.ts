@@ -7,13 +7,13 @@ import {
   ThreadId,
   TurnItemId,
   type OrchestrationV2TurnItem,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ContextHandoffService from "./ContextHandoffService.ts";
-import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
+import * as IdAllocator from "@vekrel/provider-core/server/IdAllocator";
 
 const layerTest = ContextHandoffService.layer.pipe(Layer.provide(IdAllocator.layer));
 

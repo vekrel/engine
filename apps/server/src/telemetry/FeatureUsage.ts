@@ -2,7 +2,7 @@ import {
   ORCHESTRATION_V2_WS_METHODS,
   type OrchestrationV2Command,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 
 export interface FeatureUsage {
   readonly feature: string;

@@ -27,10 +27,10 @@ import {
   LOCAL_DEVICE_HOST_ID,
   LOCAL_DEVICE_HOST_LABEL,
   type ThreadId,
-} from "@t3tools/contracts";
-import { SshCommandError } from "@t3tools/ssh/errors";
+} from "@vekrel/contracts";
+import { SshCommandError } from "@vekrel/ssh/errors";
 import * as FileSystem from "effect/FileSystem";
-import { resolveNodeExecutable, nodeRuntimeUnavailableMessage } from "@t3tools/shared/nodeRuntime";
+import { resolveNodeExecutable, nodeRuntimeUnavailableMessage } from "@vekrel/shared/nodeRuntime";
 import * as Path from "effect/Path";
 import { ensureAgentDevice, ensureDeviceHub } from "./DeviceToolchain.ts";
 import * as ServerConfig from "../config.ts";
@@ -155,7 +155,7 @@ export class DeviceService extends Context.Service<
     readonly currentReadiness: (hostId?: DeviceHostId) => Effect.Effect<DeviceReadiness | null>;
     readonly sessionsForThread: (threadId: ThreadId) => Effect.Effect<ReadonlyArray<DeviceSession>>;
   }
->()("t3/device/DeviceService") {}
+>()("vekrel-engine/device/DeviceService") {}
 
 interface ServiceState {
   readonly state: DeviceServiceState;

@@ -4,7 +4,7 @@ import {
   TerminalAttachStreamEvent as TerminalAttachStreamEventSchema,
   TerminalEvent as TerminalEventSchema,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";

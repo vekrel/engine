@@ -4,7 +4,7 @@ import {
   EventId,
   type OrchestrationMessageContext,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";

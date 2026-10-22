@@ -1,5 +1,5 @@
-import type { EnvironmentMachineKind } from "@t3tools/contracts";
-import * as HostProcess from "@t3tools/shared/HostProcess";
+import type { EnvironmentMachineKind } from "@vekrel/contracts";
+import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 

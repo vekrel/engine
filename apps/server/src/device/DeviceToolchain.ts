@@ -1,4 +1,4 @@
-import type { DeviceToolVersions } from "@t3tools/contracts";
+import type { DeviceToolVersions } from "@vekrel/contracts";
 /**
  * npm extracts files before it finishes, so an entry file alone does not prove
  * a usable tree.

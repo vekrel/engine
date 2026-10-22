@@ -7,11 +7,11 @@ import type {
   DevicePlatform,
   DevicePlatformAvailability,
   DeviceSummary,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import type { NodeRuntimeUnavailableError } from "@t3tools/shared/nodeRuntime";
+import type { NodeRuntimeUnavailableError } from "@vekrel/shared/nodeRuntime";
 
 export class DeviceHostError extends Schema.TaggedError<DeviceHostError>()("DeviceHostError", {
   hostId: Schema.String,
@@ -185,4 +185,4 @@ export class DeviceHost extends Context.Service<
     /** Stops helpers. Devices themselves keep running; the user owns those. */
     readonly stop: Effect.Effect<void>;
   }
->()("t3/device/DeviceHost") {}
+>()("vekrel-engine/device/DeviceHost") {}

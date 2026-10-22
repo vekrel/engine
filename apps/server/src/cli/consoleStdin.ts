@@ -2,7 +2,7 @@
 import * as NodeFS from "node:fs";
 import * as NodeTty from "node:tty";
 
-import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as HostProcess from "@vekrel/shared/HostProcess";
 
 /**
  * Whether this process is the desktop app's `t3.cmd` running the CLI in a
@@ -23,7 +23,7 @@ function needsConsoleStdin(input: {
   return (
     input.platform === "win32" &&
     // Set only by the launcher (DesktopCliShim), never for the desktop backend.
-    input.env.T3CODE_DESKTOP_CLI_LAUNCHER === "1" &&
+    input.env.VEKREL_DESKTOP_CLI_LAUNCHER === "1" &&
     !input.stdinOpen &&
     input.stdoutIsConsole
   );
@@ -53,7 +53,7 @@ export function attachConsoleStdin(): number | undefined {
   });
   // The marker describes this process's own start; a server started here
   // must not pass it on to the shells and `t3` runs it spawns.
-  delete process.env.T3CODE_DESKTOP_CLI_LAUNCHER;
+  delete process.env.VEKREL_DESKTOP_CLI_LAUNCHER;
   if (!needed) return undefined;
   let fd: number;
   try {

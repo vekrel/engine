@@ -8,7 +8,7 @@ import {
   ThreadId,
   OrchestrationV2RunStatus,
   OrchestratorMcpFailure,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Crypto from "effect/Crypto";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";

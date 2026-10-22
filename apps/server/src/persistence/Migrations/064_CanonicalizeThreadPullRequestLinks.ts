@@ -1,5 +1,5 @@
-import { ThreadLinkedPullRequest, ThreadPullRequestLink } from "@t3tools/contracts";
-import { legacyThreadPullRequestKey } from "@t3tools/shared/threadPullRequests";
+import { ThreadLinkedPullRequest, ThreadPullRequestLink } from "@vekrel/contracts";
+import { legacyThreadPullRequestKey } from "@vekrel/shared/threadPullRequests";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";

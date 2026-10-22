@@ -1,4 +1,4 @@
-import { RelayProtectedError } from "@t3tools/contracts/relay";
+import { RelayProtectedError } from "@vekrel/contracts/relay";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

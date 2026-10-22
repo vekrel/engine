@@ -9,7 +9,7 @@ import {
   PreviewTabId,
   ProviderInstanceId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@vekrel/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

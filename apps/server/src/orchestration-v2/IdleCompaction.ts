@@ -1,6 +1,6 @@
-import type { OrchestrationV2ThreadProjection } from "@t3tools/contracts";
-import { COMPACTION_SUGGESTION_MIN_TOKENS } from "@t3tools/shared/claudeCompaction";
-import { derivePendingBackgroundWork } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
+import type { OrchestrationV2ThreadProjection } from "@vekrel/contracts";
+import { COMPACTION_SUGGESTION_MIN_TOKENS } from "@vekrel/shared/claudeCompaction";
+import { derivePendingBackgroundWork } from "@vekrel/shared/orchestrationV2PendingBackgroundWork";
 import * as DateTime from "effect/DateTime";
 
 // Claude Code's idleCompaction defaults to 200K and won't go below 100K. Below
