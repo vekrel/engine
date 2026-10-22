@@ -363,13 +363,13 @@ const rule = (action: string, effect: Rule["effect"]): Rule => ({ action, resour
  * thread id that does not fit is replaced by a digest of it.
  */
 export const t3McpServerName = Effect.fn("t3McpServerName")(function* (threadId: string) {
-  const name = `t3-code-${threadId.replaceAll(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const name = `vekrel-${threadId.replaceAll(/[^a-zA-Z0-9_-]/g, "_")}`;
   if (name.length <= 64) return name;
   const crypto = yield* Crypto.Crypto;
   const digest = yield* crypto
     .digest("SHA-256", new TextEncoder().encode(threadId))
     .pipe(Effect.orDie);
-  return `t3-code-${Hex.encode(digest).slice(0, 16)}`;
+  return `vekrel-${Hex.encode(digest).slice(0, 16)}`;
 });
 
 /**
@@ -381,7 +381,7 @@ const mcpRules = (mcpServerName: string | null): ReadonlyArray<Rule> =>
   mcpServerName === null
     ? []
     : [
-        { action: "t3-code-*", resource: "*", effect: "deny" },
+        { action: "vekrel-*", resource: "*", effect: "deny" },
         { action: `${mcpServerName}_*`, resource: "*", effect: "allow" },
       ];
 
@@ -546,7 +546,7 @@ const isWakeTurn = (turn: OrchestrationV2ProviderTurn) =>
   turn.nativeTurnRef?.nativeId?.includes(":wake:") === true;
 
 const INTERRUPT_TIMEOUT = "10 seconds";
-const INSTRUCTIONS_KEY = "t3-code";
+const INSTRUCTIONS_KEY = "vekrel";
 const RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = "2 seconds";
 const RECONCILE_TIMEOUT = "15 seconds";
