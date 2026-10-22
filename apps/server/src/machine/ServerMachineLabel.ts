@@ -192,5 +192,5 @@ export const resolveServerMachineLabel = Effect.fn("resolveServerMachineLabel")(
     return hostname;
   }
 
-  return normalizeLabel(input.cwdBaseName) ?? "T3 machine";
+  return normalizeLabel(input.cwdBaseName) ?? "Vekrel machine";
 });

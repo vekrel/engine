@@ -170,7 +170,7 @@ export class CloudLinkNotLinkedError extends Schema.TaggedError<CloudLinkNotLink
   {},
 ) {
   override get message(): string {
-    return "Link this machine to T3 Connect first.";
+    return "Link this machine to Vekrel Connect first.";
   }
 }
 
@@ -242,14 +242,14 @@ const INTERNAL_OPERATION_MESSAGES = {
   "persist-relay-config": "Could not persist machine relay configuration.",
   "register-endpoint-origin": "Could not register the managed endpoint origin.",
   "resolve-server-origin": "Could not resolve the local server origin.",
-  "persist-desired-link": "Could not persist desired T3 Connect link state.",
+  "persist-desired-link": "Could not persist desired Vekrel Connect link state.",
   "sign-recovery-proof": "Could not sign the managed tunnel recovery request.",
   "unsupported-recovered-tunnel":
-    "T3 Connect returned an unsupported managed tunnel configuration.",
+    "Vekrel Connect returned an unsupported managed tunnel configuration.",
   "persist-recovered-tunnel": "Could not persist the recovered managed tunnel configuration.",
   "read-relay-config": "Could not read machine relay configuration.",
   "remove-relay-config": "Could not remove machine relay configuration.",
-  "update-webhook-settings": "Could not update T3 Connect webhook settings.",
+  "update-webhook-settings": "Could not update Vekrel Connect webhook settings.",
   "read-preferences": "Could not read machine cloud preferences.",
   "persist-preferences": "Could not persist machine cloud preferences.",
   "answer-health": "Could not answer cloud health request.",
@@ -297,7 +297,7 @@ export const shouldRetryCloudLink = (error: unknown): boolean =>
   !(CliTokenManager.isCloudCliCredentialRefreshError(error) && error.requiresLogin);
 
 const rollbackFailed = (cause: unknown) =>
-  Effect.logWarning("Could not roll back a T3 Connect preference", { cause });
+  Effect.logWarning("Could not roll back a Vekrel Connect preference", { cause });
 
 const requireRelayUrl = relayUrlConfig.pipe(
   Effect.mapError(
@@ -998,7 +998,7 @@ const make = Effect.gen(function* () {
           return false;
         }
         yield* Effect.logWarning(
-          "T3 Connect no longer accepts this machine's link. Link it again to restore remote access.",
+          "Vekrel Connect no longer accepts this machine's link. Link it again to restore remote access.",
           { cause },
         );
         yield* secrets.set(CLOUD_LINK_REVOKED, stringToBytes("true"));
@@ -1628,7 +1628,7 @@ const make = Effect.gen(function* () {
         scopes: AuthStandardClientScopes,
         subject: "cloud-connect",
         ttl: Duration.minutes(2),
-        label: "T3 Connect connect",
+        label: "Vekrel Connect connect",
         proofKeyThumbprint: proof.clientProofKeyThumbprint,
       });
       const responsePayload = {
