@@ -6,25 +6,25 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { HttpClient } from "effect/http";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import type { PreparedConnection } from "../connection/model.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
 import {
-  executeAuthenticatedEnvironmentHttpRequest,
+  executeAuthenticatedMachineHttpRequest,
   withOrchestrationProtocolHeader,
-} from "./environmentHttpAuth.ts";
+} from "./machineHttpAuth.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
 
 const DEFAULT_BOUNDED_THREAD_SNAPSHOT_TIMEOUT_MS = 6_000;
 
-export const fetchEnvironmentBoundedThreadSnapshot = Effect.fn(
-  "clientRuntime.state.fetchEnvironmentBoundedThreadSnapshot",
+export const fetchMachineBoundedThreadSnapshot = Effect.fn(
+  "clientRuntime.state.fetchMachineBoundedThreadSnapshot",
 )(function* (input: {
   readonly prepared: PreparedConnection;
   readonly threadId: ThreadId;
   readonly signer: Option.Option<ManagedRelay.ManagedRelayDpopSigner["Service"]>;
   readonly remoteAuthorization?: Option.Option<
-    RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]
+    RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]
   >;
   readonly timeoutMs?: number;
 }) {
@@ -32,7 +32,7 @@ export const fetchEnvironmentBoundedThreadSnapshot = Effect.fn(
     params: { threadId: input.threadId },
     query: { compactTurnItems: "1" },
   };
-  return yield* executeAuthenticatedEnvironmentHttpRequest({
+  return yield* executeAuthenticatedMachineHttpRequest({
     ...input,
     group: "orchestration",
     method: "GET",
@@ -54,7 +54,7 @@ export const fetchEnvironmentBoundedThreadSnapshot = Effect.fn(
 /**
  * Older servers that lack the bounded route (plain/generic 404) fall back to
  * the existing full HTTP thread snapshot. Structured
- * EnvironmentResourceNotFoundError from either endpoint still means missing.
+ * MachineResourceNotFoundError from either endpoint still means missing.
  */
 export const layer: Layer.Layer<
   ThreadSnapshotLoader.ThreadSnapshotLoader,
@@ -66,11 +66,11 @@ export const layer: Layer.Layer<
     const httpClient = yield* HttpClient.HttpClient;
     const signer = yield* Effect.serviceOption(ManagedRelay.ManagedRelayDpopSigner);
     const remoteAuthorization = yield* Effect.serviceOption(
-      RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+      RemoteMachineAuthorization.RemoteMachineAuthorization,
     );
     return ThreadSnapshotLoader.ThreadSnapshotLoader.of({
       load: (prepared: PreparedConnection, threadId: ThreadId) => {
-        const loadFullFallback = ThreadSnapshotLoader.fetchEnvironmentThreadSnapshot({
+        const loadFullFallback = ThreadSnapshotLoader.fetchMachineThreadSnapshot({
           prepared,
           threadId,
           signer,
@@ -82,7 +82,7 @@ export const layer: Layer.Layer<
           })),
           Effect.provideService(HttpClient.HttpClient, httpClient),
           Effect.catchTags({
-            EnvironmentResourceNotFoundError: () =>
+            MachineResourceNotFoundError: () =>
               Effect.logDebug(
                 "Full thread snapshot not found over HTTP after bounded fallback; treating the thread as deleted.",
               ).pipe(
@@ -104,7 +104,7 @@ export const layer: Layer.Layer<
           ),
         );
 
-        return fetchEnvironmentBoundedThreadSnapshot({
+        return fetchMachineBoundedThreadSnapshot({
           prepared,
           threadId,
           signer,
@@ -125,7 +125,7 @@ export const layer: Layer.Layer<
           })),
           Effect.provideService(HttpClient.HttpClient, httpClient),
           Effect.catchTags({
-            EnvironmentResourceNotFoundError: () =>
+            MachineResourceNotFoundError: () =>
               Effect.logDebug(
                 "Bounded thread snapshot not found over HTTP; treating the thread as deleted.",
               ).pipe(
@@ -134,14 +134,14 @@ export const layer: Layer.Layer<
                   _tag: "missing",
                 } satisfies ThreadSnapshotLoader.ThreadSnapshotLoadResult),
               ),
-            RemoteEnvironmentAuthInvalidJsonError: (error) =>
+            RemoteMachineAuthInvalidJsonError: (error) =>
               Effect.logDebug(
                 "Bounded thread snapshot returned an invalid response; trying the full HTTP thread snapshot for an older server.",
               ).pipe(
                 Effect.annotateLogs({ threadId, cause: error.message }),
                 Effect.andThen(loadFullFallback),
               ),
-            RemoteEnvironmentAuthUndeclaredStatusError: (error) =>
+            RemoteMachineAuthUndeclaredStatusError: (error) =>
               error.status === 404
                 ? Effect.logDebug(
                     "Bounded thread snapshot route was not found; trying the full HTTP thread snapshot for an older server.",

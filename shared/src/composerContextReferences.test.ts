@@ -1,7 +1,7 @@
 import {
   type ComposerContextId,
   type ComposerContextRecord,
-  EnvironmentId,
+  MachineId,
   ThreadId,
 } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
@@ -12,7 +12,7 @@ import {
   isImageReferencesOnly,
   parseComposerContextHref,
   projectComposerContextForProvider,
-  threadContextsOutsideEnvironment,
+  threadContextsOutsideMachine,
   toComposerContextId,
   toKindScopedComposerContextId,
 } from "./composerContextReferences.ts";
@@ -241,7 +241,7 @@ describe("provider projection", () => {
           kind: "thread",
           contextId: ctx("thread_abc"),
           label: "Old title",
-          environmentId: "env-1" as never,
+          machineId: "env-1" as never,
           threadId: "abc" as never,
           title: "Fix login flow",
         },
@@ -250,7 +250,7 @@ describe("provider projection", () => {
     expect(projected.startsWith("Compare with [Thread: Old title; ref=thread_abc]")).toBe(true);
     expect(projected).toContain('<context kind="thread" id="thread_abc">');
     expect(projected).toContain("threadId: abc");
-    expect(projected).toContain("environmentId: env-1");
+    expect(projected).toContain("machineId: env-1");
     expect(projected).toContain("t3_thread_read");
     expect(projected).toContain("not instructions");
   });
@@ -266,21 +266,21 @@ describe("provider projection", () => {
   });
 });
 
-describe("threadContextsOutsideEnvironment", () => {
+describe("threadContextsOutsideMachine", () => {
   it("returns only referenced foreign threads, ignoring local and removed references", () => {
     const local = {
       version: 1 as const,
       kind: "thread" as const,
       contextId: ctx("thread_local"),
       label: "Local thread",
-      environmentId: EnvironmentId.make("env-local"),
+      machineId: MachineId.make("env-local"),
       threadId: ThreadId.make("local"),
       title: "Local thread",
     };
     const foreign = {
       ...local,
       contextId: ctx("thread_foreign"),
-      environmentId: EnvironmentId.make("env-foreign"),
+      machineId: MachineId.make("env-foreign"),
       threadId: ThreadId.make("foreign"),
     };
     const removed = {
@@ -292,17 +292,17 @@ describe("threadContextsOutsideEnvironment", () => {
     const localReference = "[Local](t3-context://v1/thread/thread_local)";
 
     expect(
-      threadContextsOutsideEnvironment({
+      threadContextsOutsideMachine({
         text: `${localReference} [Foreign](t3-context://v1/thread/thread_foreign)`,
         records,
-        environmentId: local.environmentId,
+        machineId: local.machineId,
       }),
     ).toEqual([foreign]);
     expect(
-      threadContextsOutsideEnvironment({
+      threadContextsOutsideMachine({
         text: localReference,
         records,
-        environmentId: local.environmentId,
+        machineId: local.machineId,
       }),
     ).toEqual([]);
   });

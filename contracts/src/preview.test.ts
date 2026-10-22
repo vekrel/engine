@@ -19,14 +19,14 @@ describe("PreviewAutomationOpenInput", () => {
 
 describe("PreviewAutomationHost", () => {
   it("accepts legacy hosts and current operation advertisements", () => {
-    expect(decodeAutomationHost({ clientId: "legacy", environmentId: "environment-1" })).toEqual({
+    expect(decodeAutomationHost({ clientId: "legacy", machineId: "machine-1" })).toEqual({
       clientId: "legacy",
-      environmentId: "environment-1",
+      machineId: "machine-1",
     });
     expect(
       decodeAutomationHost({
         clientId: "current",
-        environmentId: "environment-1",
+        machineId: "machine-1",
         supportedOperations: ["status", "resize"],
       }).supportedOperations,
     ).toEqual(["status", "resize"]);

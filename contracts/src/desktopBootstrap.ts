@@ -20,8 +20,8 @@ export const DesktopBackendBootstrap = Schema.Struct({
   // `desktopBootstrapToken` for its whole run. See
   // `@vekrel/shared/desktopBootstrapToken`.
   desktopBootstrapSecret: Schema.optionalKey(Schema.String),
-  // Set only when the desktop already merged the user's shell environment into
-  // the environment it hands this backend. Absent means the backend hydrates
+  // Set only when the desktop already merged the user's shell machine into
+  // the machine it hands this backend. Absent means the backend hydrates
   // PATH itself, which WSL and older desktops rely on.
   shellEnvironmentPrepared: Schema.optionalKey(Schema.Boolean),
   tailscaleServeEnabled: Schema.Boolean,

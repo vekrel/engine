@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId, ThreadId } from "@vekrel/contracts";
 
 import {
   T3_MCP_BEARER_ENV,
@@ -12,7 +12,7 @@ import { buildPiRpcLaunch, resolvePiLaunchArgs } from "./mcpInjection.ts";
 const threadId = ThreadId.make("thread-pi-t3-mcp");
 
 const mcpSession = {
-  environmentId: EnvironmentId.make("environment-pi-t3-mcp"),
+  machineId: MachineId.make("environment-pi-t3-mcp"),
   threadId,
   providerSessionId: "mcp-session-pi",
   providerInstanceId: ProviderInstanceId.make("pi"),

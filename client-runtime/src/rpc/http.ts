@@ -1,12 +1,12 @@
 import {
-  EnvironmentHttpApi,
-  EnvironmentHttpCommonError,
-  type EnvironmentAuthInvalidError,
-  type EnvironmentInternalError,
-  type EnvironmentOperationForbiddenError,
-  type EnvironmentRequestInvalidError,
-  type EnvironmentResourceNotFoundError,
-  type EnvironmentScopeRequiredError,
+  MachineHttpApi,
+  MachineHttpCommonError,
+  type MachineAuthInvalidError,
+  type MachineInternalError,
+  type MachineOperationForbiddenError,
+  type MachineRequestInvalidError,
+  type MachineResourceNotFoundError,
+  type MachineScopeRequiredError,
 } from "@vekrel/contracts";
 import * as HttpObservability from "@vekrel/shared/httpObservability";
 import * as Data from "effect/Data";
@@ -18,24 +18,24 @@ import * as Schema from "effect/Schema";
 import { FetchHttpClient, HttpClient, HttpClientError } from "effect/http";
 import * as HttpApiClient from "effect/http-api/HttpApiClient";
 
-const isEnvironmentHttpCommonError = Schema.is(EnvironmentHttpCommonError);
+const isMachineHttpCommonError = Schema.is(MachineHttpCommonError);
 
-export class RemoteEnvironmentAuthFetchError extends Data.TaggedError(
-  "RemoteEnvironmentAuthFetchError",
+export class RemoteMachineAuthFetchError extends Data.TaggedError(
+  "RemoteMachineAuthFetchError",
 )<{
   readonly message: string;
   readonly cause: unknown;
 }> {}
 
-class RemoteEnvironmentAuthInvalidJsonError extends Data.TaggedError(
-  "RemoteEnvironmentAuthInvalidJsonError",
+class RemoteMachineAuthInvalidJsonError extends Data.TaggedError(
+  "RemoteMachineAuthInvalidJsonError",
 )<{
   readonly message: string;
   readonly cause: unknown;
 }> {}
 
-export class RemoteEnvironmentAuthUndeclaredStatusError extends Data.TaggedError(
-  "RemoteEnvironmentAuthUndeclaredStatusError",
+export class RemoteMachineAuthUndeclaredStatusError extends Data.TaggedError(
+  "RemoteMachineAuthUndeclaredStatusError",
 )<{
   readonly message: string;
   readonly status: number;
@@ -43,15 +43,15 @@ export class RemoteEnvironmentAuthUndeclaredStatusError extends Data.TaggedError
 }> {
   constructor(requestUrl: string, status: number) {
     super({
-      message: `Remote environment endpoint ${requestUrl} returned undeclared status ${status}.`,
+      message: `Remote machine endpoint ${requestUrl} returned undeclared status ${status}.`,
       requestUrl,
       status,
     });
   }
 }
 
-export class RemoteEnvironmentAuthTimeoutError extends Data.TaggedError(
-  "RemoteEnvironmentAuthTimeoutError",
+export class RemoteMachineAuthTimeoutError extends Data.TaggedError(
+  "RemoteMachineAuthTimeoutError",
 )<{
   readonly message: string;
   readonly requestUrl: string;
@@ -59,24 +59,24 @@ export class RemoteEnvironmentAuthTimeoutError extends Data.TaggedError(
 }> {
   constructor(requestUrl: string, timeoutMs: number) {
     super({
-      message: `Remote environment endpoint ${requestUrl} timed out after ${timeoutMs}ms.`,
+      message: `Remote machine endpoint ${requestUrl} timed out after ${timeoutMs}ms.`,
       requestUrl,
       timeoutMs,
     });
   }
 }
 
-export type RemoteEnvironmentRequestError =
-  | EnvironmentRequestInvalidError
-  | EnvironmentAuthInvalidError
-  | EnvironmentScopeRequiredError
-  | EnvironmentOperationForbiddenError
-  | EnvironmentResourceNotFoundError
-  | EnvironmentInternalError
-  | RemoteEnvironmentAuthFetchError
-  | RemoteEnvironmentAuthInvalidJsonError
-  | RemoteEnvironmentAuthUndeclaredStatusError
-  | RemoteEnvironmentAuthTimeoutError;
+export type RemoteMachineRequestError =
+  | MachineRequestInvalidError
+  | MachineAuthInvalidError
+  | MachineScopeRequiredError
+  | MachineOperationForbiddenError
+  | MachineResourceNotFoundError
+  | MachineInternalError
+  | RemoteMachineAuthFetchError
+  | RemoteMachineAuthInvalidJsonError
+  | RemoteMachineAuthUndeclaredStatusError
+  | RemoteMachineAuthTimeoutError;
 
 export const layerRemoteHttpClient = (
   fetchFn: typeof globalThis.fetch,
@@ -94,44 +94,44 @@ const remoteApiBaseUrl = (httpBaseUrl: string): string => {
   return url.toString();
 };
 
-export const makeEnvironmentHttpApiClient = (httpBaseUrl: string) =>
-  HttpApiClient.make(EnvironmentHttpApi, {
+export const makeMachineHttpApiClient = (httpBaseUrl: string) =>
+  HttpApiClient.make(MachineHttpApi, {
     baseUrl: remoteApiBaseUrl(httpBaseUrl),
   });
 
-export const makeEnvironmentHttpApiGroupClient = <
-  Group extends keyof typeof EnvironmentHttpApi.groups,
+export const makeMachineHttpApiGroupClient = <
+  Group extends keyof typeof MachineHttpApi.groups,
 >(
   httpBaseUrl: string,
   group: Group,
 ) =>
   Effect.flatMap(HttpClient.HttpClient, (httpClient) =>
-    HttpApiClient.group(EnvironmentHttpApi, {
+    HttpApiClient.group(MachineHttpApi, {
       httpClient,
       group,
       baseUrl: remoteApiBaseUrl(httpBaseUrl),
     }),
   );
 
-export const makeEnvironmentHttpApiUrlBuilder = (httpBaseUrl: string) =>
-  HttpApiClient.urlBuilder(EnvironmentHttpApi, {
+export const makeMachineHttpApiUrlBuilder = (httpBaseUrl: string) =>
+  HttpApiClient.urlBuilder(MachineHttpApi, {
     baseUrl: remoteApiBaseUrl(httpBaseUrl),
   });
 
 const failRemoteRequest = (
   requestUrl: string,
   cause: unknown,
-): Effect.Effect<never, RemoteEnvironmentRequestError> => {
-  if (cause instanceof RemoteEnvironmentAuthTimeoutError) {
+): Effect.Effect<never, RemoteMachineRequestError> => {
+  if (cause instanceof RemoteMachineAuthTimeoutError) {
     return Effect.fail(cause);
   }
-  if (isEnvironmentHttpCommonError(cause)) {
+  if (isMachineHttpCommonError(cause)) {
     return Effect.fail(cause);
   }
   if (Schema.isSchemaError(cause)) {
     return Effect.fail(
-      new RemoteEnvironmentAuthInvalidJsonError({
-        message: `Remote environment endpoint returned an invalid response from ${requestUrl}.`,
+      new RemoteMachineAuthInvalidJsonError({
+        message: `Remote machine endpoint returned an invalid response from ${requestUrl}.`,
         cause,
       }),
     );
@@ -140,34 +140,34 @@ const failRemoteRequest = (
     const response = cause.response;
     if (response.status < 200 || response.status >= 300) {
       return Effect.fail(
-        new RemoteEnvironmentAuthUndeclaredStatusError(requestUrl, response.status),
+        new RemoteMachineAuthUndeclaredStatusError(requestUrl, response.status),
       );
     }
     return Effect.fail(
-      new RemoteEnvironmentAuthInvalidJsonError({
-        message: `Remote environment endpoint returned an invalid response from ${requestUrl}.`,
+      new RemoteMachineAuthInvalidJsonError({
+        message: `Remote machine endpoint returned an invalid response from ${requestUrl}.`,
         cause,
       }),
     );
   }
   return Effect.fail(
-    new RemoteEnvironmentAuthFetchError({
-      message: `Failed to fetch remote environment endpoint ${requestUrl} (${String(cause)}).`,
+    new RemoteMachineAuthFetchError({
+      message: `Failed to fetch remote machine endpoint ${requestUrl} (${String(cause)}).`,
       cause,
     }),
   );
 };
 
-export const executeEnvironmentHttpRequest = <A, E, R>(
+export const executeMachineHttpRequest = <A, E, R>(
   requestUrl: string,
   timeoutMs: number,
   request: Effect.Effect<A, E, R>,
-): Effect.Effect<A, RemoteEnvironmentRequestError, R> =>
+): Effect.Effect<A, RemoteMachineRequestError, R> =>
   request.pipe(
     Effect.timeoutOption(Duration.millis(timeoutMs)),
     Effect.flatMap(
       Option.match({
-        onNone: () => Effect.fail(new RemoteEnvironmentAuthTimeoutError(requestUrl, timeoutMs)),
+        onNone: () => Effect.fail(new RemoteMachineAuthTimeoutError(requestUrl, timeoutMs)),
         onSome: Effect.succeed,
       }),
     ),

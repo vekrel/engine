@@ -2,7 +2,7 @@ import {
   t3ConnectTroubleshootingUrl,
   type T3ConnectTroubleshootingSection,
 } from "@vekrel/contracts";
-import type { RelayEnvironmentStatusResponse } from "@vekrel/contracts/relay";
+import type { RelayMachineStatusResponse } from "@vekrel/contracts/relay";
 import * as DateTime from "effect/DateTime";
 
 import type {
@@ -33,11 +33,11 @@ export interface ConnectionDiagnosis {
 export interface ConnectionDiagnosisInput {
   readonly hostLabel: string;
   readonly state: SupervisorConnectionState;
-  /** The environment's usual route, used when the failure does not name one. */
+  /** The machine's usual route, used when the failure does not name one. */
   readonly via: "relay" | "direct";
   /** The relay's last health check, which can name a cause before any connect attempt. */
   readonly relayStatus?: Pick<
-    RelayEnvironmentStatusResponse,
+    RelayMachineStatusResponse,
     "status" | "endpointFailure" | "endpointStatus" | "offlineReason"
   > | null;
   readonly clientVersion?: string | undefined;

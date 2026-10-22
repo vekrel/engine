@@ -492,10 +492,10 @@ export class DeviceBootError extends Schema.TaggedError<DeviceBootError>()("Devi
 }) {
   override get message(): string {
     const explanation = {
-      disk_space: "There is not enough free disk space on the environment server.",
+      disk_space: "There is not enough free disk space on the machine server.",
       timeout: "The device did not become ready in time.",
       launch_failed:
-        "The simulator or emulator could not start. Check its configuration on the environment server.",
+        "The simulator or emulator could not start. Check its configuration on the machine server.",
     }[this.reason];
     const summary = `Device ${this.deviceId} failed to boot: ${explanation}`;
     return this.diagnostics ? `${summary}\n\n${this.diagnostics}` : summary;

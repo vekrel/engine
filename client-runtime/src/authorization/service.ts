@@ -1,29 +1,29 @@
 import {
   type ClientConnectionMethod,
-  EnvironmentId,
-  type ExecutionEnvironmentDescriptor,
+  MachineId,
+  type ExecutionMachineDescriptor,
 } from "@vekrel/contracts";
-import { RelayEnvironmentConnectScope } from "@vekrel/contracts/relay";
+import { RelayMachineConnectScope } from "@vekrel/contracts/relay";
 import { withRelayClientTracing } from "@vekrel/shared/relayTracing";
 import {
   exchangeRemoteDpopAccessToken,
-  type RemoteEnvironmentAuthError,
+  type RemoteMachineAuthError,
   resolveRemoteDpopWebSocketConnectionUrl,
   resolveRemoteWebSocketConnectionUrl,
 } from "./remote.ts";
 import {
-  environmentMismatchError,
+  machineMismatchError,
   mapManagedRelayError,
-  mapRemoteDpopEnvironmentError,
-  mapRemoteEnvironmentError,
+  mapRemoteDpopMachineError,
+  mapRemoteMachineError,
 } from "../connection/errors.ts";
 import {
   ConnectionBlockedError,
   ConnectionTransientError,
   type ConnectionAttemptError,
 } from "../connection/model.ts";
-import { fetchRemoteEnvironmentDescriptor } from "../environment/descriptor.ts";
-import { environmentEndpointUrl } from "../environment/endpoint.ts";
+import { fetchRemoteMachineDescriptor } from "../machine/descriptor.ts";
+import { machineEndpointUrl } from "../machine/endpoint.ts";
 import * as ClientCapabilities from "../platform/capabilities.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
 import * as TokenStore from "./tokenStore.ts";
@@ -44,63 +44,63 @@ import {
   type PreparedHttpAuthorization,
 } from "../connection/model.ts";
 
-export interface AuthorizedRemoteEnvironment {
-  readonly environmentId: EnvironmentId;
+export interface AuthorizedRemoteMachine {
+  readonly machineId: MachineId;
   readonly label: string;
   readonly httpBaseUrl: string;
   readonly socketUrl: string;
   readonly httpAuthorization: PreparedHttpAuthorization;
 }
 
-export interface AuthorizedRemoteHttpEnvironment {
-  readonly environmentId: EnvironmentId;
+export interface AuthorizedRemoteHttpMachine {
+  readonly machineId: MachineId;
   readonly label: string;
   readonly httpBaseUrl: string;
   readonly httpAuthorization: Extract<PreparedHttpAuthorization, { readonly _tag: "Dpop" }>;
 }
 
-export class RemoteEnvironmentAuthorization extends Context.Service<
-  RemoteEnvironmentAuthorization,
+export class RemoteMachineAuthorization extends Context.Service<
+  RemoteMachineAuthorization,
   {
     readonly authorizeBearer: (input: {
-      readonly expectedEnvironmentId: EnvironmentId;
+      readonly expectedMachineId: MachineId;
       readonly httpBaseUrl: string;
       readonly wsBaseUrl: string;
       readonly bearerToken: string;
       readonly connectionMethod: ClientConnectionMethod;
-    }) => Effect.Effect<AuthorizedRemoteEnvironment, ConnectionAttemptError>;
+    }) => Effect.Effect<AuthorizedRemoteMachine, ConnectionAttemptError>;
     readonly authorizeDpop: (input: {
-      readonly expectedEnvironmentId: EnvironmentId;
+      readonly expectedMachineId: MachineId;
       /**
        * The access token is not bound to an origin, and each proof is minted
        * for the URL it signs, so a token from the relay also works on the
-       * environment's LAN or tailnet address.
+       * machine's LAN or tailnet address.
        */
       readonly directEndpoint?: { readonly httpBaseUrl: string; readonly wsBaseUrl: string };
-    }) => Effect.Effect<AuthorizedRemoteEnvironment, ConnectionAttemptError>;
+    }) => Effect.Effect<AuthorizedRemoteMachine, ConnectionAttemptError>;
     readonly authorizeDpopHttp: (input: {
-      readonly expectedEnvironmentId: EnvironmentId;
+      readonly expectedMachineId: MachineId;
       readonly rejectedAccessToken?: string;
-    }) => Effect.Effect<AuthorizedRemoteHttpEnvironment, ConnectionAttemptError>;
+    }) => Effect.Effect<AuthorizedRemoteHttpMachine, ConnectionAttemptError>;
   }
->()("@vekrel/client-runtime/authorization/service/RemoteEnvironmentAuthorization") {}
+>()("@vekrel/client-runtime/authorization/service/RemoteMachineAuthorization") {}
 
 const CACHED_ENDPOINT_SOCKET_TIMEOUT_MS = 3_000;
 const BEARER_DESCRIPTOR_CACHE_TTL_MS = 10_000;
 const DPOP_AUTHORIZATION_TIMEOUT_MS = 30_000;
 
-function mapDpopSocketError(error: RemoteEnvironmentAuthError | ConnectionAttemptError) {
+function mapDpopSocketError(error: RemoteMachineAuthError | ConnectionAttemptError) {
   return error._tag === "ConnectionTransientError" || error._tag === "ConnectionBlockedError"
     ? error
-    : mapRemoteDpopEnvironmentError(error);
+    : mapRemoteDpopMachineError(error);
 }
 
 const fetchDescriptor = Effect.fn("clientRuntime.connection.remote.fetchDescriptor")(function* (
   httpBaseUrl: string,
   connectionMethod: ClientConnectionMethod,
 ) {
-  return yield* fetchRemoteEnvironmentDescriptor({ httpBaseUrl }).pipe(
-    Effect.mapError((error) => mapRemoteEnvironmentError(error, connectionMethod)),
+  return yield* fetchRemoteMachineDescriptor({ httpBaseUrl }).pipe(
+    Effect.mapError((error) => mapRemoteMachineError(error, connectionMethod)),
   );
 });
 
@@ -115,11 +115,11 @@ export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
   const tokenLock = yield* Semaphore.make(1);
   const tokenOwners = new Map<
-    EnvironmentId,
+    MachineId,
     { readonly accessToken: string; readonly identity: ClientCapabilities.CloudSessionIdentity }
   >();
   const pendingTokens = new Map<
-    EnvironmentId,
+    MachineId,
     {
       readonly id: object;
       readonly identity: ClientCapabilities.CloudSessionIdentity;
@@ -129,10 +129,10 @@ export const make = Effect.gen(function* () {
   >();
   const bearerDescriptors = yield* Ref.make<
     ReadonlyMap<
-      EnvironmentId,
+      MachineId,
       {
         readonly httpBaseUrl: string;
-        readonly descriptor: ExecutionEnvironmentDescriptor;
+        readonly descriptor: ExecutionMachineDescriptor;
         readonly validatedAtEpochMs: number;
       }
     >
@@ -143,12 +143,12 @@ export const make = Effect.gen(function* () {
    */
   const verifyDirectEndpoint = Effect.fn("clientRuntime.connection.remote.verifyDirectEndpoint")(
     function* (input: {
-      readonly expectedEnvironmentId: EnvironmentId;
+      readonly expectedMachineId: MachineId;
       readonly httpBaseUrl: string;
       readonly connectionMethod: ClientConnectionMethod;
     }) {
       const now = yield* Clock.currentTimeMillis;
-      const cachedDescriptor = (yield* Ref.get(bearerDescriptors)).get(input.expectedEnvironmentId);
+      const cachedDescriptor = (yield* Ref.get(bearerDescriptors)).get(input.expectedMachineId);
       const canReuseDescriptor =
         cachedDescriptor?.httpBaseUrl === input.httpBaseUrl &&
         cachedDescriptor.validatedAtEpochMs + BEARER_DESCRIPTOR_CACHE_TTL_MS > now;
@@ -157,16 +157,16 @@ export const make = Effect.gen(function* () {
         : yield* fetchDescriptor(input.httpBaseUrl, input.connectionMethod).pipe(
             Effect.provideService(HttpClient.HttpClient, httpClient),
           );
-      if (descriptor.environmentId !== input.expectedEnvironmentId) {
-        return yield* environmentMismatchError({
-          expected: input.expectedEnvironmentId,
-          actual: descriptor.environmentId,
+      if (descriptor.machineId !== input.expectedMachineId) {
+        return yield* machineMismatchError({
+          expected: input.expectedMachineId,
+          actual: descriptor.machineId,
         });
       }
       if (!canReuseDescriptor) {
         yield* Ref.update(bearerDescriptors, (current) => {
           const next = new Map(current);
-          next.set(input.expectedEnvironmentId, {
+          next.set(input.expectedMachineId, {
             httpBaseUrl: input.httpBaseUrl,
             descriptor,
             validatedAtEpochMs: now,
@@ -180,9 +180,9 @@ export const make = Effect.gen(function* () {
 
   const authorizeBearer = Effect.fn("clientRuntime.connection.remote.authorizeBearer")(
     function* (input: {
-      readonly expectedEnvironmentId: Parameters<
-        RemoteEnvironmentAuthorization["Service"]["authorizeBearer"]
-      >[0]["expectedEnvironmentId"];
+      readonly expectedMachineId: Parameters<
+        RemoteMachineAuthorization["Service"]["authorizeBearer"]
+      >[0]["expectedMachineId"];
       readonly httpBaseUrl: string;
       readonly wsBaseUrl: string;
       readonly bearerToken: string;
@@ -196,11 +196,11 @@ export const make = Effect.gen(function* () {
         clientMetadata: presentation.metadata,
         connectionMethod: input.connectionMethod,
       }).pipe(
-        Effect.mapError(mapRemoteEnvironmentError),
+        Effect.mapError(mapRemoteMachineError),
         Effect.provideService(HttpClient.HttpClient, httpClient),
       );
       return {
-        environmentId: descriptor.environmentId,
+        machineId: descriptor.machineId,
         label: descriptor.label,
         httpBaseUrl: input.httpBaseUrl,
         socketUrl,
@@ -221,7 +221,7 @@ export const make = Effect.gen(function* () {
       const ticketProof = yield* signer
         .createProof({
           method: "POST",
-          url: environmentEndpointUrl(endpoint.httpBaseUrl, "/api/auth/websocket-ticket"),
+          url: machineEndpointUrl(endpoint.httpBaseUrl, "/api/auth/websocket-ticket"),
           accessToken: token.accessToken,
         })
         .pipe(
@@ -248,7 +248,7 @@ export const make = Effect.gen(function* () {
   const sessionChanged = () =>
     new ConnectionBlockedError({
       reason: "authentication",
-      detail: "Your cloud sign-in changed. Sign in again to authorize the environment.",
+      detail: "Your cloud sign-in changed. Sign in again to authorize the machine.",
     });
 
   // A missing identity before the attempt captures one means the cloud session
@@ -271,18 +271,18 @@ export const make = Effect.gen(function* () {
 
   // Called under tokenLock so a late rejection cannot remove a newer credential.
   const removeRejectedToken = Effect.fnUntraced(function* (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     accessToken: string,
   ) {
-    const cached = yield* tokenStore.get(environmentId);
+    const cached = yield* tokenStore.get(machineId);
     if (Option.isSome(cached) && cached.value.accessToken === accessToken) {
-      yield* tokenStore.remove(environmentId);
-      tokenOwners.delete(environmentId);
+      yield* tokenStore.remove(machineId);
+      tokenOwners.delete(machineId);
     }
   });
 
   const obtainBootstrap = Effect.fn("relay.connection.bootstrap.obtain")(function* (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     identity: ClientCapabilities.CloudSessionIdentity,
   ) {
     yield* assertSession(identity);
@@ -294,17 +294,17 @@ export const make = Effect.gen(function* () {
     );
     yield* assertSession(identity);
     const connected = yield* relay
-      .connectEnvironment({
+      .connectMachine({
         clerkToken,
-        scopes: [RelayEnvironmentConnectScope],
-        environmentId,
+        scopes: [RelayMachineConnectScope],
+        machineId,
         ...(Option.isSome(deviceId) ? { deviceId: deviceId.value } : {}),
       })
       .pipe(Effect.mapError(mapManagedRelayError));
-    if (connected.environmentId !== environmentId) {
-      return yield* environmentMismatchError({
-        expected: environmentId,
-        actual: connected.environmentId,
+    if (connected.machineId !== machineId) {
+      return yield* machineMismatchError({
+        expected: machineId,
+        actual: connected.machineId,
       });
     }
     yield* assertSession(identity);
@@ -313,32 +313,32 @@ export const make = Effect.gen(function* () {
 
   const exchangeDpopToken = Effect.fn("clientRuntime.connection.remote.exchangeDpopToken")(
     function* (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
       thumbprint: string,
       identity: ClientCapabilities.CloudSessionIdentity,
     ) {
-      const bootstrap = yield* obtainBootstrap(environmentId, identity);
+      const bootstrap = yield* obtainBootstrap(machineId, identity);
       const descriptor = yield* fetchDescriptor(bootstrap.endpoint.httpBaseUrl, "relay").pipe(
         Effect.provideService(HttpClient.HttpClient, httpClient),
-        Effect.withSpan("environment.authorization.descriptor"),
+        Effect.withSpan("machine.authorization.descriptor"),
       );
-      if (descriptor.environmentId !== environmentId) {
-        return yield* environmentMismatchError({
-          expected: environmentId,
-          actual: descriptor.environmentId,
+      if (descriptor.machineId !== machineId) {
+        return yield* machineMismatchError({
+          expected: machineId,
+          actual: descriptor.machineId,
         });
       }
       const bootstrapProof = yield* signer
         .createProof({
           method: "POST",
-          url: environmentEndpointUrl(bootstrap.endpoint.httpBaseUrl, "/oauth/token"),
+          url: machineEndpointUrl(bootstrap.endpoint.httpBaseUrl, "/oauth/token"),
         })
         .pipe(
           Effect.mapError(
             () =>
               new ConnectionBlockedError({
                 reason: "configuration",
-                detail: "Could not create the environment authorization proof.",
+                detail: "Could not create the machine authorization proof.",
               }),
           ),
         );
@@ -349,13 +349,13 @@ export const make = Effect.gen(function* () {
         dpopProof: bootstrapProof,
         clientMetadata: presentation.metadata,
       }).pipe(
-        Effect.mapError(mapRemoteDpopEnvironmentError),
+        Effect.mapError(mapRemoteDpopMachineError),
         Effect.provideService(HttpClient.HttpClient, httpClient),
-        Effect.withSpan("environment.authorization.accessToken.exchange"),
+        Effect.withSpan("machine.authorization.accessToken.exchange"),
       );
       const issuedAt = yield* Clock.currentTimeMillis;
       return new TokenStore.RemoteDpopAccessToken({
-        environmentId: descriptor.environmentId,
+        machineId: descriptor.machineId,
         accountId: identity.accountId,
         label: descriptor.label,
         endpoint: bootstrap.endpoint,
@@ -367,7 +367,7 @@ export const make = Effect.gen(function* () {
   );
 
   const getDpopToken = Effect.fn("clientRuntime.connection.remote.getDpopToken")(function* (
-    input: Parameters<RemoteEnvironmentAuthorization["Service"]["authorizeDpopHttp"]>[0],
+    input: Parameters<RemoteMachineAuthorization["Service"]["authorizeDpopHttp"]>[0],
   ) {
     const session = yield* cloudSession.identity;
     if (Option.isNone(session)) {
@@ -379,45 +379,45 @@ export const make = Effect.gen(function* () {
         () =>
           new ConnectionBlockedError({
             reason: "configuration",
-            detail: "Could not load the environment authorization key.",
+            detail: "Could not load the machine authorization key.",
           }),
       ),
-      Effect.withSpan("environment.authorization.dpopKey.resolve"),
+      Effect.withSpan("machine.authorization.dpopKey.resolve"),
     );
     const selected = yield* tokenLock.withPermits(1)(
       Effect.gen(function* () {
         yield* assertSession(identity);
         const now = yield* Clock.currentTimeMillis;
         const cached = yield* tokenStore
-          .get(input.expectedEnvironmentId)
-          .pipe(Effect.withSpan("environment.authorization.accessToken.cache"));
-        const owner = tokenOwners.get(input.expectedEnvironmentId);
+          .get(input.expectedMachineId)
+          .pipe(Effect.withSpan("machine.authorization.accessToken.cache"));
+        const owner = tokenOwners.get(input.expectedMachineId);
         if (
           Option.isSome(cached) &&
-          cached.value.environmentId === input.expectedEnvironmentId &&
+          cached.value.machineId === input.expectedMachineId &&
           cached.value.accountId === identity.accountId &&
           cached.value.dpopThumbprint === thumbprint &&
           cached.value.expiresAtEpochMs > now + DPOP_ACCESS_TOKEN_REFRESH_SKEW_MS &&
           cached.value.accessToken !== input.rejectedAccessToken &&
           (owner?.accessToken !== cached.value.accessToken || owner.identity === identity)
         ) {
-          tokenOwners.set(input.expectedEnvironmentId, {
+          tokenOwners.set(input.expectedMachineId, {
             accessToken: cached.value.accessToken,
             identity,
           });
           return { token: Effect.succeed(cached.value), fromCache: true };
         }
         if (input.rejectedAccessToken !== undefined) {
-          yield* removeRejectedToken(input.expectedEnvironmentId, input.rejectedAccessToken);
+          yield* removeRejectedToken(input.expectedMachineId, input.rejectedAccessToken);
         }
-        const pending = pendingTokens.get(input.expectedEnvironmentId);
+        const pending = pendingTokens.get(input.expectedMachineId);
         if (pending?.identity === identity && pending.thumbprint === thumbprint) {
           return { token: pending.token, fromCache: false };
         }
 
         const id = {};
         const fiber = yield* exchangeDpopToken(
-          input.expectedEnvironmentId,
+          input.expectedMachineId,
           thumbprint,
           identity,
         ).pipe(
@@ -427,18 +427,18 @@ export const make = Effect.gen(function* () {
                 yield* assertSession(identity);
                 yield* tokenStore
                   .put(token)
-                  .pipe(Effect.withSpan("environment.authorization.accessToken.persist"));
+                  .pipe(Effect.withSpan("machine.authorization.accessToken.persist"));
                 const current = yield* cloudSession.identity;
                 if (Option.isNone(current) || current.value !== identity) {
-                  yield* removeRejectedToken(input.expectedEnvironmentId, token.accessToken);
+                  yield* removeRejectedToken(input.expectedMachineId, token.accessToken);
                   return yield* sessionChanged();
                 }
-                tokenOwners.set(input.expectedEnvironmentId, {
+                tokenOwners.set(input.expectedMachineId, {
                   accessToken: token.accessToken,
                   identity,
                 });
-                if (pendingTokens.get(input.expectedEnvironmentId)?.id === id) {
-                  pendingTokens.delete(input.expectedEnvironmentId);
+                if (pendingTokens.get(input.expectedMachineId)?.id === id) {
+                  pendingTokens.delete(input.expectedMachineId);
                 }
                 return token;
               }),
@@ -450,15 +450,15 @@ export const make = Effect.gen(function* () {
               Effect.fail(
                 new ConnectionTransientError({
                   reason: "timeout",
-                  detail: "Timed out renewing the environment credential.",
+                  detail: "Timed out renewing the machine credential.",
                 }),
               ),
           }),
           Effect.ensuring(
             tokenLock.withPermits(1)(
               Effect.sync(() => {
-                if (pendingTokens.get(input.expectedEnvironmentId)?.id === id) {
-                  pendingTokens.delete(input.expectedEnvironmentId);
+                if (pendingTokens.get(input.expectedMachineId)?.id === id) {
+                  pendingTokens.delete(input.expectedMachineId);
                 }
               }),
             ),
@@ -467,7 +467,7 @@ export const make = Effect.gen(function* () {
           Effect.forkIn(serviceScope),
         );
         const token = Fiber.join(fiber);
-        pendingTokens.set(input.expectedEnvironmentId, { id, identity, thumbprint, token });
+        pendingTokens.set(input.expectedMachineId, { id, identity, thumbprint, token });
         return { token, fromCache: false };
       }),
     );
@@ -482,8 +482,8 @@ export const make = Effect.gen(function* () {
   const httpAuthorization = (
     token: TokenStore.RemoteDpopAccessToken,
     httpBaseUrl = token.endpoint.httpBaseUrl,
-  ): AuthorizedRemoteHttpEnvironment => ({
-    environmentId: token.environmentId,
+  ): AuthorizedRemoteHttpMachine => ({
+    machineId: token.machineId,
     label: token.label,
     httpBaseUrl,
     httpAuthorization: {
@@ -494,12 +494,12 @@ export const make = Effect.gen(function* () {
   });
 
   const authorizeDpop = Effect.fn("clientRuntime.connection.remote.authorizeDpop")(function* (
-    input: Parameters<RemoteEnvironmentAuthorization["Service"]["authorizeDpop"]>[0],
+    input: Parameters<RemoteMachineAuthorization["Service"]["authorizeDpop"]>[0],
   ) {
     const endpoint = input.directEndpoint;
     if (endpoint !== undefined) {
       yield* verifyDirectEndpoint({
-        expectedEnvironmentId: input.expectedEnvironmentId,
+        expectedMachineId: input.expectedMachineId,
         httpBaseUrl: endpoint.httpBaseUrl,
         connectionMethod: "direct",
       });
@@ -524,7 +524,7 @@ export const make = Effect.gen(function* () {
       }
       // An unreachable direct address says nothing about the token, so keep
       // it for the T3 Connect route rather than forcing a relay round trip.
-      if (endpoint !== undefined && cachedSocket.failure._tag !== "EnvironmentAuthInvalidError") {
+      if (endpoint !== undefined && cachedSocket.failure._tag !== "MachineAuthInvalidError") {
         return yield* mapDpopSocketError(cachedSocket.failure);
       }
       yield* assertSession(selected.identity);
@@ -539,7 +539,7 @@ export const make = Effect.gen(function* () {
     if (Result.isFailure(socket)) {
       if (endpoint === undefined || socket.failure._tag === "ConnectionBlockedError") {
         yield* tokenLock.withPermits(1)(
-          removeRejectedToken(input.expectedEnvironmentId, selected.token.accessToken),
+          removeRejectedToken(input.expectedMachineId, selected.token.accessToken),
         );
       }
       return yield* mapDpopSocketError(socket.failure);
@@ -548,17 +548,17 @@ export const make = Effect.gen(function* () {
     return authorized(selected.token, socket.success);
   });
 
-  return RemoteEnvironmentAuthorization.of({
+  return RemoteMachineAuthorization.of({
     authorizeBearer,
     authorizeDpop: (input) =>
-      authorizeDpop(input).pipe(Effect.withSpan("environment.authorization")),
+      authorizeDpop(input).pipe(Effect.withSpan("machine.authorization")),
     authorizeDpopHttp: (input) =>
       getDpopToken(input).pipe(
         Effect.map(({ token }) => httpAuthorization(token)),
-        Effect.withSpan("environment.authorization.http"),
+        Effect.withSpan("machine.authorization.http"),
         withRelayClientTracing,
       ),
   });
 });
 
-export const layer = Layer.effect(RemoteEnvironmentAuthorization, make);
+export const layer = Layer.effect(RemoteMachineAuthorization, make);

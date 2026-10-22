@@ -1,6 +1,6 @@
 import type { ProjectId } from "@vekrel/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@vekrel/contracts/settings";
-import type { EnvironmentThreadShell } from "./models.ts";
+import type { MachineThreadShell } from "./models.ts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 
@@ -21,7 +21,7 @@ export function toSortableTimestamp(iso: string | undefined): number | null {
 }
 
 export type SettledThreadTimestampInput = Pick<
-  EnvironmentThreadShell,
+  MachineThreadShell,
   "settledAt" | "latestUserMessageAt" | "latestRun" | "updatedAt"
 >;
 
@@ -265,10 +265,10 @@ export function sortPinnedThreadsByOrderKey<
     readonly id: string;
     readonly createdAt: string;
     readonly pinOrderKey?: string | null | undefined;
-    /** Thread ids are only unique within an environment, and the pinned
-        block merges environments — the tiebreak needs both parts or two
+    /** Thread ids are only unique within a machine, and the pinned
+        block merges machines — the tiebreak needs both parts or two
         clients could render equal-key threads in stream-arrival order. */
-    readonly environmentId?: string | undefined;
+    readonly machineId?: string | undefined;
   },
 >(threads: readonly T[]): T[] {
   if (threads.length < 2) return [...threads];
@@ -279,7 +279,7 @@ export function sortPinnedThreadsByOrderKey<
   }
   const identityTiebreak = (left: T, right: T) =>
     left.id.localeCompare(right.id) ||
-    (left.environmentId ?? "").localeCompare(right.environmentId ?? "");
+    (left.machineId ?? "").localeCompare(right.machineId ?? "");
   keyed.sort((left, right) => {
     const leftKey = left.pinOrderKey!;
     const rightKey = right.pinOrderKey!;
@@ -301,7 +301,7 @@ export function sortActiveThreadsByOrderKey<
     readonly createdAt: string;
     readonly unsettledAt?: string | null | undefined;
     readonly activeOrderKey?: string | null | undefined;
-    readonly environmentId?: string | undefined;
+    readonly machineId?: string | undefined;
   },
 >(threads: readonly T[]): T[] {
   if (threads.length < 2) return [...threads];
@@ -325,7 +325,7 @@ export function sortActiveThreadsByOrderKey<
     return (
       order ||
       left.id.localeCompare(right.id) ||
-      (left.environmentId ?? "").localeCompare(right.environmentId ?? "")
+      (left.machineId ?? "").localeCompare(right.machineId ?? "")
     );
   });
 }

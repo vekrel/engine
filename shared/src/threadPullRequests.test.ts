@@ -502,7 +502,7 @@ describe("threadPullRequestSearchTerms", () => {
   });
 });
 
-it("searches the legacy projection when old environments decode to an empty links list", () => {
+it("searches the legacy projection when old machines decode to an empty links list", () => {
   const linkedPullRequest = {
     projectId: ProjectId.make("project"),
     repository: "pingdotgg/t3code",

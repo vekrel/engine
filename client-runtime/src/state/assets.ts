@@ -3,7 +3,7 @@ import {
   type AssetCreateUrlResult,
   type AssetImageDimensions,
   AssetResource,
-  EnvironmentId,
+  MachineId,
   type ProjectCloneSnapshot,
   WS_METHODS,
 } from "@vekrel/contracts";
@@ -20,11 +20,11 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
-import * as EnvironmentRegistry from "../connection/registry.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineRegistry from "../connection/registry.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import { request } from "../rpc/client.ts";
 import type { ProjectFaviconCache, ProjectFaviconTarget } from "../projectFaviconCache.ts";
-import { createEnvironmentQueryAtomFamily } from "./runtime.ts";
+import { createMachineQueryAtomFamily } from "./runtime.ts";
 
 const ASSET_URL_REFRESH_INTERVAL_MS = 30 * 60_000;
 const ASSET_URL_STALE_TIME_MS = 5 * 60_000;
@@ -43,12 +43,12 @@ export class InvalidAssetCollectionKeyError extends Schema.TaggedError<InvalidAs
 }
 
 const decodeAssetCollectionKey = Schema.decodeUnknownSync(
-  Schema.Tuple([EnvironmentId, Schema.Array(AssetResource)]),
+  Schema.Tuple([MachineId, Schema.Array(AssetResource)]),
 );
 
 function parseAssetCollectionKey(
   key: string,
-): readonly [EnvironmentId, ReadonlyArray<AssetResource>] {
+): readonly [MachineId, ReadonlyArray<AssetResource>] {
   try {
     return decodeAssetCollectionKey(JSON.parse(key));
   } catch (cause) {
@@ -129,10 +129,10 @@ export function assetUrlStateFromResult(
   };
 }
 
-export function createAssetEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, E>,
-  localMediaEnvironment?: Atom.Atom<{
-    readonly environmentId: EnvironmentId;
+export function createAssetMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, E>,
+  localMediaMachine?: Atom.Atom<{
+    readonly machineId: MachineId;
     readonly httpBaseUrl: string;
   } | null>,
 ) {
@@ -141,13 +141,13 @@ export function createAssetEnvironmentAtoms<R, E>(
     if (Result.isSuccess(result)) return result.success;
     const error = result.failure;
     const resource = input.resource;
-    const local = localMediaEnvironment
-      ? (yield* AtomRegistry.AtomRegistry).get(localMediaEnvironment)
+    const local = localMediaMachine
+      ? (yield* AtomRegistry.AtomRegistry).get(localMediaMachine)
       : null;
-    const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
+    const supervisor = yield* MachineSupervisor.MachineSupervisor;
     if (
       !local ||
-      local.environmentId === supervisor.target.environmentId ||
+      local.machineId === supervisor.target.machineId ||
       !(
         error._tag === "AssetWorkspaceAssetNotFoundError" ||
         error._tag === "AssetWorkspaceAssetInspectionError" ||
@@ -158,69 +158,69 @@ export function createAssetEnvironmentAtoms<R, E>(
       mediaMimeTypeFromExtension(resource.path.slice(resource.path.lastIndexOf("."))) === null
     )
       return yield* error;
-    const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+    const registry = yield* MachineRegistry.MachineRegistry;
     // Map the full cause so retry defects and interruption survive.
     const asset = yield* registry
-      .run(local.environmentId, request(WS_METHODS.assetsCreateUrl, input))
+      .run(local.machineId, request(WS_METHODS.assetsCreateUrl, input))
       .pipe(Effect.catchCause((cause) => Effect.failCause(Cause.map(cause, () => error))));
     return { ...asset, relativeUrl: new URL(asset.relativeUrl, local.httpBaseUrl).href };
   });
-  const createUrl = createEnvironmentQueryAtomFamily(runtime, {
-    label: "environment-data:assets:create-url",
+  const createUrl = createMachineQueryAtomFamily(runtime, {
+    label: "machine-data:assets:create-url",
     execute,
     staleTimeMs: ASSET_URL_STALE_TIME_MS,
     idleTtlMs: ASSET_URL_IDLE_TTL_MS,
     refreshIntervalMs: ASSET_URL_REFRESH_INTERVAL_MS,
     refreshTrigger: ({ input }) =>
-      input.resource._tag === "media-file" ? localMediaEnvironment : undefined,
+      input.resource._tag === "media-file" ? localMediaMachine : undefined,
   });
   const createUrlsFamily = Atom.family((key: string) => {
-    const [environmentId, resources] = parseAssetCollectionKey(key);
+    const [machineId, resources] = parseAssetCollectionKey(key);
     return Atom.make((get) =>
       resources.map((resource) =>
         get(
           createUrl({
-            environmentId,
+            machineId,
             input: { resource },
           }),
         ),
       ),
     ).pipe(
       Atom.setIdleTTL(ASSET_URL_IDLE_TTL_MS),
-      Atom.withLabel(`environment-data:assets:create-urls:${key}`),
+      Atom.withLabel(`machine-data:assets:create-urls:${key}`),
     );
   });
 
   return {
     createUrl,
     createUrls: (target: {
-      readonly environmentId: EnvironmentId;
+      readonly machineId: MachineId;
       readonly resources: ReadonlyArray<AssetResource>;
-    }) => createUrlsFamily(JSON.stringify([target.environmentId, target.resources])),
+    }) => createUrlsFamily(JSON.stringify([target.machineId, target.resources])),
   };
 }
 
 export function createProjectFaviconUrlAtomFamily(input: {
   readonly imageCache?: ProjectFaviconCache;
   readonly createUrl: (target: {
-    readonly environmentId: EnvironmentId;
+    readonly machineId: MachineId;
     readonly input: { readonly resource: AssetResource };
   }) => Atom.Atom<AsyncResult.AsyncResult<AssetCreateUrlResult, unknown>>;
   readonly preparedConnection: (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
   ) => Atom.Atom<Option.Option<{ readonly httpBaseUrl: string }>>;
   readonly projectClones?: (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
   ) => Atom.Atom<ReadonlyArray<ProjectCloneSnapshot>>;
 }) {
   const decodeKey = Schema.decodeUnknownSync(
-    Schema.Tuple([EnvironmentId, Schema.String, Schema.NullOr(Schema.String)]),
+    Schema.Tuple([MachineId, Schema.String, Schema.NullOr(Schema.String)]),
   );
   const projectClones = input.projectClones;
   const family = Atom.family((key: string) => {
-    const [environmentId, cwd, path] = decodeKey(JSON.parse(key));
+    const [machineId, cwd, path] = decodeKey(JSON.parse(key));
     const resource = { _tag: "project-favicon" as const, cwd, ...(path ? { path } : {}) };
-    const query = input.createUrl({ environmentId, input: { resource } });
+    const query = input.createUrl({ machineId, input: { resource } });
     // A cloned project exists before its files do, and the server reports its
     // icon missing until the clone lands. Ask again whenever the clone's phase
     // changes: the first list a client sees may already say done.
@@ -229,7 +229,7 @@ export function createProjectFaviconUrlAtomFamily(input: {
           Atom.makeRefreshOnSignal(
             Atom.make(
               (get) =>
-                get(projectClones(environmentId)).find((clone) => clone.destinationPath === cwd)
+                get(projectClones(machineId)).find((clone) => clone.destinationPath === cwd)
                   ?.phase ?? null,
             ),
           ),
@@ -237,7 +237,7 @@ export function createProjectFaviconUrlAtomFamily(input: {
       : query;
     const resolvedUrl = Atom.make((get): string | null => {
       const result = get(request);
-      const connection = get(input.preparedConnection(environmentId));
+      const connection = get(input.preparedConnection(machineId));
       const state = assetUrlStateFromResult(
         result,
         Option.isSome(connection) ? connection.value.httpBaseUrl : null,
@@ -247,7 +247,7 @@ export function createProjectFaviconUrlAtomFamily(input: {
     const cache = input.imageCache;
     if (!cache) return resolvedUrl;
 
-    const target = { environmentId, cwd, faviconPath: path };
+    const target = { machineId, cwd, faviconPath: path };
     const image = Atom.make((get) => {
       get(request);
       const url = get(resolvedUrl);
@@ -261,5 +261,5 @@ export function createProjectFaviconUrlAtomFamily(input: {
     }).pipe(Atom.setIdleTTL(ASSET_URL_IDLE_TTL_MS));
   });
   return (target: ProjectFaviconTarget) =>
-    family(getProjectFaviconResourceKey(target.environmentId, target.cwd, target.faviconPath));
+    family(getProjectFaviconResourceKey(target.machineId, target.cwd, target.faviconPath));
 }

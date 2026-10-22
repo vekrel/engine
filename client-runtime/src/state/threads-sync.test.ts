@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   EventId,
   MessageId,
   ORCHESTRATION_V2_WS_METHODS,
@@ -33,29 +33,29 @@ import {
   type SupervisorConnectionState,
 } from "../connection/model.ts";
 import * as ConnectionWakeups from "../connection/wakeups.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as Persistence from "../platform/persistence.ts";
 import * as RpcSession from "../rpc/session.ts";
 import { v2Projection, v2ThreadId } from "./orchestrationV2TestFixtures.ts";
 import * as ThreadHistoryController from "./threadHistoryController.ts";
 import {
-  EMPTY_ENVIRONMENT_THREAD_STATE,
-  makeEnvironmentThreadState,
-  type EnvironmentThreadState,
+  EMPTY_MACHINE_THREAD_STATE,
+  makeMachineThreadState,
+  type MachineThreadState,
   type ThreadSnapshotLoadResult,
 } from "./threads.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Test environment",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  machineId: MachineId.make("machine-1"),
+  label: "Test machine",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 const THREAD_ID = v2ThreadId;
 const CACHED_SNAPSHOT_SEQUENCE = 7;
 const PREPARED: PreparedConnection = {
-  environmentId: TARGET.environmentId,
+  machineId: TARGET.machineId,
   label: TARGET.label,
   httpBaseUrl: TARGET.httpBaseUrl,
   socketUrl: TARGET.wsBaseUrl,
@@ -88,8 +88,8 @@ function testSession(
 }
 
 function awaitThreadState(
-  observed: Queue.Queue<EnvironmentThreadState>,
-  predicate: (state: EnvironmentThreadState) => boolean,
+  observed: Queue.Queue<MachineThreadState>,
+  predicate: (state: MachineThreadState) => boolean,
 ) {
   return Queue.take(observed).pipe(
     Effect.repeat({
@@ -98,7 +98,7 @@ function awaitThreadState(
   );
 }
 
-const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (options?: {
+const makeHarness = Effect.fn("TestMachineThreads.makeHarness")(function* (options?: {
   readonly cached?: OrchestrationV2ThreadProjection;
   readonly cachedHistory?: {
     readonly historyCursor: string | null;
@@ -107,15 +107,15 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
   };
   readonly httpSnapshot?: ThreadSnapshotLoadResult;
   readonly completionMarker?: boolean;
-  readonly resumeCache?: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]>;
-  readonly loadCached?: ReturnType<Persistence.EnvironmentCacheStore["Service"]["loadThread"]>;
-  readonly saveThread?: Persistence.EnvironmentCacheStore["Service"]["saveThread"];
+  readonly resumeCache?: NonNullable<Parameters<typeof makeMachineThreadState>[1]>;
+  readonly loadCached?: ReturnType<Persistence.MachineCacheStore["Service"]["loadThread"]>;
+  readonly saveThread?: Persistence.MachineCacheStore["Service"]["saveThread"];
   readonly historyPaging?: "enabled" | "no-http" | "no-controller";
   readonly historyHttpClient?: HttpClient.HttpClient;
 }) {
   const inputs = yield* Queue.unbounded<TestThreadInput>();
-  const observed = yield* Queue.unbounded<EnvironmentThreadState>();
-  const latest = yield* Ref.make<EnvironmentThreadState>(EMPTY_ENVIRONMENT_THREAD_STATE);
+  const observed = yield* Queue.unbounded<MachineThreadState>();
+  const latest = yield* Ref.make<MachineThreadState>(EMPTY_MACHINE_THREAD_STATE);
   const retryCount = yield* Ref.make(0);
   const subscriptionCount = yield* Ref.make(0);
   const loaderCalls = yield* Ref.make(0);
@@ -171,7 +171,7 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
         ),
       ),
   });
-  const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+  const supervisor = MachineSupervisor.MachineSupervisor.of({
     target: TARGET,
     state: supervisorState,
     session: supervisorSession,
@@ -179,11 +179,11 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
     connect: Effect.void,
     disconnect: Effect.void,
     retryNow: Ref.update(retryCount, (count) => count + 1),
-  } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-  const cache = Persistence.EnvironmentCacheStore.of({
+  } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+  const cache = Persistence.MachineCacheStore.of({
     loadShell: () => Effect.succeedNone,
     saveShell: () => Effect.void,
-    loadThread: (_environmentId, threadId) =>
+    loadThread: (_machineId, threadId) =>
       options?.loadCached ??
       Effect.succeed(
         threadId === THREAD_ID && options?.cached !== undefined
@@ -204,11 +204,11 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
             })
           : Option.none(),
       ),
-    saveThread: (environmentId, thread) =>
+    saveThread: (machineId, thread) =>
       Ref.update(savedThreads, (current) => [...current, thread]).pipe(
-        Effect.andThen(options?.saveThread?.(environmentId, thread) ?? Effect.void),
+        Effect.andThen(options?.saveThread?.(machineId, thread) ?? Effect.void),
       ),
-    removeThread: (_environmentId, threadId) =>
+    removeThread: (_machineId, threadId) =>
       Ref.update(removedThreads, (current) => [...current, threadId]),
     loadServerConfig: () => Effect.succeedNone,
     saveServerConfig: () => Effect.void,
@@ -218,9 +218,9 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
     clearVcsRefs: () => Effect.void,
     clear: () => Effect.void,
   });
-  let makeThreadState = makeEnvironmentThreadState(THREAD_ID, options?.resumeCache).pipe(
-    Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-    Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+  let makeThreadState = makeMachineThreadState(THREAD_ID, options?.resumeCache).pipe(
+    Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+    Effect.provideService(Persistence.MachineCacheStore, cache),
     Effect.provideService(ThreadSnapshotLoader.ThreadSnapshotLoader, snapshotLoader),
     Effect.provideService(
       ConnectionWakeups.ConnectionWakeups,
@@ -255,7 +255,7 @@ const makeHarness = Effect.fn("TestEnvironmentThreads.makeHarness")(function* (o
   return {
     threadState,
     loadEarlier: (throughEntryId?: string) =>
-      historyController.loadEarlier(TARGET.environmentId, THREAD_ID, throughEntryId),
+      historyController.loadEarlier(TARGET.machineId, THREAD_ID, throughEntryId),
     inputs,
     observed,
     latest,
@@ -319,7 +319,7 @@ const deleted = (sequence = 3): OrchestrationV2ThreadStreamItem => {
   };
 };
 
-describe("EnvironmentThreads", () => {
+describe("MachineThreads", () => {
   it.effect("loads the server thread when its local cache read fails", () =>
     Effect.gen(function* () {
       const h = yield* makeHarness({
@@ -351,7 +351,7 @@ describe("EnvironmentThreads", () => {
         Effect.gen(function* () {
           const h = yield* makeHarness({
             cached: BASE_PROJECTION,
-            saveThread: (_environmentId, snapshot) =>
+            saveThread: (_machineId, snapshot) =>
               snapshot.snapshotSequence === 8
                 ? Deferred.succeed(writing, undefined).pipe(
                     Effect.andThen(Deferred.await(release)),
@@ -390,7 +390,7 @@ describe("EnvironmentThreads", () => {
 
   it.effect("does not resume past a canceled event whose data was not applied", () =>
     Effect.gen(function* () {
-      const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+      const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
         snapshot: undefined,
         owner: undefined,
       };
@@ -442,7 +442,7 @@ describe("EnvironmentThreads", () => {
 
   it.effect("prevents an old scope from replacing its successor's cached data", () =>
     Effect.gen(function* () {
-      const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+      const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
         snapshot: undefined,
         owner: undefined,
       };
@@ -476,7 +476,7 @@ describe("EnvironmentThreads", () => {
 
   it.effect("does not let a delayed cache read replace an initialized successor", () =>
     Effect.gen(function* () {
-      const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+      const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
         snapshot: undefined,
         owner: undefined,
       };
@@ -513,7 +513,7 @@ describe("EnvironmentThreads", () => {
 
   it.effect("does not let an old deletion remove its successor's persisted cache", () =>
     Effect.gen(function* () {
-      const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+      const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
         snapshot: undefined,
         owner: undefined,
       };
@@ -537,7 +537,7 @@ describe("EnvironmentThreads", () => {
 
   it.effect("retains a deletion instead of restoring the old disk snapshot", () =>
     Effect.gen(function* () {
-      const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+      const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
         snapshot: undefined,
         owner: undefined,
       };
@@ -963,7 +963,7 @@ describe("EnvironmentThreads", () => {
     "retains paging support through a complete bounded %s cache",
     (cacheKind) =>
       Effect.gen(function* () {
-        const resumeCache: NonNullable<Parameters<typeof makeEnvironmentThreadState>[1]> = {
+        const resumeCache: NonNullable<Parameters<typeof makeMachineThreadState>[1]> = {
           snapshot: undefined,
           owner: undefined,
         };

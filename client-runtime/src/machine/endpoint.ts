@@ -1,6 +1,6 @@
 export * from "@vekrel/shared/advertisedEndpoint";
 
-export const environmentEndpointUrl = (httpBaseUrl: string, pathname: string): string => {
+export const machineEndpointUrl = (httpBaseUrl: string, pathname: string): string => {
   const url = new URL(httpBaseUrl);
   url.pathname = pathname;
   url.search = "";

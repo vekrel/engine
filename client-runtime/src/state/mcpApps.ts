@@ -1,27 +1,27 @@
 import { WS_METHODS } from "@vekrel/contracts";
 import type { Atom } from "effect/reactivity";
 
-import type { EnvironmentRegistry } from "../connection/registry.ts";
-import { createEnvironmentRpcCommand } from "./runtime.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
+import { createMachineRpcCommand } from "./runtime.ts";
 
-export function createMcpAppEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createMcpAppMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   return {
-    callTool: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:mcp-apps:call-tool",
+    callTool: createMachineRpcCommand(runtime, {
+      label: "machine-command:mcp-apps:call-tool",
       tag: WS_METHODS.mcpAppsCallTool,
     }),
-    toolInfo: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:mcp-apps:tool-info",
+    toolInfo: createMachineRpcCommand(runtime, {
+      label: "machine-command:mcp-apps:tool-info",
       tag: WS_METHODS.mcpAppsToolInfo,
     }),
-    readResource: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:mcp-apps:read-resource",
+    readResource: createMachineRpcCommand(runtime, {
+      label: "machine-command:mcp-apps:read-resource",
       tag: WS_METHODS.mcpAppsReadResource,
     }),
-    updateModelContext: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:mcp-apps:update-model-context",
+    updateModelContext: createMachineRpcCommand(runtime, {
+      label: "machine-command:mcp-apps:update-model-context",
       tag: WS_METHODS.mcpAppsUpdateModelContext,
     }),
   };

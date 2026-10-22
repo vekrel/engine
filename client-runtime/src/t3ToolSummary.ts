@@ -327,11 +327,11 @@ export function summarizeT3ToolCalls(
         quantity(countEntities(entityIds("cwd")), "repository", "repositories"),
       );
       break;
-    case "environment-read":
-      label = phrase("Checked", "check", `environment preferences ${times}`);
+    case "machine-read":
+      label = phrase("Checked", "check", `machine preferences ${times}`);
       break;
-    case "environment-update":
-      label = phrase("Updated", "update", `environment preferences ${times}`);
+    case "machine-update":
+      label = phrase("Updated", "update", `machine preferences ${times}`);
       break;
     case "attachment-prepare":
       label = phrase(

@@ -1,9 +1,9 @@
-import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@vekrel/contracts";
+import type { MachineId, ScopedThreadRef, ThreadId } from "@vekrel/contracts";
 
 const COMPOSER_THREAD_RESULT_LIMIT = 5;
 
 export interface ComposerThreadCandidate {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly id: ThreadId;
   readonly title: string;
   readonly updatedAt: string;
@@ -20,11 +20,11 @@ export interface ComposerThreadItem {
 
 /**
  * The agent can only read threads on its own server, so candidates stay within the
- * composer's environment.
+ * composer's machine.
  */
 export function matchComposerThreadItems(input: {
   shells: ReadonlyArray<ComposerThreadCandidate>;
-  environmentId: EnvironmentId;
+  machineId: MachineId;
   excludeThreadId: ThreadId | null;
   query: string;
 }): ComposerThreadItem[] {
@@ -33,7 +33,7 @@ export function matchComposerThreadItems(input: {
   return input.shells
     .filter(
       (shell) =>
-        shell.environmentId === input.environmentId &&
+        shell.machineId === input.machineId &&
         shell.id !== input.excludeThreadId &&
         shell.archivedAt === null &&
         shell.title.toLowerCase().includes(query),
@@ -41,9 +41,9 @@ export function matchComposerThreadItems(input: {
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .slice(0, COMPOSER_THREAD_RESULT_LIMIT)
     .map((shell) => ({
-      id: `thread:${shell.environmentId}:${shell.id}`,
+      id: `thread:${shell.machineId}:${shell.id}`,
       type: "thread",
-      thread: { environmentId: shell.environmentId, threadId: shell.id },
+      thread: { machineId: shell.machineId, threadId: shell.id },
       label: shell.title,
       description: "Thread",
     }));

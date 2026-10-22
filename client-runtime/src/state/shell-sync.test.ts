@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ORCHESTRATION_V2_WS_METHODS,
   type OrchestrationV2ShellSnapshot,
   type OrchestrationV2ShellStreamItem,
@@ -23,23 +23,23 @@ import {
   PrimaryConnectionTarget,
   type PreparedConnection,
 } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as Persistence from "../platform/persistence.ts";
 import * as RpcSession from "../rpc/session.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
-import { makeEnvironmentShellState } from "./shell.ts";
+import { makeMachineShellState } from "./shell.ts";
 import * as ShellSnapshotLoader from "./shellSnapshotHttp.ts";
 import { v2Project, v2ShellSnapshot, v2ThreadShell } from "./orchestrationV2TestFixtures.ts";
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Test environment",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  machineId: MachineId.make("machine-1"),
+  label: "Test machine",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 
 const PREPARED: PreparedConnection = {
-  environmentId: TARGET.environmentId,
+  machineId: TARGET.machineId,
   label: TARGET.label,
   httpBaseUrl: TARGET.httpBaseUrl,
   socketUrl: TARGET.wsBaseUrl,
@@ -63,7 +63,7 @@ function session(client: WsRpcProtocolClient): RpcSession.RpcSession {
   };
 }
 
-describe("environment shell synchronization", () => {
+describe("machine shell synchronization", () => {
   it.effect("flushes the latest live snapshot without blocking connection state updates", () =>
     Effect.gen(function* () {
       const events = yield* Queue.unbounded<OrchestrationV2ShellStreamItem>();
@@ -77,7 +77,7 @@ describe("environment shell synchronization", () => {
       const activeSession = yield* SubscriptionRef.make<Option.Option<RpcSession.RpcSession>>(
         Option.some(session(client)),
       );
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: supervisorState,
         session: activeSession,
@@ -85,10 +85,10 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeed(Option.none()),
-        saveShell: (_environmentId, snapshot) =>
+        saveShell: (_machineId, snapshot) =>
           Deferred.succeed(saveStarted, undefined).pipe(
             Effect.andThen(Deferred.await(releaseSave)),
             Effect.andThen(Ref.update(saved, (values) => [...values, snapshot])),
@@ -108,9 +108,9 @@ describe("environment shell synchronization", () => {
         load: () => Effect.succeed(Option.none()),
       });
 
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
       );
 
@@ -216,7 +216,7 @@ describe("environment shell synchronization", () => {
       const activeSession = yield* SubscriptionRef.make<Option.Option<RpcSession.RpcSession>>(
         Option.some(session(client)),
       );
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: supervisorState,
         session: activeSession,
@@ -224,10 +224,10 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeed(Option.none()),
-        saveShell: (_environmentId, snapshot) =>
+        saveShell: (_machineId, snapshot) =>
           Effect.gen(function* () {
             if (snapshot.projects[0]?.repositoryIdentity == null) {
               yield* Deferred.succeed(unenrichedSaveStarted, undefined);
@@ -250,9 +250,9 @@ describe("environment shell synchronization", () => {
         load: () => Effect.succeed(Option.none()),
       });
 
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
       );
 
@@ -336,7 +336,7 @@ describe("environment shell synchronization", () => {
       const activeSession = yield* SubscriptionRef.make<Option.Option<RpcSession.RpcSession>>(
         Option.some(session(client)),
       );
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: supervisorState,
         session: activeSession,
@@ -344,10 +344,10 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeed(Option.none()),
-        saveShell: (_environmentId, snapshot) =>
+        saveShell: (_machineId, snapshot) =>
           Deferred.succeed(saveStarted, undefined).pipe(
             Effect.andThen(Deferred.await(releaseSave)),
             Effect.andThen(Ref.update(saved, (values) => [...values, snapshot])),
@@ -368,9 +368,9 @@ describe("environment shell synchronization", () => {
       });
 
       const scope = yield* Scope.make();
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
         Scope.provide(scope),
       );
@@ -433,7 +433,7 @@ describe("environment shell synchronization", () => {
         [ORCHESTRATION_V2_WS_METHODS.subscribeShell]: () => Stream.fromQueue(events),
       } as unknown as WsRpcProtocolClient;
       const supervisorState = yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE);
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: supervisorState,
         session: yield* SubscriptionRef.make(Option.some(session(client))),
@@ -441,8 +441,8 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeed(Option.some(cachedSnapshot)),
         saveShell: () => Effect.void,
         loadThread: () => Effect.succeed(Option.none()),
@@ -459,9 +459,9 @@ describe("environment shell synchronization", () => {
       const snapshotLoader = ShellSnapshotLoader.ShellSnapshotLoader.of({
         load: () => Effect.succeed(Option.some(httpSnapshot)),
       });
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
       );
 
@@ -501,7 +501,7 @@ describe("environment shell synchronization", () => {
       const client = {
         [ORCHESTRATION_V2_WS_METHODS.subscribeShell]: () => Stream.fromQueue(events),
       } as unknown as WsRpcProtocolClient;
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: yield* SubscriptionRef.make(Option.some(session(client))),
@@ -509,8 +509,8 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () =>
           Effect.succeedSome({
             ...cachedSnapshot,
@@ -538,9 +538,9 @@ describe("environment shell synchronization", () => {
       const snapshotLoader = ShellSnapshotLoader.ShellSnapshotLoader.of({
         load: () => Effect.succeedNone,
       });
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
       );
 
@@ -597,7 +597,7 @@ describe("environment shell synchronization", () => {
       const activeSession = yield* SubscriptionRef.make<Option.Option<RpcSession.RpcSession>>(
         Option.some(session(client)),
       );
-      const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+      const supervisor = MachineSupervisor.MachineSupervisor.of({
         target: TARGET,
         state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
         session: activeSession,
@@ -605,8 +605,8 @@ describe("environment shell synchronization", () => {
         connect: Effect.void,
         disconnect: Effect.void,
         retryNow: Effect.void,
-      } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
-      const cache = Persistence.EnvironmentCacheStore.of({
+      } satisfies MachineSupervisor.MachineSupervisor["Service"]);
+      const cache = Persistence.MachineCacheStore.of({
         loadShell: () => Effect.succeedNone,
         saveShell: () => Effect.void,
         loadThread: () => Effect.succeedNone,
@@ -637,9 +637,9 @@ describe("environment shell synchronization", () => {
             ),
           ),
       });
-      const shellState = yield* makeEnvironmentShellState().pipe(
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-        Effect.provideService(Persistence.EnvironmentCacheStore, cache),
+      const shellState = yield* makeMachineShellState().pipe(
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
+        Effect.provideService(Persistence.MachineCacheStore, cache),
         Effect.provideService(ShellSnapshotLoader.ShellSnapshotLoader, snapshotLoader),
       );
       yield* Deferred.await(firstFillStarted);

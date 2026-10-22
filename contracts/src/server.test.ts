@@ -1,10 +1,10 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ExecutionEnvironmentDescriptor } from "./environment.ts";
+import { ExecutionMachineDescriptor } from "./machine.ts";
 import {
   OtlpEndpointCheckInput,
-  resolveEnvironmentMachineKind,
+  resolveMachineKind,
   ServerProvider,
   ServerProviders,
 } from "./server.ts";
@@ -71,12 +71,12 @@ describe("server config forward compatibility", () => {
   });
 });
 
-describe("resolveEnvironmentMachineKind", () => {
-  const decodeDescriptor = Schema.decodeUnknownSync(ExecutionEnvironmentDescriptor);
+describe("resolveMachineKind", () => {
+  const decodeDescriptor = Schema.decodeUnknownSync(ExecutionMachineDescriptor);
   const decodeSettings = Schema.decodeUnknownSync(ServerSettings);
   const descriptor = (platform: Record<string, unknown>) =>
     decodeDescriptor({
-      environmentId: "env-1",
+      machineId: "env-1",
       label: "Box",
       platform: { os: "linux", arch: "x64", ...platform },
       serverVersion: "1.0.0",
@@ -85,9 +85,9 @@ describe("resolveEnvironmentMachineKind", () => {
 
   it("prefers the user's pick over what the server detected", () => {
     expect(
-      resolveEnvironmentMachineKind({
-        environment: descriptor({ machine: "mac-mini" }),
-        settings: decodeSettings({ environmentIcon: "laptop" }),
+      resolveMachineKind({
+        machine: descriptor({ machine: "mac-mini" }),
+        settings: decodeSettings({ machineIcon: "laptop" }),
       }),
     ).toBe("laptop");
   });
@@ -97,7 +97,7 @@ describe("resolveEnvironmentMachineKind", () => {
 
     expect(parsed.platform.machine).toBeUndefined();
     expect(
-      resolveEnvironmentMachineKind({ environment: parsed, settings: decodeSettings({}) }),
+      resolveMachineKind({ machine: parsed, settings: decodeSettings({}) }),
     ).toBe("server");
   });
 });

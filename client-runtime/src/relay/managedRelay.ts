@@ -1,21 +1,21 @@
 import {
   RelayAccessTokenType,
   RelayApi,
-  type RelayClientEnvironmentRecord,
+  type RelayClientMachineRecord,
   type RelayClientDeviceRecord,
-  RelayConnectEnvironmentEndpoint,
+  RelayConnectMachineEndpoint,
   type RelayDeviceRegistrationRequest,
   RelayDpopAccessTokenScope,
   RelayDpopTokenExchangeGrantType,
-  type RelayEnvironmentConnectRequest,
-  type RelayEnvironmentConnectResponse,
-  type RelayEnvironmentLinkChallengeRequest,
-  type RelayEnvironmentLinkChallengeResponse,
-  type RelayEnvironmentLinkRequest,
-  type RelayEnvironmentLinkResponse,
-  type RelayEnvironmentStatusResponse,
+  type RelayMachineConnectRequest,
+  type RelayMachineConnectResponse,
+  type RelayMachineLinkChallengeRequest,
+  type RelayMachineLinkChallengeResponse,
+  type RelayMachineLinkRequest,
+  type RelayMachineLinkResponse,
+  type RelayMachineStatusResponse,
   RelayExchangeDpopAccessTokenEndpoint,
-  RelayGetEnvironmentStatusEndpoint,
+  RelayGetMachineStatusEndpoint,
   RelayJwtSubjectTokenType,
   type RelayAgentActivitySnapshotResponse,
   type RelayLiveActivityRegistrationRequest,
@@ -85,13 +85,13 @@ export type ManagedRelayDpopSignerError = typeof ManagedRelayDpopSignerError.Typ
 
 export const ManagedRelayRequestAction = Schema.Literals([
   "exchange relay DPoP access token",
-  "list relay-managed environments",
+  "list relay-managed machines",
   "list relay client devices",
-  "create relay environment link challenge",
-  "link relay environment",
-  "unlink relay environment",
-  "get relay environment status",
-  "connect relay environment",
+  "create relay machine link challenge",
+  "link relay machine",
+  "unlink relay machine",
+  "get relay machine status",
+  "connect relay machine",
   "register relay mobile device",
   "unregister relay mobile device",
   "register relay live activity",
@@ -101,13 +101,13 @@ export type ManagedRelayRequestAction = typeof ManagedRelayRequestAction.Type;
 
 export const ManagedRelayRequestActivity = Schema.Literals([
   "Relay DPoP access token exchange",
-  "Relay environment listing",
+  "Relay machine listing",
   "Relay client device listing",
-  "Relay environment link challenge",
-  "Relay environment linking",
-  "Relay environment unlinking",
-  "Relay environment status request",
-  "Relay environment connection",
+  "Relay machine link challenge",
+  "Relay machine linking",
+  "Relay machine unlinking",
+  "Relay machine status request",
+  "Relay machine connection",
   "Relay mobile device registration",
   "Relay mobile device unregistration",
   "Relay Live Activity registration",
@@ -254,35 +254,35 @@ export class ManagedRelayClient extends Context.Service<
   ManagedRelayClient,
   {
     readonly relayUrl: string;
-    readonly listEnvironments: (input: {
+    readonly listMachines: (input: {
       readonly clerkToken: string;
-    }) => Effect.Effect<ReadonlyArray<RelayClientEnvironmentRecord>, ManagedRelayClientError>;
+    }) => Effect.Effect<ReadonlyArray<RelayClientMachineRecord>, ManagedRelayClientError>;
     readonly listDevices: (input: {
       readonly clerkToken: string;
     }) => Effect.Effect<ReadonlyArray<RelayClientDeviceRecord>, ManagedRelayClientError>;
-    readonly createEnvironmentLinkChallenge: (input: {
+    readonly createMachineLinkChallenge: (input: {
       readonly clerkToken: string;
-      readonly payload: RelayEnvironmentLinkChallengeRequest;
-    }) => Effect.Effect<RelayEnvironmentLinkChallengeResponse, ManagedRelayClientError>;
-    readonly linkEnvironment: (input: {
+      readonly payload: RelayMachineLinkChallengeRequest;
+    }) => Effect.Effect<RelayMachineLinkChallengeResponse, ManagedRelayClientError>;
+    readonly linkMachine: (input: {
       readonly clerkToken: string;
-      readonly payload: RelayEnvironmentLinkRequest;
-    }) => Effect.Effect<RelayEnvironmentLinkResponse, ManagedRelayClientError>;
-    readonly unlinkEnvironment: (input: {
+      readonly payload: RelayMachineLinkRequest;
+    }) => Effect.Effect<RelayMachineLinkResponse, ManagedRelayClientError>;
+    readonly unlinkMachine: (input: {
       readonly clerkToken: string;
-      readonly environmentId: RelayClientEnvironmentRecord["environmentId"];
+      readonly machineId: RelayClientMachineRecord["machineId"];
     }) => Effect.Effect<RelayOkResponse, ManagedRelayClientError>;
-    readonly getEnvironmentStatus: (input: {
+    readonly getMachineStatus: (input: {
       readonly clerkToken: string;
       readonly scopes: ReadonlyArray<RelayDpopAccessTokenScope>;
-      readonly environmentId: RelayClientEnvironmentRecord["environmentId"];
-    }) => Effect.Effect<RelayEnvironmentStatusResponse, ManagedRelayClientError>;
-    readonly connectEnvironment: (input: {
+      readonly machineId: RelayClientMachineRecord["machineId"];
+    }) => Effect.Effect<RelayMachineStatusResponse, ManagedRelayClientError>;
+    readonly connectMachine: (input: {
       readonly clerkToken: string;
       readonly scopes: ReadonlyArray<RelayDpopAccessTokenScope>;
-      readonly environmentId: RelayClientEnvironmentRecord["environmentId"];
+      readonly machineId: RelayClientMachineRecord["machineId"];
       readonly deviceId?: string;
-    }) => Effect.Effect<RelayEnvironmentConnectResponse, ManagedRelayClientError>;
+    }) => Effect.Effect<RelayMachineConnectResponse, ManagedRelayClientError>;
     readonly registerDevice: (input: {
       readonly clerkToken: string;
       readonly payload: RelayDeviceRegistrationRequest;
@@ -419,15 +419,15 @@ function disabledManagedRelayClient(relayUrl: string): ManagedRelayClient["Servi
     });
   return ManagedRelayClient.of({
     relayUrl,
-    listEnvironments: unavailable("clientRuntime.managedRelay.listEnvironments"),
+    listMachines: unavailable("clientRuntime.managedRelay.listMachines"),
     listDevices: unavailable("clientRuntime.managedRelay.listDevices"),
-    createEnvironmentLinkChallenge: unavailable(
-      "clientRuntime.managedRelay.createEnvironmentLinkChallenge",
+    createMachineLinkChallenge: unavailable(
+      "clientRuntime.managedRelay.createMachineLinkChallenge",
     ),
-    linkEnvironment: unavailable("clientRuntime.managedRelay.linkEnvironment"),
-    unlinkEnvironment: unavailable("clientRuntime.managedRelay.unlinkEnvironment"),
-    getEnvironmentStatus: unavailable("clientRuntime.managedRelay.getEnvironmentStatus"),
-    connectEnvironment: unavailable("clientRuntime.managedRelay.connectEnvironment"),
+    linkMachine: unavailable("clientRuntime.managedRelay.linkMachine"),
+    unlinkMachine: unavailable("clientRuntime.managedRelay.unlinkMachine"),
+    getMachineStatus: unavailable("clientRuntime.managedRelay.getMachineStatus"),
+    connectMachine: unavailable("clientRuntime.managedRelay.connectMachine"),
     registerDevice: unavailable("clientRuntime.managedRelay.registerDevice"),
     unregisterDevice: unavailable("clientRuntime.managedRelay.unregisterDevice"),
     registerLiveActivity: unavailable("clientRuntime.managedRelay.registerLiveActivity"),
@@ -460,17 +460,17 @@ export const make = Effect.fn("ManagedRelayClient.make")(function* (
       method: RelayExchangeDpopAccessTokenEndpoint.method,
       url: urlBuilder.token.exchangeDpopAccessToken(),
     }),
-    getEnvironmentStatus: (
-      environmentId: RelayClientEnvironmentRecord["environmentId"],
+    getMachineStatus: (
+      machineId: RelayClientMachineRecord["machineId"],
     ): DpopProofTarget => ({
-      method: RelayGetEnvironmentStatusEndpoint.method,
-      url: urlBuilder.dpopClient.getEnvironmentStatus({ params: { environmentId } }),
+      method: RelayGetMachineStatusEndpoint.method,
+      url: urlBuilder.dpopClient.getMachineStatus({ params: { machineId } }),
     }),
-    connectEnvironment: (
-      environmentId: RelayClientEnvironmentRecord["environmentId"],
+    connectMachine: (
+      machineId: RelayClientMachineRecord["machineId"],
     ): DpopProofTarget => ({
-      method: RelayConnectEnvironmentEndpoint.method,
-      url: urlBuilder.dpopClient.connectEnvironment({ params: { environmentId } }),
+      method: RelayConnectMachineEndpoint.method,
+      url: urlBuilder.dpopClient.connectMachine({ params: { machineId } }),
     }),
     registerDevice: (): DpopProofTarget => ({
       method: RelayRegisterDeviceEndpoint.method,
@@ -718,17 +718,17 @@ export const make = Effect.fn("ManagedRelayClient.make")(function* (
 
   return ManagedRelayClient.of({
     relayUrl,
-    listEnvironments: Effect.fnUntraced(
+    listMachines: Effect.fnUntraced(
       function* (input) {
         return yield* client.client
-          .listEnvironments({ headers: bearerHeaders(input.clerkToken) })
+          .listMachines({ headers: bearerHeaders(input.clerkToken) })
           .pipe(
-            Effect.map((response) => response.environments),
-            Effect.mapError(relayRequestError("list relay-managed environments")),
-            timeoutRelayRequest("Relay environment listing"),
+            Effect.map((response) => response.machines),
+            Effect.mapError(relayRequestError("list relay-managed machines")),
+            timeoutRelayRequest("Relay machine listing"),
           );
       },
-      Effect.withSpan("clientRuntime.managedRelay.listEnvironments"),
+      Effect.withSpan("clientRuntime.managedRelay.listMachines"),
       withRelayClientTracing,
     ),
     listDevices: Effect.fnUntraced(
@@ -746,107 +746,107 @@ export const make = Effect.fn("ManagedRelayClient.make")(function* (
       Effect.withSpan("clientRuntime.managedRelay.listDevices"),
       withRelayClientTracing,
     ),
-    createEnvironmentLinkChallenge: Effect.fnUntraced(
+    createMachineLinkChallenge: Effect.fnUntraced(
       function* (input) {
         return yield* client.client
-          .createEnvironmentLinkChallenge({
+          .createMachineLinkChallenge({
             headers: bearerHeaders(input.clerkToken),
             payload: input.payload,
           })
           .pipe(
-            Effect.mapError(relayRequestError("create relay environment link challenge")),
-            timeoutRelayRequest("Relay environment link challenge"),
+            Effect.mapError(relayRequestError("create relay machine link challenge")),
+            timeoutRelayRequest("Relay machine link challenge"),
           );
       },
-      Effect.withSpan("clientRuntime.managedRelay.createEnvironmentLinkChallenge"),
+      Effect.withSpan("clientRuntime.managedRelay.createMachineLinkChallenge"),
       withRelayClientTracing,
     ),
-    linkEnvironment: Effect.fnUntraced(
+    linkMachine: Effect.fnUntraced(
       function* (input) {
         return yield* client.client
-          .linkEnvironment({
+          .linkMachine({
             headers: bearerHeaders(input.clerkToken),
             payload: input.payload,
           })
           .pipe(
-            Effect.mapError(relayRequestError("link relay environment")),
-            timeoutRelayRequest("Relay environment linking"),
+            Effect.mapError(relayRequestError("link relay machine")),
+            timeoutRelayRequest("Relay machine linking"),
           );
       },
-      Effect.withSpan("clientRuntime.managedRelay.linkEnvironment"),
+      Effect.withSpan("clientRuntime.managedRelay.linkMachine"),
       withRelayClientTracing,
     ),
-    unlinkEnvironment: Effect.fnUntraced(
+    unlinkMachine: Effect.fnUntraced(
       function* (input) {
         return yield* client.client
-          .unlinkEnvironment({
+          .unlinkMachine({
             headers: bearerHeaders(input.clerkToken),
-            params: { environmentId: input.environmentId },
+            params: { machineId: input.machineId },
           })
           .pipe(
-            Effect.mapError(relayRequestError("unlink relay environment")),
-            timeoutRelayRequest("Relay environment unlinking"),
+            Effect.mapError(relayRequestError("unlink relay machine")),
+            timeoutRelayRequest("Relay machine unlinking"),
           );
       },
-      Effect.withSpan("clientRuntime.managedRelay.unlinkEnvironment"),
+      Effect.withSpan("clientRuntime.managedRelay.unlinkMachine"),
       withRelayClientTracing,
     ),
-    getEnvironmentStatus: Effect.fnUntraced(
+    getMachineStatus: Effect.fnUntraced(
       function* (input) {
         yield* Effect.annotateCurrentSpan({
-          "environment.id": input.environmentId,
+          "machine.id": input.machineId,
         });
         return yield* runDpopRequest(
           {
             clerkToken: input.clerkToken,
             scopes: input.scopes,
-            target: dpopProofTargets.getEnvironmentStatus(input.environmentId),
+            target: dpopProofTargets.getMachineStatus(input.machineId),
           },
           (authorization) =>
             client.dpopClient
-              .getEnvironmentStatus({
+              .getMachineStatus({
                 headers: dpopHeaders(authorization),
-                params: { environmentId: input.environmentId },
+                params: { machineId: input.machineId },
               })
               .pipe(
-                Effect.mapError(relayRequestError("get relay environment status")),
-                timeoutRelayRequest("Relay environment status request"),
+                Effect.mapError(relayRequestError("get relay machine status")),
+                timeoutRelayRequest("Relay machine status request"),
               ),
         );
       },
-      Effect.withSpan("clientRuntime.managedRelay.getEnvironmentStatus"),
+      Effect.withSpan("clientRuntime.managedRelay.getMachineStatus"),
       withRelayClientTracing,
     ),
-    connectEnvironment: Effect.fnUntraced(
+    connectMachine: Effect.fnUntraced(
       function* (input) {
         yield* Effect.annotateCurrentSpan({
-          "environment.id": input.environmentId,
+          "machine.id": input.machineId,
         });
         return yield* runDpopRequest(
           {
             clerkToken: input.clerkToken,
             scopes: input.scopes,
-            target: dpopProofTargets.connectEnvironment(input.environmentId),
+            target: dpopProofTargets.connectMachine(input.machineId),
           },
           (authorization) => {
-            const payload: RelayEnvironmentConnectRequest = {
+            const payload: RelayMachineConnectRequest = {
               ...(input.deviceId ? { deviceId: input.deviceId } : {}),
               clientKeyThumbprint: authorization.thumbprint,
             };
             return client.dpopClient
-              .connectEnvironment({
+              .connectMachine({
                 headers: dpopHeaders(authorization),
-                params: { environmentId: input.environmentId },
+                params: { machineId: input.machineId },
                 payload,
               })
               .pipe(
-                Effect.mapError(relayRequestError("connect relay environment")),
-                timeoutRelayRequest("Relay environment connection"),
+                Effect.mapError(relayRequestError("connect relay machine")),
+                timeoutRelayRequest("Relay machine connection"),
               );
           },
         );
       },
-      Effect.withSpan("clientRuntime.managedRelay.connectEnvironment"),
+      Effect.withSpan("clientRuntime.managedRelay.connectMachine"),
       withRelayClientTracing,
     ),
     registerDevice: Effect.fnUntraced(

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 
 import {
   createProjectFaviconCache,
@@ -12,7 +12,7 @@ import {
   type ProjectFaviconStorage,
 } from "./projectFaviconCache.ts";
 
-const target = { environmentId: EnvironmentId.make("remote"), cwd: "/workspace" };
+const target = { machineId: MachineId.make("remote"), cwd: "/workspace" };
 const url = "https://remote.test/api/assets/token-a/vabc-icon.svg";
 const image = "data:image/png;base64,aWNvbg==";
 const replacement = "data:image/png;base64,bmV3";
@@ -47,24 +47,24 @@ function fixture() {
 }
 
 describe("persistent project favicon cache", () => {
-  it("isolates environments, workspaces, and icon selections", async () => {
+  it("isolates machines, workspaces, and icon selections", async () => {
     const { cache } = fixture();
     await cache.resolve(target, url, signal());
     expect(cache.peek({ ...target, faviconPath: null })).toBe(image);
     expect(cache.peek({ ...target, faviconPath: "brand.svg" })).toBeNull();
     expect(cache.peek({ ...target, cwd: "/other" })).toBeNull();
-    expect(cache.peek({ ...target, environmentId: EnvironmentId.make("other") })).toBeNull();
+    expect(cache.peek({ ...target, machineId: MachineId.make("other") })).toBeNull();
   });
 
   it.each([
     {
-      scope: "one environment",
+      scope: "one machine",
       clear: (cache: ReturnType<typeof fixture>["cache"]) =>
-        cache.clearEnvironment(target.environmentId),
+        cache.clearMachine(target.machineId),
       remaining: 1,
     },
     {
-      scope: "every environment",
+      scope: "every machine",
       clear: (cache: ReturnType<typeof fixture>["cache"]) => cache.clearAll(),
       remaining: 0,
     },
@@ -72,7 +72,7 @@ describe("persistent project favicon cache", () => {
     "does not restore images for $scope removed during a download",
     async ({ clear, remaining }) => {
       const { cache, load, records } = fixture();
-      const other = { ...target, environmentId: EnvironmentId.make("other") };
+      const other = { ...target, machineId: MachineId.make("other") };
       await cache.resolve(other, url, signal());
       const next = deferred<string>();
       const started = deferred<void>();

@@ -19,7 +19,7 @@ export function cancelCodexAuthCallback(authorizationUrl: string) {
   listeners.get(state)?.abort();
 }
 
-/** Receive an authorization code locally. Credentials and PKCE stay on the target environment. */
+/** Receive an authorization code locally. Credentials and PKCE stay on the target machine. */
 export async function receiveCodexAuthCallback(
   authorizationUrl: string,
   openBrowser: (url: string) => Promise<boolean>,

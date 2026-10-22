@@ -1,9 +1,9 @@
-import { EnvironmentId } from "@vekrel/contracts";
-import { RelayEnvironmentEndpointFailure } from "@vekrel/contracts/relay";
+import { MachineId } from "@vekrel/contracts";
+import { RelayMachineEndpointFailure } from "@vekrel/contracts/relay";
 import * as Schema from "effect/Schema";
 
 const ConnectionTargetBase = {
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   label: Schema.String,
 };
 
@@ -77,13 +77,13 @@ export const ConnectionBlockedReason = Schema.Literals([
 ]);
 export type ConnectionBlockedReason = typeof ConnectionBlockedReason.Type;
 
-/** A part of the path to an environment: this device, T3 Connect, the host's tunnel, or T3 Code on the host. */
+/** A part of the path to a machine: this device, T3 Connect, the host's tunnel, or T3 Code on the host. */
 export const ConnectionHop = Schema.Literals(["device", "relay", "tunnel", "server"]);
 export type ConnectionHop = typeof ConnectionHop.Type;
 
 /** The relay's endpoint failures plus the causes the client can name from other errors. */
 export const ConnectionFailureCause = Schema.Literals([
-  ...RelayEnvironmentEndpointFailure.literals,
+  ...RelayMachineEndpointFailure.literals,
   "clock_skew",
   "not_linked",
   "relay_error",
@@ -150,7 +150,7 @@ export type PreparedHttpAuthorization =
     };
 
 export interface PreparedConnection {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly label: string;
   readonly httpBaseUrl: string;
   readonly socketUrl: string;

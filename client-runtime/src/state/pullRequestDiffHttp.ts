@@ -1,5 +1,5 @@
 import {
-  EnvironmentAuthInvalidError,
+  MachineAuthInvalidError,
   type PullRequestDiffInput,
   type PullRequestDiffResult,
 } from "@vekrel/contracts";
@@ -10,11 +10,11 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { HttpClient } from "effect/http";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import type { PreparedConnection } from "../connection/model.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
-import { type RemoteEnvironmentRequestError } from "../rpc/http.ts";
-import { executeAuthenticatedEnvironmentHttpRequest } from "./environmentHttpAuth.ts";
+import { type RemoteMachineRequestError } from "../rpc/http.ts";
+import { executeAuthenticatedMachineHttpRequest } from "./machineHttpAuth.ts";
 
 const DEFAULT_PULL_REQUEST_DIFF_TIMEOUT_MS = 60_000;
 
@@ -24,30 +24,30 @@ export class PullRequestDiffCredentialRejectedError extends Schema.TaggedError<P
     repository: Schema.String,
     number: Schema.Number,
     traceId: Schema.String,
-    cause: EnvironmentAuthInvalidError,
+    cause: MachineAuthInvalidError,
   },
 ) {
   override get message(): string {
-    return "This environment session is no longer valid (invalid_credential). Refresh the page or quit and reopen T3 Code.";
+    return "This machine session is no longer valid (invalid_credential). Refresh the page or quit and reopen T3 Code.";
   }
 }
 
 export type PullRequestDiffLoadError =
-  | RemoteEnvironmentRequestError
+  | RemoteMachineRequestError
   | PullRequestDiffCredentialRejectedError;
 
-export const fetchEnvironmentPullRequestDiff = Effect.fn(
-  "clientRuntime.state.fetchEnvironmentPullRequestDiff",
+export const fetchMachinePullRequestDiff = Effect.fn(
+  "clientRuntime.state.fetchMachinePullRequestDiff",
 )(function* (input: {
   readonly prepared: PreparedConnection;
   readonly diff: PullRequestDiffInput;
   readonly signer: Option.Option<ManagedRelay.ManagedRelayDpopSigner["Service"]>;
   readonly remoteAuthorization?: Option.Option<
-    RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]
+    RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]
   >;
   readonly timeoutMs?: number;
 }) {
-  return yield* executeAuthenticatedEnvironmentHttpRequest({
+  return yield* executeAuthenticatedMachineHttpRequest({
     ...input,
     group: "pullRequests",
     method: "POST",
@@ -56,7 +56,7 @@ export const fetchEnvironmentPullRequestDiff = Effect.fn(
     request: ({ client, headers }) => client.diff({ payload: input.diff, headers }),
   }).pipe(
     Effect.mapError((error) =>
-      error._tag === "EnvironmentAuthInvalidError" && error.reason === "invalid_credential"
+      error._tag === "MachineAuthInvalidError" && error.reason === "invalid_credential"
         ? new PullRequestDiffCredentialRejectedError({
             repository: input.diff.repository,
             number: input.diff.number,
@@ -84,11 +84,11 @@ export const layer: Layer.Layer<PullRequestDiffLoader, never, HttpClient.HttpCli
     const httpClient = yield* HttpClient.HttpClient;
     const signer = yield* Effect.serviceOption(ManagedRelay.ManagedRelayDpopSigner);
     const remoteAuthorization = yield* Effect.serviceOption(
-      RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+      RemoteMachineAuthorization.RemoteMachineAuthorization,
     );
     return PullRequestDiffLoader.of({
       load: (prepared, input) =>
-        fetchEnvironmentPullRequestDiff({
+        fetchMachinePullRequestDiff({
           prepared,
           diff: input,
           signer,

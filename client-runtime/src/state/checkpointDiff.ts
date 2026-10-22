@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetTurnDiffResult,
   ThreadId,
@@ -16,7 +16,7 @@ export interface CheckpointDiffState {
 }
 
 export interface CheckpointDiffTarget {
-  readonly environmentId: EnvironmentId | null;
+  readonly machineId: MachineId | null;
   readonly threadId: ThreadId | null;
   readonly fromTurnCount: number | null;
   readonly toTurnCount: number | null;

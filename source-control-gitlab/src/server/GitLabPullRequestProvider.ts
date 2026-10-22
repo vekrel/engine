@@ -28,7 +28,7 @@ const CAPABILITIES: PullRequestCapabilities = {
   reactions: true,
   // GitLab keeps a reader's viewed files in one browser's local storage, where nothing outside
   // that browser can read or write them.
-  viewedFiles: "environment",
+  viewedFiles: "machine",
   review: {
     inlineComment: true,
     reply: true,

@@ -1,30 +1,30 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ThreadId,
-  type EnvironmentId as EnvironmentIdType,
+  type MachineId as MachineIdType,
   type ProjectId as ProjectIdType,
   type ScopedProjectRef,
   type ScopedThreadRef,
 } from "@vekrel/contracts";
 
 export function scopeProjectRef(
-  environmentId: EnvironmentIdType,
+  machineId: MachineIdType,
   projectId: ProjectIdType,
 ): ScopedProjectRef {
-  return { environmentId, projectId };
+  return { machineId, projectId };
 }
 
 export function scopeThreadRef(
-  environmentId: EnvironmentIdType,
+  machineId: MachineIdType,
   threadId: ThreadId,
 ): ScopedThreadRef {
-  return { environmentId, threadId };
+  return { machineId, threadId };
 }
 
 function scopedRefKey(ref: ScopedProjectRef | ScopedThreadRef): string {
   const localId = "projectId" in ref ? ref.projectId : ref.threadId;
-  return `${ref.environmentId}:${localId}`;
+  return `${ref.machineId}:${localId}`;
 }
 
 export function scopedProjectKey(ref: ScopedProjectRef): string {
@@ -35,13 +35,13 @@ export function scopedThreadKey(ref: ScopedThreadRef): string {
   return scopedRefKey(ref);
 }
 
-function parseScopedKey(key: string): { environmentId: EnvironmentIdType; localId: string } | null {
+function parseScopedKey(key: string): { machineId: MachineIdType; localId: string } | null {
   const separatorIndex = key.indexOf(":");
   if (separatorIndex <= 0 || separatorIndex >= key.length - 1) {
     return null;
   }
   return {
-    environmentId: EnvironmentId.make(key.slice(0, separatorIndex)),
+    machineId: MachineId.make(key.slice(0, separatorIndex)),
     localId: key.slice(separatorIndex + 1),
   };
 }
@@ -52,7 +52,7 @@ export function parseScopedProjectKey(key: string): ScopedProjectRef | null {
     return null;
   }
   return {
-    environmentId: parsed.environmentId,
+    machineId: parsed.machineId,
     projectId: ProjectId.make(parsed.localId),
   };
 }
@@ -63,7 +63,7 @@ export function parseScopedThreadKey(key: string): ScopedThreadRef | null {
     return null;
   }
   return {
-    environmentId: parsed.environmentId,
+    machineId: parsed.machineId,
     threadId: ThreadId.make(parsed.localId),
   };
 }

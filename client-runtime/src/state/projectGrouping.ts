@@ -1,14 +1,14 @@
-import { scopedProjectKey, scopeProjectRef } from "../environment/scoped.ts";
+import { scopedProjectKey, scopeProjectRef } from "../machine/scoped.ts";
 import {
   repositoryGroupingDisplayNameOf,
   repositoryGroupingKeyOf,
-  type EnvironmentId,
+  type MachineId,
   type ScopedProjectRef,
   type SidebarProjectGroupingMode,
 } from "@vekrel/contracts";
 import type { ClientSettings } from "@vekrel/contracts/settings";
 
-import type { EnvironmentProject } from "./models.ts";
+import type { MachineProject } from "./models.ts";
 import { normalizeProjectPathForComparison } from "./projects.ts";
 
 const SCRATCH_PROJECT_SCOPE_KEY = "\0no-project";
@@ -42,7 +42,7 @@ function uniqueNonEmptyValues(values: ReadonlyArray<string | null | undefined>):
 }
 
 function deriveRepositoryRelativeProjectPath(
-  project: Pick<EnvironmentProject, "workspaceRoot" | "repositoryIdentity">,
+  project: Pick<MachineProject, "workspaceRoot" | "repositoryIdentity">,
 ): string | null {
   const rootPath = project.repositoryIdentity?.rootPath?.trim();
   if (!rootPath) {
@@ -68,30 +68,30 @@ function deriveRepositoryRelativeProjectPath(
   return normalizedProjectPath.slice(rootPrefix.length).replaceAll("\\", "/");
 }
 
-export function derivePhysicalProjectKeyFromPath(environmentId: string, cwd: string): string {
-  return `${environmentId}:${normalizeProjectPathForComparison(cwd)}`;
+export function derivePhysicalProjectKeyFromPath(machineId: string, cwd: string): string {
+  return `${machineId}:${normalizeProjectPathForComparison(cwd)}`;
 }
 
 export function derivePhysicalProjectKey(
-  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  project: Pick<MachineProject, "machineId" | "workspaceRoot">,
 ): string {
-  return derivePhysicalProjectKeyFromPath(project.environmentId, project.workspaceRoot);
+  return derivePhysicalProjectKeyFromPath(project.machineId, project.workspaceRoot);
 }
 
 export function deriveProjectGroupingOverrideKey(
-  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  project: Pick<MachineProject, "machineId" | "workspaceRoot">,
 ): string {
   return derivePhysicalProjectKey(project);
 }
 
 export function getProjectOrderKey(
-  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  project: Pick<MachineProject, "machineId" | "workspaceRoot">,
 ): string {
   return derivePhysicalProjectKey(project);
 }
 
 function resolveProjectGroupingMode(
-  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  project: Pick<MachineProject, "machineId" | "workspaceRoot">,
   settings: ProjectGroupingSettings,
 ): SidebarProjectGroupingMode {
   return (
@@ -101,7 +101,7 @@ function resolveProjectGroupingMode(
 }
 
 function deriveRepositoryScopedKey(
-  project: Pick<EnvironmentProject, "workspaceRoot" | "repositoryIdentity">,
+  project: Pick<MachineProject, "workspaceRoot" | "repositoryIdentity">,
   groupingMode: SidebarProjectGroupingMode,
 ): string | null {
   const canonicalKey = project.repositoryIdentity
@@ -128,8 +128,8 @@ function deriveRepositoryScopedKey(
 
 function deriveLogicalProjectKey(
   project: Pick<
-    EnvironmentProject,
-    "environmentId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
+    MachineProject,
+    "machineId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
   >,
   options?: {
     readonly groupingMode?: SidebarProjectGroupingMode;
@@ -145,14 +145,14 @@ function deriveLogicalProjectKey(
   return (
     deriveRepositoryScopedKey(project, groupingMode) ??
     derivePhysicalProjectKey(project) ??
-    scopedProjectKey(scopeProjectRef(project.environmentId, project.id))
+    scopedProjectKey(scopeProjectRef(project.machineId, project.id))
   );
 }
 
 export function deriveLogicalProjectKeyFromSettings(
   project: Pick<
-    EnvironmentProject,
-    "environmentId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
+    MachineProject,
+    "machineId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
   >,
   settings: ProjectGroupingSettings,
   options?: { readonly groupScratchProjects?: boolean },
@@ -167,8 +167,8 @@ export function resolveScratchProjectScopeKey(
   key: string | null,
   projects: ReadonlyArray<
     Pick<
-      EnvironmentProject,
-      "environmentId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
+      MachineProject,
+      "machineId" | "id" | "workspaceRoot" | "repositoryIdentity" | "isScratch"
     >
   >,
   settings: ProjectGroupingSettings = {
@@ -199,8 +199,8 @@ export function resolveScratchProjectScopeKey(
 }
 
 export function deriveProjectGroupLabel(input: {
-  readonly representative: Pick<EnvironmentProject, "title" | "repositoryIdentity">;
-  readonly members: ReadonlyArray<Pick<EnvironmentProject, "title" | "repositoryIdentity">>;
+  readonly representative: Pick<MachineProject, "title" | "repositoryIdentity">;
+  readonly members: ReadonlyArray<Pick<MachineProject, "title" | "repositoryIdentity">>;
 }): string {
   const sharedTitles = uniqueNonEmptyValues(input.members.map((member) => member.title));
   const sharedDisplayNames = uniqueNonEmptyValues(
@@ -231,12 +231,12 @@ export function deriveProjectGroupLabel(input: {
   return input.representative.title;
 }
 
-export interface ProjectGroupMember<TProject extends EnvironmentProject = EnvironmentProject> {
+export interface ProjectGroupMember<TProject extends MachineProject = MachineProject> {
   readonly physicalProjectKey: string;
   readonly project: TProject;
 }
 
-export interface ProjectGroup<TProject extends EnvironmentProject = EnvironmentProject> {
+export interface ProjectGroup<TProject extends MachineProject = MachineProject> {
   readonly key: string;
   readonly label: string;
   readonly representative: TProject;
@@ -244,7 +244,7 @@ export interface ProjectGroup<TProject extends EnvironmentProject = EnvironmentP
   readonly memberProjectRefs: ReadonlyArray<ScopedProjectRef>;
 }
 
-function projectFreshnessTime(project: EnvironmentProject): number {
+function projectFreshnessTime(project: MachineProject): number {
   const updatedAtTime = Date.parse(project.updatedAt);
   if (Number.isFinite(updatedAtTime)) {
     return updatedAtTime;
@@ -253,7 +253,7 @@ function projectFreshnessTime(project: EnvironmentProject): number {
   return Number.isFinite(createdAtTime) ? createdAtTime : 0;
 }
 
-function shouldReplacePhysicalProjectWinner<TProject extends EnvironmentProject>(
+function shouldReplacePhysicalProjectWinner<TProject extends MachineProject>(
   existing: TProject,
   candidate: TProject,
 ): boolean {
@@ -261,7 +261,7 @@ function shouldReplacePhysicalProjectWinner<TProject extends EnvironmentProject>
   return freshnessDelta > 0 || (freshnessDelta === 0 && candidate.id > existing.id);
 }
 
-function selectProjectIdentitySource<TProject extends EnvironmentProject>(
+function selectProjectIdentitySource<TProject extends MachineProject>(
   projects: ReadonlyArray<TProject>,
   winner: TProject,
 ): TProject {
@@ -284,10 +284,10 @@ function selectProjectIdentitySource<TProject extends EnvironmentProject>(
   return freshestIdentifiedProject ?? winner;
 }
 
-export function buildProjectGroups<TProject extends EnvironmentProject>(input: {
+export function buildProjectGroups<TProject extends MachineProject>(input: {
   readonly projects: ReadonlyArray<TProject>;
   readonly settings: ProjectGroupingSettings;
-  readonly preferredEnvironmentId?: EnvironmentId | null;
+  readonly preferredMachineId?: MachineId | null;
   readonly groupScratchProjects?: boolean;
 }): ReadonlyArray<ProjectGroup<TProject>> {
   const projectsByPhysicalKey = new Map<string, TProject[]>();
@@ -331,10 +331,10 @@ export function buildProjectGroups<TProject extends EnvironmentProject>(input: {
       deriveLogicalProjectKeyFromSettings(project, input.settings, {
         groupScratchProjects: input.groupScratchProjects ?? false,
       });
-    const projectRefKey = scopedProjectKey(scopeProjectRef(project.environmentId, project.id));
+    const projectRefKey = scopedProjectKey(scopeProjectRef(project.machineId, project.id));
     if (seenProjectRefs.has(projectRefKey)) continue;
     seenProjectRefs.add(projectRefKey);
-    const projectRef = scopeProjectRef(project.environmentId, project.id);
+    const projectRef = scopeProjectRef(project.machineId, project.id);
     const existing = projectRefsByLogicalKey.get(logicalKey);
     if (existing) {
       existing.push(projectRef);
@@ -343,11 +343,11 @@ export function buildProjectGroups<TProject extends EnvironmentProject>(input: {
     }
   }
 
-  const preferredEnvironmentId = input.preferredEnvironmentId ?? null;
+  const preferredMachineId = input.preferredMachineId ?? null;
   return Array.from(groupedMembers, ([key, members]) => {
     const representative =
-      (preferredEnvironmentId
-        ? members.find((member) => member.project.environmentId === preferredEnvironmentId)?.project
+      (preferredMachineId
+        ? members.find((member) => member.project.machineId === preferredMachineId)?.project
         : null) ?? members[0]!.project;
     return {
       key,
@@ -368,7 +368,7 @@ export function buildProjectGroups<TProject extends EnvironmentProject>(input: {
 }
 
 export function sortProjectsByGroupOrder<
-  TProject extends { readonly id: string; readonly environmentId: string },
+  TProject extends { readonly id: string; readonly machineId: string },
 >(
   projects: ReadonlyArray<TProject>,
   groups: ReadonlyArray<{ readonly memberProjectRefs: ReadonlyArray<ScopedProjectRef> }>,
@@ -376,11 +376,11 @@ export function sortProjectsByGroupOrder<
   const rankByProject = new Map<string, number>();
   groups.forEach((group, rank) => {
     for (const ref of group.memberProjectRefs) {
-      const key = `${ref.environmentId}\0${ref.projectId}`;
+      const key = `${ref.machineId}\0${ref.projectId}`;
       if (!rankByProject.has(key)) rankByProject.set(key, rank);
     }
   });
   const rankOf = (project: TProject) =>
-    rankByProject.get(`${project.environmentId}\0${project.id}`) ?? groups.length;
+    rankByProject.get(`${project.machineId}\0${project.id}`) ?? groups.length;
   return [...projects].sort((left, right) => rankOf(left) - rankOf(right));
 }

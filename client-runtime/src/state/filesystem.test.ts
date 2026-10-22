@@ -7,10 +7,10 @@ import {
   resolveFilesystemReadAccess,
 } from "./filesystem.ts";
 
-const SPLIT_SCOPES_SERVER = { serverUpdateScope: "environment:maintain" } as const;
+const SPLIT_SCOPES_SERVER = { serverUpdateScope: "machine:maintain" } as const;
 
 describe("filesystem read access", () => {
-  it("waits for the initial catalog before declaring a missing environment disconnected", () => {
+  it("waits for the initial catalog before declaring a missing machine disconnected", () => {
     expect(
       resolveFilesystemReadAccess({
         isCatalogReady: false,

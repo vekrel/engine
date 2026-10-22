@@ -1,4 +1,4 @@
-import type { DesktopSshEnvironmentTarget } from "@vekrel/contracts";
+import type { DesktopSshMachineTarget } from "@vekrel/contracts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Crypto from "effect/Crypto";
 import * as Duration from "effect/Duration";
@@ -43,7 +43,7 @@ export interface RunSshCommandOptions extends SshAuthOptions {
   readonly keepErrorOutputTail?: boolean;
 }
 
-export function parseSshResolveOutput(alias: string, stdout: string): DesktopSshEnvironmentTarget {
+export function parseSshResolveOutput(alias: string, stdout: string): DesktopSshMachineTarget {
   const values = new Map<string, string>();
   for (const line of stdout.split(/\r?\n/u)) {
     const trimmed = line.trim();
@@ -70,12 +70,12 @@ export function parseSshResolveOutput(alias: string, stdout: string): DesktopSsh
   };
 }
 
-export function targetConnectionKey(target: DesktopSshEnvironmentTarget): string {
+export function targetConnectionKey(target: DesktopSshMachineTarget): string {
   return `${target.alias}\u0000${target.hostname}\u0000${target.username ?? ""}\u0000${target.port ?? ""}`;
 }
 
 export const remoteStateKey = Effect.fn("ssh/command.remoteStateKey")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
 ): Effect.fn.Return<string, never, Crypto.Crypto> {
   const crypto = yield* Crypto.Crypto;
   const digest = yield* crypto
@@ -84,7 +84,7 @@ export const remoteStateKey = Effect.fn("ssh/command.remoteStateKey")(function* 
   return Hex.encode(digest).slice(0, 16);
 });
 
-function buildSshHostSpec(target: DesktopSshEnvironmentTarget): string {
+function buildSshHostSpec(target: DesktopSshMachineTarget): string {
   const destination = target.alias.trim() || target.hostname.trim();
   if (destination.length === 0) {
     throw new Error("SSH target is missing its alias/hostname.");
@@ -93,7 +93,7 @@ function buildSshHostSpec(target: DesktopSshEnvironmentTarget): string {
 }
 
 export const buildSshHostSpecEffect = (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
 ): Effect.Effect<string, SshInvalidTargetError> =>
   Effect.try({
     try: () => buildSshHostSpec(target),
@@ -104,7 +104,7 @@ export const buildSshHostSpecEffect = (
   });
 
 export function baseSshArgs(
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input?: { readonly batchMode?: "yes" | "no" },
 ): string[] {
   return [
@@ -160,7 +160,7 @@ function normalizeSshErrorMessage(input: {
   return cleanedStdout.length > 0 ? cleanedStdout : input.fallbackMessage;
 }
 
-function sshTargetLogFields(target: DesktopSshEnvironmentTarget) {
+function sshTargetLogFields(target: DesktopSshMachineTarget) {
   return {
     alias: target.alias,
     hostname: target.hostname,
@@ -174,7 +174,7 @@ function stdinStream(input: string | undefined) {
 }
 
 const runSshCommandInScope = Effect.fn("ssh/command.runSshCommand.inScope")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input: RunSshCommandOptions,
   commandScope: Scope.Scope,
 ): Effect.fn.Return<
@@ -294,7 +294,7 @@ const runSshCommandInScope = Effect.fn("ssh/command.runSshCommand.inScope")(func
 });
 
 export const runSshCommand = Effect.fn("ssh/command.runSshCommand")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input: RunSshCommandOptions = {},
 ): Effect.fn.Return<
   SshCommandResult,
@@ -332,7 +332,7 @@ export const runSshCommand = Effect.fn("ssh/command.runSshCommand")(function* (
 export const resolveSshTarget = Effect.fn("ssh/command.resolveSshTarget")(function* (
   alias: string,
 ): Effect.fn.Return<
-  DesktopSshEnvironmentTarget,
+  DesktopSshMachineTarget,
   SshCommandError | SshInvalidTargetError,
   ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
 > {

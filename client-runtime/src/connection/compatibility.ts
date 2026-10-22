@@ -1,13 +1,13 @@
 import {
   ORCHESTRATION_PROTOCOL_QUERY_PARAM,
   ORCHESTRATION_PROTOCOL_VERSION,
-  type ExecutionEnvironmentDescriptor,
+  type ExecutionMachineDescriptor,
 } from "@vekrel/contracts";
 
 import { ConnectionBlockedError } from "./model.ts";
 
 export function orchestrationProtocolCompatibilityError(
-  descriptor: ExecutionEnvironmentDescriptor,
+  descriptor: ExecutionMachineDescriptor,
 ): ConnectionBlockedError | null {
   // Servers shipped before negotiation use the original wire protocol.
   const serverProtocolVersion = descriptor.orchestrationProtocolVersion ?? 1;
@@ -26,7 +26,7 @@ export function orchestrationProtocolCompatibilityError(
       });
 }
 
-function canSelfUpdate(descriptor: ExecutionEnvironmentDescriptor): boolean {
+function canSelfUpdate(descriptor: ExecutionMachineDescriptor): boolean {
   const { serverSelfUpdate, desktopAppUpdate } = descriptor.capabilities;
   return (
     serverSelfUpdate !== undefined &&

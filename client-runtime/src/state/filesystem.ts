@@ -9,10 +9,10 @@ import {
 import { Atom } from "effect/reactivity";
 
 import type {
-  EnvironmentConnectionPhase,
-  EnvironmentConnectionPresentation,
+  MachineConnectionPhase,
+  MachineConnectionPresentation,
 } from "../connection/presentation.ts";
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import {
   canNavigateUp,
   getBrowseDirectoryPath,
@@ -21,11 +21,11 @@ import {
   hasTrailingPathSeparator,
   isFilesystemBrowseQuery,
 } from "./projects.ts";
-import { createEnvironmentRpcQueryAtomFamily } from "./runtime.ts";
+import { createMachineRpcQueryAtomFamily } from "./runtime.ts";
 
 export function resolveFilesystemReadAccess(input: {
   readonly isCatalogReady: boolean;
-  readonly connection: Pick<EnvironmentConnectionPresentation, "phase" | "error"> | null;
+  readonly connection: Pick<MachineConnectionPresentation, "phase" | "error"> | null;
   readonly session: SessionGrantInput | null;
   readonly sessionError: string | null;
 }) {
@@ -34,7 +34,7 @@ export function resolveFilesystemReadAccess(input: {
   }
   if (input.session === null) {
     // Wait for the catalog before interpreting a missing presentation as offline.
-    // Once ready, an offline environment cannot finish its session check.
+    // Once ready, an offline machine cannot finish its session check.
     const isPending =
       !input.isCatalogReady ||
       input.connection?.phase === "connected" ||
@@ -43,7 +43,7 @@ export function resolveFilesystemReadAccess(input: {
     return {
       canReadFiles: false,
       isPending,
-      error: isPending ? null : (input.connection?.error ?? "This environment is not connected."),
+      error: isPending ? null : (input.connection?.error ?? "This machine is not connected."),
     };
   }
   return {
@@ -106,21 +106,21 @@ export function createBrowseNavigationCoordinator() {
 }
 
 export function canPreloadBrowsePath(
-  connectionPhase: EnvironmentConnectionPhase | null | undefined,
+  connectionPhase: MachineConnectionPhase | null | undefined,
 ): boolean {
   return connectionPhase === "connected";
 }
 
-export function createFilesystemEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createFilesystemMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   return {
-    getMetadata: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:filesystem:get-metadata",
+    getMetadata: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:filesystem:get-metadata",
       tag: WS_METHODS.filesystemGetMetadata,
     }),
-    browse: createEnvironmentRpcQueryAtomFamily(runtime, {
-      label: "environment-data:filesystem:browse",
+    browse: createMachineRpcQueryAtomFamily(runtime, {
+      label: "machine-data:filesystem:browse",
       tag: WS_METHODS.filesystemBrowse,
     }),
   };

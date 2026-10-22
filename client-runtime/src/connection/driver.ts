@@ -22,7 +22,7 @@ import {
   usableRoutes,
 } from "./routes.ts";
 import * as RpcSession from "../rpc/session.ts";
-import { fetchRemoteEnvironmentDescriptor } from "../environment/descriptor.ts";
+import { fetchRemoteMachineDescriptor } from "../machine/descriptor.ts";
 
 export type ConnectionDriverProgress =
   | {
@@ -33,7 +33,7 @@ export type ConnectionDriverProgress =
       readonly prepared: PreparedConnection;
     };
 
-export interface EnvironmentConnectionLease {
+export interface MachineConnectionLease {
   readonly prepared: PreparedConnection;
   readonly session: RpcSession.RpcSession;
 }
@@ -48,7 +48,7 @@ export class ConnectionDriver extends Context.Service<
     readonly connect: (
       entry: ConnectionCatalogEntry,
       reportProgress: (progress: ConnectionDriverProgress) => Effect.Effect<void>,
-    ) => Effect.Effect<EnvironmentConnectionLease, ConnectionAttemptError, Scope.Scope>;
+    ) => Effect.Effect<MachineConnectionLease, ConnectionAttemptError, Scope.Scope>;
     readonly checkRoute: (
       entry: ConnectionCatalogEntry,
       route: ConnectionRoute,
@@ -65,7 +65,7 @@ export const connectOverRoutes = Effect.fn("ConnectionDriver.connectOverRoutes")
   checkRoute: (route: ConnectionRoute) => Effect.Effect<RouteCheck>,
   connectRoute: (
     route: ConnectionRoute,
-  ) => Effect.Effect<EnvironmentConnectionLease, ConnectionAttemptError, R | Scope.Scope>,
+  ) => Effect.Effect<MachineConnectionLease, ConnectionAttemptError, R | Scope.Scope>,
 ) {
   const routes = usableRoutes(entry);
   const checks =
@@ -127,12 +127,12 @@ export const make = Effect.gen(function* () {
     if (httpBaseUrl === null) return Effect.succeed<RouteCheck>("unchecked");
     // The descriptor is public, so this sends no credential to whatever
     // answers at a saved LAN address on a different network.
-    return fetchRemoteEnvironmentDescriptor({
+    return fetchRemoteMachineDescriptor({
       httpBaseUrl,
       timeoutMs: ROUTE_CHECK_TIMEOUT_MS,
     }).pipe(
       Effect.map((descriptor): RouteCheck =>
-        descriptor.environmentId === entry.target.environmentId ? "answered" : "silent",
+        descriptor.machineId === entry.target.machineId ? "answered" : "silent",
       ),
       Effect.orElseSucceed((): RouteCheck => "silent"),
       Effect.provideService(HttpClient.HttpClient, httpClient),
@@ -148,7 +148,7 @@ export const make = Effect.gen(function* () {
   ) {
     const target = entry.target;
     yield* Effect.annotateCurrentSpan({
-      "connection.environment.id": target.environmentId,
+      "connection.machine.id": target.machineId,
       "connection.target.kind": target._tag,
       "connection.route.count": connectionRoutes(entry).length,
     });
@@ -162,7 +162,7 @@ export const make = Effect.gen(function* () {
         const session = yield* sessions.connect(prepared);
         yield* reportProgress({ stage: "synchronizing", prepared });
         yield* session.ready;
-        return { prepared, session } satisfies EnvironmentConnectionLease;
+        return { prepared, session } satisfies MachineConnectionLease;
       }),
     );
   });

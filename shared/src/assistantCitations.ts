@@ -34,7 +34,7 @@ export function withAssistantCitationComment(
 }
 
 export function formatAssistantCitationHref(citation: AssistantCitation): string {
-  const path = [citation.environmentId, citation.threadId, citation.messageId]
+  const path = [citation.machineId, citation.threadId, citation.messageId]
     .map(encodePathPart)
     .join("/");
   const query = new URLSearchParams({
@@ -80,7 +80,7 @@ export function parseAssistantCitationHref(href: string): AssistantCitation | nu
     return Option.getOrNull(
       decodeCitation({
         version: 1,
-        environmentId: decodeURIComponent(parts[0]!),
+        machineId: decodeURIComponent(parts[0]!),
         threadId: decodeURIComponent(parts[1]!),
         messageId: decodeURIComponent(parts[2]!),
         text: url.searchParams.get("text"),

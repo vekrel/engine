@@ -1,6 +1,6 @@
 import type {
-  DesktopSshEnvironmentBootstrap,
-  DesktopSshEnvironmentTarget,
+  DesktopSshMachineBootstrap,
+  DesktopSshMachineTarget,
 } from "@vekrel/contracts";
 import { waitForHttpReady as waitForHttpReadyShared } from "@vekrel/shared/httpReadiness";
 import { cliReleaseDownloadBaseUrl } from "@vekrel/shared/cliRelease";
@@ -76,7 +76,7 @@ export interface SshEnvironmentManagerOptions {
 
 interface SshTunnelEntry {
   readonly key: string;
-  readonly target: DesktopSshEnvironmentTarget;
+  readonly target: DesktopSshMachineTarget;
   readonly remotePort: number;
   readonly remoteServerKind: "external" | "managed" | null;
   readonly localPort: number;
@@ -104,7 +104,7 @@ type SshEnvironmentEffectError =
   | SshPasswordPromptError
   | NetService.NetError;
 
-function sshTargetLogFields(target: DesktopSshEnvironmentTarget) {
+function sshTargetLogFields(target: DesktopSshMachineTarget) {
   return {
     alias: target.alias,
     hostname: target.hostname,
@@ -129,7 +129,7 @@ function sshRunnerLogFields(runner: RemoteT3RunnerOptions | undefined) {
 
 interface SshAuthOperationInput<T> {
   readonly key: string;
-  readonly target: DesktopSshEnvironmentTarget;
+  readonly target: DesktopSshMachineTarget;
   readonly operation: (
     authOptions: SshAuth.SshAuthOptions,
   ) => Effect.Effect<T, SshEnvironmentEffectError, SshEnvironmentEffectContext>;
@@ -142,15 +142,15 @@ interface SshAuthAttemptInput<T> extends SshAuthOperationInput<T> {
 
 export interface SshEnvironmentManagerShape {
   readonly ensureEnvironment: (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
     options?: { readonly issuePairingToken?: boolean },
   ) => Effect.Effect<
-    DesktopSshEnvironmentBootstrap,
+    DesktopSshMachineBootstrap,
     SshEnvironmentEffectError,
     SshEnvironmentEffectContext
   >;
   readonly disconnectEnvironment: (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
   ) => Effect.Effect<void, SshEnvironmentEffectError, SshEnvironmentEffectContext>;
 }
 
@@ -872,7 +872,7 @@ function buildRemoteLogTailScript(stateKey: string): string {
 
 export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemoteServer")(
   function* (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
     input?: SshAuth.SshAuthOptions,
     runner?: RemoteT3RunnerOptions,
   ): Effect.fn.Return<
@@ -932,7 +932,7 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
 );
 
 export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingToken")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input?: SshAuth.SshAuthOptions,
   runner?: RemoteT3RunnerOptions,
 ): Effect.fn.Return<
@@ -987,7 +987,7 @@ export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingT
 });
 
 const stopRemoteServer = Effect.fn("ssh/tunnel.stopRemoteServer")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input?: SshAuth.SshAuthOptions,
 ): Effect.fn.Return<
   void,
@@ -1013,7 +1013,7 @@ const stopRemoteServer = Effect.fn("ssh/tunnel.stopRemoteServer")(function* (
 });
 
 const readRemoteServerLogTail = Effect.fn("ssh/tunnel.readRemoteServerLogTail")(function* (
-  target: DesktopSshEnvironmentTarget,
+  target: DesktopSshMachineTarget,
   input?: SshAuth.SshAuthOptions,
 ): Effect.fn.Return<
   string,
@@ -1109,7 +1109,7 @@ const reserveLocalTunnelPort = Effect.fn("ssh/tunnel.reserveLocalTunnelPort")(fu
 
 const startSshTunnel = Effect.fn("ssh/tunnel.startSshTunnel")(function* (input: {
   readonly key: string;
-  readonly resolvedTarget: DesktopSshEnvironmentTarget;
+  readonly resolvedTarget: DesktopSshMachineTarget;
   readonly remotePort: number;
   readonly localPort: number;
   readonly httpBaseUrl: string;
@@ -1397,7 +1397,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   );
 
   const promptForPassword = Effect.fn("ssh/tunnel.promptForPassword")(function* (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
     attempt: number,
   ): Effect.fn.Return<
     string,
@@ -1513,7 +1513,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
 
   const createTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry.create")(function* (input: {
     readonly key: string;
-    readonly resolvedTarget: DesktopSshEnvironmentTarget;
+    readonly resolvedTarget: DesktopSshMachineTarget;
     readonly runner?: RemoteT3RunnerOptions;
   }): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     yield* Effect.logDebug("ssh.environment.tunnel.create.start", {
@@ -1629,7 +1629,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
 
   const ensureTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry")(function* (
     key: string,
-    resolvedTarget: DesktopSshEnvironmentTarget,
+    resolvedTarget: DesktopSshMachineTarget,
     runner?: RemoteT3RunnerOptions,
   ): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     const entry = tunnels.get(key) ?? null;
@@ -1681,10 +1681,10 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   });
 
   const ensureEnvironment = Effect.fn("ssh/tunnel.ensureEnvironment")(function* (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
     requestOptions?: { readonly issuePairingToken?: boolean },
   ): Effect.fn.Return<
-    DesktopSshEnvironmentBootstrap,
+    DesktopSshMachineBootstrap,
     SshEnvironmentEffectError,
     SshEnvironmentEffectContext
   > {
@@ -1693,7 +1693,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
       issuePairingToken: requestOptions?.issuePairingToken === true,
     });
     const baseResolved = yield* resolveSshTarget(target.alias || target.hostname);
-    const resolvedTarget: DesktopSshEnvironmentTarget = {
+    const resolvedTarget: DesktopSshMachineTarget = {
       ...baseResolved,
       ...(target.username !== null ? { username: target.username } : {}),
       ...(target.port !== null ? { port: target.port } : {}),
@@ -1746,11 +1746,11 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   });
 
   const disconnectEnvironment = Effect.fn("ssh/tunnel.disconnectEnvironment")(function* (
-    target: DesktopSshEnvironmentTarget,
+    target: DesktopSshMachineTarget,
   ): Effect.fn.Return<void, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     yield* Effect.logInfo("ssh.environment.disconnect.start", sshTargetLogFields(target));
     const baseResolved = yield* resolveSshTarget(target.alias || target.hostname);
-    const resolvedTarget: DesktopSshEnvironmentTarget = {
+    const resolvedTarget: DesktopSshMachineTarget = {
       ...baseResolved,
       ...(target.username !== null ? { username: target.username } : {}),
       ...(target.port !== null ? { port: target.port } : {}),

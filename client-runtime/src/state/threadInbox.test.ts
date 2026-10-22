@@ -1,14 +1,14 @@
-import { EnvironmentId, ProviderInstanceId, RunId, ThreadId } from "@vekrel/contracts";
+import { MachineId, ProviderInstanceId, RunId, ThreadId } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { createInboxReturnTracker, sortWorkingThreadsBySend } from "./threadInbox.ts";
 
-const environmentId = EnvironmentId.make("environment-1");
+const machineId = MachineId.make("machine-1");
 
 function thread(id: string, working: boolean) {
   return {
     id: ThreadId.make(id),
-    environmentId,
+    machineId,
     createdAt: "2026-06-01T00:00:00.000Z",
     unsettledAt: null,
     latestRun: null,

@@ -1,5 +1,5 @@
 import type {
-  EnvironmentId,
+  MachineId,
   OrchestrationV2ShellSnapshot,
   OrchestrationV2ThreadShell,
   ThreadId,
@@ -17,16 +17,16 @@ interface PendingThreadUpdate {
 
 export function createOptimisticThreadLifecycle(
   sourceSnapshotAtom: (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
   ) => Atom.Atom<OrchestrationV2ShellSnapshot | null>,
 ) {
-  const pendingAtom = Atom.family((_environmentId: EnvironmentId) =>
+  const pendingAtom = Atom.family((_machineId: MachineId) =>
     Atom.make<ReadonlyArray<PendingThreadUpdate>>([]).pipe(Atom.keepAlive),
   );
-  const snapshotAtom = Atom.family((environmentId: EnvironmentId) =>
+  const snapshotAtom = Atom.family((machineId: MachineId) =>
     Atom.make((get) => {
-      const snapshot = get(sourceSnapshotAtom(environmentId));
-      const pending = get(pendingAtom(environmentId));
+      const snapshot = get(sourceSnapshotAtom(machineId));
+      const pending = get(pendingAtom(machineId));
       if (snapshot === null || pending.length === 0) return snapshot;
       const byThread = new Map<ThreadId, PendingThreadUpdate[]>();
       for (const update of pending) {
@@ -50,7 +50,7 @@ export function createOptimisticThreadLifecycle(
 
   function wrap<Input extends { readonly threadId: ThreadId }, E>(
     command: AtomCommand<
-      { readonly environmentId: EnvironmentId; readonly input: Input },
+      { readonly machineId: MachineId; readonly input: Input },
       { readonly sequence: number },
       E
     >,
@@ -65,8 +65,8 @@ export function createOptimisticThreadLifecycle(
       label: command.label,
       run: async (registry, target) => {
         const now = DateTime.nowUnsafe();
-        const pending = pendingAtom(target.environmentId);
-        const source = sourceSnapshotAtom(target.environmentId);
+        const pending = pendingAtom(target.machineId);
+        const source = sourceSnapshotAtom(target.machineId);
         const update: PendingThreadUpdate = {
           threadId: target.input.threadId,
           apply: (thread) => apply(thread, target.input, now, update.sequence !== undefined),

@@ -31,7 +31,7 @@ export const AuthOrchestrationReadScope = "orchestration:read" as const;
 export const AuthOrchestrationOperateScope = "orchestration:operate" as const;
 export const AuthSettingsWriteScope = "settings:write" as const;
 export const AuthProvidersManageScope = "providers:manage" as const;
-export const AuthEnvironmentMaintainScope = "environment:maintain" as const;
+export const AuthMachineMaintainScope = "machine:maintain" as const;
 export const AuthPreviewOperateScope = "preview:operate" as const;
 export const AuthDiagnosticsReadScope = "diagnostics:read" as const;
 export const AuthTerminalReadScope = "terminal:read" as const;
@@ -45,12 +45,12 @@ export const AuthAccessReadScope = "access:read" as const;
 export const AuthAccessWriteScope = "access:write" as const;
 export const AuthRelayReadScope = "relay:read" as const;
 export const AuthRelayWriteScope = "relay:write" as const;
-export const AuthEnvironmentScope = Schema.Literals([
+export const AuthMachineScope = Schema.Literals([
   AuthOrchestrationReadScope,
   AuthOrchestrationOperateScope,
   AuthSettingsWriteScope,
   AuthProvidersManageScope,
-  AuthEnvironmentMaintainScope,
+  AuthMachineMaintainScope,
   AuthPreviewOperateScope,
   AuthDiagnosticsReadScope,
   AuthTerminalReadScope,
@@ -64,18 +64,18 @@ export const AuthEnvironmentScope = Schema.Literals([
   AuthRelayReadScope,
   AuthRelayWriteScope,
 ]);
-export type AuthEnvironmentScope = typeof AuthEnvironmentScope.Type;
-export const AuthEnvironmentScopes = Schema.Array(AuthEnvironmentScope);
-export type AuthEnvironmentScopes = typeof AuthEnvironmentScopes.Type;
+export type AuthMachineScope = typeof AuthMachineScope.Type;
+export const AuthMachineScopes = Schema.Array(AuthMachineScope);
+export type AuthMachineScopes = typeof AuthMachineScopes.Type;
 
 export const AuthGrantScope = Schema.Literals(
-  AuthEnvironmentScope.literals.filter((scope) => scope !== AuthReviewWriteScope),
+  AuthMachineScope.literals.filter((scope) => scope !== AuthReviewWriteScope),
 );
 export type AuthGrantScope = typeof AuthGrantScope.Type;
 export const AuthGrantScopes = Schema.Array(AuthGrantScope);
 export type AuthGrantScopes = typeof AuthGrantScopes.Type;
 
-const legacyScopes = new Set<AuthEnvironmentScope>([
+const legacyScopes = new Set<AuthMachineScope>([
   AuthOrchestrationReadScope,
   AuthOrchestrationOperateScope,
   AuthTerminalOperateScope,
@@ -86,23 +86,23 @@ const legacyScopes = new Set<AuthEnvironmentScope>([
   AuthRelayWriteScope,
 ]);
 
-export function authScopeResponse(scopes: ReadonlyArray<AuthEnvironmentScope>) {
+export function authScopeResponse(scopes: ReadonlyArray<AuthMachineScope>) {
   return { scopes: scopes.filter((scope) => legacyScopes.has(scope)), permissions: scopes };
 }
 
 const authScopeResponseFields = {
-  scopes: AuthEnvironmentScopes,
-  permissions: Schema.optionalKey(ForwardCompatibleArray(AuthEnvironmentScope)),
+  scopes: AuthMachineScopes,
+  permissions: Schema.optionalKey(ForwardCompatibleArray(AuthMachineScope)),
 };
 
 // Only clients talking to an old server use these parent checks. Servers never
 // expand stored grants, and an explicitly empty permissions array grants nothing.
-const legacyParents: Partial<Record<AuthEnvironmentScope, AuthEnvironmentScope>> = {
+const legacyParents: Partial<Record<AuthMachineScope, AuthMachineScope>> = {
   [AuthFilesystemReadScope]: AuthOrchestrationReadScope,
   [AuthDiagnosticsReadScope]: AuthOrchestrationReadScope,
   [AuthSettingsWriteScope]: AuthOrchestrationOperateScope,
   [AuthProvidersManageScope]: AuthOrchestrationOperateScope,
-  [AuthEnvironmentMaintainScope]: AuthOrchestrationOperateScope,
+  [AuthMachineMaintainScope]: AuthOrchestrationOperateScope,
   [AuthPreviewOperateScope]: AuthOrchestrationOperateScope,
   [AuthSourceControlWriteScope]: AuthOrchestrationOperateScope,
   [AuthFilesystemWriteScope]: AuthOrchestrationOperateScope,
@@ -110,7 +110,7 @@ const legacyParents: Partial<Record<AuthEnvironmentScope, AuthEnvironmentScope>>
 };
 
 /** Keep permission denials decodable by clients with the original scope enum. */
-export function authScopeRequiredResponse(requiredPermission: AuthEnvironmentScope) {
+export function authScopeRequiredResponse(requiredPermission: AuthMachineScope) {
   return {
     requiredScope: legacyParents[requiredPermission] ?? requiredPermission,
     requiredPermission,
@@ -119,14 +119,14 @@ export function authScopeRequiredResponse(requiredPermission: AuthEnvironmentSco
 
 export interface SessionGrantInput {
   readonly authenticated: boolean;
-  readonly scopes?: ReadonlyArray<AuthEnvironmentScope> | undefined;
-  readonly permissions?: ReadonlyArray<AuthEnvironmentScope> | undefined;
+  readonly scopes?: ReadonlyArray<AuthMachineScope> | undefined;
+  readonly permissions?: ReadonlyArray<AuthMachineScope> | undefined;
   readonly auth?: { readonly serverUpdateScope?: string | undefined } | undefined;
 }
 
 export function sessionGrantsScope(
   session: SessionGrantInput,
-  scope: AuthEnvironmentScope,
+  scope: AuthMachineScope,
 ): boolean {
   if (!session.authenticated) return false;
   if (session.permissions !== undefined) return session.permissions.includes(scope);
@@ -154,7 +154,7 @@ export const AuthStandardClientScopes = [
   AuthOrchestrationOperateScope,
   AuthSettingsWriteScope,
   AuthProvidersManageScope,
-  AuthEnvironmentMaintainScope,
+  AuthMachineMaintainScope,
   AuthPreviewOperateScope,
   AuthDiagnosticsReadScope,
   AuthTerminalReadScope,
@@ -171,8 +171,8 @@ export const AuthStandardClientScopes = [
 export const AuthTokenExchangeGrantType =
   "urn:ietf:params:oauth:grant-type:token-exchange" as const;
 export const AuthAccessTokenType = "urn:ietf:params:oauth:token-type:access_token" as const;
-export const AuthEnvironmentBootstrapTokenType =
-  "urn:t3:params:oauth:token-type:environment-bootstrap" as const;
+export const AuthMachineBootstrapTokenType =
+  "urn:t3:params:oauth:token-type:machine-bootstrap" as const;
 
 export const ServerAuthDescriptor = Schema.Struct({
   policy: ServerAuthPolicy,
@@ -180,7 +180,7 @@ export const ServerAuthDescriptor = Schema.Struct({
   sessionMethods: Schema.Array(ServerAuthSessionMethod),
   sessionCookieName: TrimmedNonEmptyString,
   /** Older servers omit this and authorize self-updates with orchestration:operate. */
-  serverUpdateScope: Schema.optionalKey(Schema.Literal(AuthEnvironmentMaintainScope)),
+  serverUpdateScope: Schema.optionalKey(Schema.Literal(AuthMachineMaintainScope)),
 });
 export type ServerAuthDescriptor = typeof ServerAuthDescriptor.Type;
 
@@ -222,7 +222,7 @@ export type AuthClientPresentationMetadata = typeof AuthClientPresentationMetada
 export const AuthTokenExchangeRequest = Schema.Struct({
   grant_type: Schema.Literal(AuthTokenExchangeGrantType),
   subject_token: TrimmedNonEmptyString,
-  subject_token_type: Schema.Literal(AuthEnvironmentBootstrapTokenType),
+  subject_token_type: Schema.Literal(AuthMachineBootstrapTokenType),
   requested_token_type: Schema.Literal(AuthAccessTokenType),
   scope: Schema.optionalKey(TrimmedNonEmptyString),
   client_label: Schema.optionalKey(TrimmedNonEmptyString),
@@ -329,11 +329,11 @@ export class AuthAccessStreamError extends Schema.TaggedError<AuthAccessStreamEr
   },
 ) {}
 
-export class EnvironmentAuthorizationError extends Schema.TaggedError<EnvironmentAuthorizationError>()(
-  "EnvironmentAuthorizationError",
+export class MachineAuthorizationError extends Schema.TaggedError<MachineAuthorizationError>()(
+  "MachineAuthorizationError",
   {
     message: Schema.String,
-    requiredScope: AuthEnvironmentScope,
+    requiredScope: AuthMachineScope,
     requiredPermission: Schema.optionalKey(Schema.String),
   },
 ) {}
@@ -384,7 +384,7 @@ export type AuthCreatePairingCredentialInput = typeof AuthCreatePairingCredentia
 export const AuthSessionState = Schema.Struct({
   authenticated: Schema.Boolean,
   auth: ServerAuthDescriptor,
-  scopes: Schema.optionalKey(AuthEnvironmentScopes),
+  scopes: Schema.optionalKey(AuthMachineScopes),
   permissions: authScopeResponseFields.permissions,
   sessionMethod: Schema.optionalKey(ServerAuthSessionMethod),
   expiresAt: Schema.optionalKey(Schema.DateTimeUtc),
@@ -403,7 +403,7 @@ export type AuthMcpClientAccess = typeof AuthMcpClientAccess.Type;
 export const AuthMcpProtectedResourceMetadata = Schema.Struct({
   resource: Schema.String,
   authorization_servers: Schema.Array(Schema.String),
-  scopes_supported: Schema.Array(AuthEnvironmentScope),
+  scopes_supported: Schema.Array(AuthMachineScope),
   bearer_methods_supported: Schema.Array(Schema.Literal("header")),
   resource_name: Schema.String,
 });
@@ -418,7 +418,7 @@ export const AuthMcpAuthorizationServerMetadata = Schema.Struct({
   grant_types_supported: Schema.Array(Schema.Literal("authorization_code")),
   code_challenge_methods_supported: Schema.Array(Schema.Literal("S256")),
   token_endpoint_auth_methods_supported: Schema.Array(Schema.Literal("none")),
-  scopes_supported: Schema.Array(AuthEnvironmentScope),
+  scopes_supported: Schema.Array(AuthMachineScope),
   authorization_response_iss_parameter_supported: Schema.Boolean,
 });
 export type AuthMcpAuthorizationServerMetadata = typeof AuthMcpAuthorizationServerMetadata.Type;
@@ -476,7 +476,7 @@ export const AuthMcpApprovalDetails = Schema.Struct({
   /** Self-declared by the client, so shown as such. */
   clientName: Schema.String,
   redirectHost: Schema.String,
-  environmentHost: Schema.String,
+  machineHost: Schema.String,
   csrfToken: Schema.optionalKey(Schema.String),
   /**
    * What that session may approve in one click: only access whose scopes it

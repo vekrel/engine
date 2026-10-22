@@ -14,9 +14,9 @@ describe("isTransportConnectionErrorMessage", () => {
 
   it("recognizes relay connection errors that carry the network hint", () => {
     for (const sentence of [
-      "Relay environment disconnected.",
-      "Relay environment stopped responding.",
-      "Relay environment could not establish a WebSocket connection.",
+      "Relay machine disconnected.",
+      "Relay machine stopped responding.",
+      "Relay machine could not establish a WebSocket connection.",
     ]) {
       expect(isTransportConnectionErrorMessage(`${sentence} ${NETWORK_BLOCKING_HINT}`)).toBe(true);
     }

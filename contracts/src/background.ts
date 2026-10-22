@@ -2,7 +2,7 @@ import * as Schema from "effect/Schema";
 
 import {
   AuthSessionId,
-  EnvironmentId,
+  MachineId,
   RpcClientId,
   ThreadId,
   TrimmedNonEmptyString,
@@ -65,7 +65,7 @@ export const ClientActivityClientId = TrimmedNonEmptyString.check(Schema.isMaxLe
 export type ClientActivityClientId = typeof ClientActivityClientId.Type;
 
 export const ClientActivityReportInput = Schema.Struct({
-  environmentId: Schema.optionalKey(EnvironmentId),
+  machineId: Schema.optionalKey(MachineId),
   clientId: ClientActivityClientId,
   clientKind: ClientKind,
   visible: Schema.Boolean,

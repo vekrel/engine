@@ -4,7 +4,7 @@ import {
   isSharedAddressSpaceHost,
   isTailnetHost,
 } from "@vekrel/shared/hostClassification";
-import type { DesktopSshEnvironmentTarget } from "@vekrel/contracts";
+import type { DesktopSshMachineTarget } from "@vekrel/contracts";
 import * as Option from "effect/Option";
 
 import {
@@ -47,7 +47,7 @@ export function entryWithRoutes(
 ): ConnectionCatalogEntry {
   const [first, ...rest] = routes;
   if (first === undefined) {
-    throw new Error("A saved environment needs at least one route.");
+    throw new Error("A saved machine needs at least one route.");
   }
   const { alternateRoutes: _previous, ...base } = entry;
   return {
@@ -186,7 +186,7 @@ export function connectionRouteAddress(route: ConnectionRoute): string | null {
   return routeHttpBaseUrl(route);
 }
 
-/** Learned routes alone must not make relay environments manually retryable. */
+/** Learned routes alone must not make relay machines manually retryable. */
 export const hasSavedBearerRoute = (entry: ConnectionCatalogEntry) =>
   connectionRoutes(entry).some((r) => !isLearned(r) && r.target._tag === "BearerConnectionTarget");
 
@@ -272,20 +272,20 @@ export function mergeLearnedRoutes(input: {
     }
     const httpBaseUrl = `${url.origin}/`;
     const connectionId = learnedConnectionId(
-      entry.target.environmentId,
+      entry.target.machineId,
       url.origin,
       sharedCredential,
     );
     next = insertRoute(next, {
       target: new BearerConnectionTarget({
-        environmentId: entry.target.environmentId,
+        machineId: entry.target.machineId,
         label: entry.target.label,
         connectionId,
       }),
       profile: Option.some(
         new BearerConnectionProfile({
           connectionId,
-          environmentId: entry.target.environmentId,
+          machineId: entry.target.machineId,
           label: entry.target.label,
           httpBaseUrl,
           wsBaseUrl: `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}/`,
@@ -365,7 +365,7 @@ function withNetwork(route: ConnectionRoute, tailscale: boolean): ConnectionRout
     profile: Option.some(
       new BearerConnectionProfile({
         connectionId: profile.connectionId,
-        environmentId: profile.environmentId,
+        machineId: profile.machineId,
         label: profile.label,
         httpBaseUrl: profile.httpBaseUrl,
         wsBaseUrl: profile.wsBaseUrl,
@@ -378,13 +378,13 @@ function withNetwork(route: ConnectionRoute, tailscale: boolean): ConnectionRout
 }
 
 function learnedConnectionId(
-  environmentId: string,
+  machineId: string,
   origin: string,
   sharedCredential: string | undefined,
 ): string {
   return sharedCredential === undefined
-    ? `learned:${environmentId}:${origin}`
-    : `learned:${environmentId}:${origin}@${sharedCredential}`;
+    ? `learned:${machineId}:${origin}`
+    : `learned:${machineId}:${origin}@${sharedCredential}`;
 }
 
 export function credentialConnectionId(connectionId: string): string {
@@ -426,6 +426,6 @@ export function removedWithRelay(entry: ConnectionCatalogEntry): boolean {
   return routesAfterRemoving(connectionRoutes(entry), RELAY_ROUTE_ID).length === 0;
 }
 
-export function sshTargetKey(target: DesktopSshEnvironmentTarget): string {
+export function sshTargetKey(target: DesktopSshMachineTarget): string {
   return JSON.stringify([target.alias, target.hostname, target.username, target.port]);
 }

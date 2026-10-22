@@ -1,18 +1,18 @@
 import {
-  RelayEnvironmentEndpointUnavailableError,
+  RelayMachineEndpointUnavailableError,
   type RelayProtectedError,
 } from "@vekrel/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 
 import { presentConnectionDiagnosis } from "./diagnosis.ts";
-import { mapManagedRelayError, mapRemoteEnvironmentError } from "./errors.ts";
+import { mapManagedRelayError, mapRemoteMachineError } from "./errors.ts";
 import {
   AVAILABLE_CONNECTION_STATE,
   type ConnectionAttemptError,
   type SupervisorConnectionState,
 } from "./model.ts";
 import { ManagedRelayRequestFailedError } from "../relay/managedRelay.ts";
-import { RemoteEnvironmentAuthFetchError } from "../rpc/http.ts";
+import { RemoteMachineAuthFetchError } from "../rpc/http.ts";
 
 const backoff = (lastFailure: ConnectionAttemptError): SupervisorConnectionState => ({
   ...AVAILABLE_CONNECTION_STATE,
@@ -27,7 +27,7 @@ const backoff = (lastFailure: ConnectionAttemptError): SupervisorConnectionState
 const fromRelay = (relayError: RelayProtectedError) =>
   mapManagedRelayError(
     new ManagedRelayRequestFailedError({
-      action: "connect relay environment",
+      action: "connect relay machine",
       cause: relayError,
       relayError,
     }),
@@ -35,8 +35,8 @@ const fromRelay = (relayError: RelayProtectedError) =>
 
 const unavailable = (endpointFailure: "tunnel_down" | "origin_unreachable") =>
   fromRelay(
-    new RelayEnvironmentEndpointUnavailableError({
-      code: "environment_endpoint_unavailable",
+    new RelayMachineEndpointUnavailableError({
+      code: "machine_endpoint_unavailable",
       reason: "endpoint_request_failed",
       endpointFailure,
       endpointStatus: endpointFailure === "tunnel_down" ? 530 : 502,
@@ -64,11 +64,11 @@ describe("presentConnectionDiagnosis", () => {
   });
 
   it("blames this device when it cannot reach a tunnel the relay already reached", () => {
-    const failure = mapRemoteEnvironmentError(
-      new RemoteEnvironmentAuthFetchError({ message: "Failed to fetch", cause: new TypeError() }),
+    const failure = mapRemoteMachineError(
+      new RemoteMachineAuthFetchError({ message: "Failed to fetch", cause: new TypeError() }),
       "relay",
     );
-    // A learned LAN route makes the environment's usual route direct; the failure still names the relay.
+    // A learned LAN route makes the machine's usual route direct; the failure still names the relay.
     const diagnosis = diagnose(backoff(failure), "direct");
     expect(diagnosis?.headline).toBe("This device can't reach Mac mini's tunnel");
     expect(diagnosis?.hops).toHaveLength(4);
@@ -78,7 +78,7 @@ describe("presentConnectionDiagnosis", () => {
   it("stops at T3 Connect when this device cannot reach the relay", () => {
     const failure = mapManagedRelayError(
       new ManagedRelayRequestFailedError({
-        action: "connect relay environment",
+        action: "connect relay machine",
         transportFailed: true,
         cause: new TypeError("Failed to fetch"),
       }),
@@ -95,7 +95,7 @@ describe("presentConnectionDiagnosis", () => {
   it("does not blame this device's network when T3 Connect answered with an error", () => {
     const failure = mapManagedRelayError(
       new ManagedRelayRequestFailedError({
-        action: "connect relay environment",
+        action: "connect relay machine",
         cause: new Error("Bad Gateway"),
         status: 502,
       }),
@@ -129,8 +129,8 @@ describe("presentConnectionDiagnosis", () => {
   });
 
   it("keeps the relay health status out of a failure that has its own cause", () => {
-    const failure = mapRemoteEnvironmentError(
-      new RemoteEnvironmentAuthFetchError({ message: "Failed to fetch", cause: new TypeError() }),
+    const failure = mapRemoteMachineError(
+      new RemoteMachineAuthFetchError({ message: "Failed to fetch", cause: new TypeError() }),
     );
     const diagnosis = presentConnectionDiagnosis({
       hostLabel: "Mac mini",

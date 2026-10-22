@@ -1,4 +1,4 @@
-import { DesktopSshEnvironmentTargetSchema, EnvironmentId } from "@vekrel/contracts";
+import { DesktopSshMachineTargetSchema, MachineId } from "@vekrel/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
@@ -12,7 +12,7 @@ import {
 
 const ConnectionProfileBase = {
   connectionId: Schema.String,
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   label: Schema.String,
 };
 
@@ -36,7 +36,7 @@ export class SshConnectionProfile extends Schema.TaggedClass<SshConnectionProfil
   "SshConnectionProfile",
   {
     ...ConnectionProfileBase,
-    target: DesktopSshEnvironmentTargetSchema,
+    target: DesktopSshMachineTargetSchema,
   },
 ) {}
 

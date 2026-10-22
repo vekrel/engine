@@ -19,7 +19,7 @@ export type DesktopAppActivationRequest = typeof DesktopAppActivationRequest.Typ
 export const DesktopAppActivationErrorCode = Schema.Literals([
   "invalid-request",
   "renderer-unavailable",
-  "environment-unavailable",
+  "machine-unavailable",
   "platform-mismatch",
   "project-create-failed",
   "thread-open-failed",

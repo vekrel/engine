@@ -3,7 +3,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { MspError } from "@muse-code/sdk";
 import {
   MUSE_DEFAULT_MODEL,
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   ProjectId,
@@ -373,7 +373,7 @@ describe("MuseAdapterV2", () => {
   it.effect("connects the thread's MCP credential on native start and resume", () =>
     Effect.gen(function* () {
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
-        environmentId: EnvironmentId.make("test-environment"),
+        machineId: MachineId.make("test-environment"),
         threadId: THREAD_ID,
         providerSessionId: "test-session",
         providerInstanceId: INSTANCE_ID,
@@ -429,7 +429,7 @@ describe("MuseAdapterV2", () => {
   it.effect("rejects a host without session MCP support before opening a native session", () =>
     Effect.gen(function* () {
       yield* (yield* McpProviderSessions.McpProviderSessions).set({
-        environmentId: EnvironmentId.make("test-environment"),
+        machineId: MachineId.make("test-environment"),
         threadId: THREAD_ID,
         providerSessionId: "test-session",
         providerInstanceId: INSTANCE_ID,

@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProjectId,
   ThreadId,
   type OrchestrationSearchThreadsResult,
@@ -14,8 +14,8 @@ import {
   threadSearchMatchKey,
 } from "./threadSearch.ts";
 
-const envA = EnvironmentId.make("env-a");
-const envB = EnvironmentId.make("env-b");
+const envA = MachineId.make("env-a");
+const envB = MachineId.make("env-b");
 
 it("creates keys without array methods unavailable in Hermes", () => {
   const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, "toSorted");
@@ -32,11 +32,11 @@ it("creates keys without array methods unavailable in Hermes", () => {
 
 it("encodes scoped thread keys without delimiter collisions", () => {
   const first = threadSearchMatchKey({
-    environmentId: EnvironmentId.make("env\u0000thread"),
+    machineId: MachineId.make("env\u0000thread"),
     threadId: ThreadId.make("id"),
   });
   const second = threadSearchMatchKey({
-    environmentId: EnvironmentId.make("env"),
+    machineId: MachineId.make("env"),
     threadId: ThreadId.make("thread\u0000id"),
   });
 
@@ -66,7 +66,7 @@ it("ignores invalid search keys", () => {
   }
 });
 
-it("merges successful environments and silently ignores failures", () => {
+it("merges successful machines and silently ignores failures", () => {
   const result: OrchestrationSearchThreadsResult = {
     matches: [
       {
@@ -79,8 +79,8 @@ it("merges successful environments and silently ignores failures", () => {
     ],
   };
   const searchAtom = createThreadSearchResultsAtomFamily<Error>({
-    getSearchAtom: (environmentId) =>
-      environmentId === envA
+    getSearchAtom: (machineId) =>
+      machineId === envA
         ? Atom.make(AsyncResult.success(result))
         : Atom.make(
             AsyncResult.failure<OrchestrationSearchThreadsResult, Error>(
@@ -93,7 +93,7 @@ it("merges successful environments and silently ignores failures", () => {
 
   const state = registry.get(searchAtom(makeThreadSearchKey([envB, envA], "needle")));
   expect(state).toEqual({
-    matches: [{ ...result.matches[0], environmentId: envA }],
+    matches: [{ ...result.matches[0], machineId: envA }],
     isLoading: false,
   });
   expect(threadSearchMatchKey(state.matches[0]!)).toBe('["env-a","thread-a"]');

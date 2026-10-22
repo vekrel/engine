@@ -5,10 +5,10 @@ import {
   type SessionGrantInput,
 } from "@vekrel/contracts";
 
-import type { EnvironmentConnectionPhase } from "../connection/presentation.ts";
+import type { MachineConnectionPhase } from "../connection/presentation.ts";
 
 export function resolveUsageAccess(input: {
-  readonly connectionPhase: EnvironmentConnectionPhase;
+  readonly connectionPhase: MachineConnectionPhase;
   readonly session: SessionGrantInput | null;
   readonly hasSessionError: boolean;
 }) {
@@ -29,7 +29,7 @@ export function resolveUsageAccess(input: {
     return {
       canReadDiagnostics: false,
       isPending,
-      error: isPending ? null : "This environment is not connected.",
+      error: isPending ? null : "This machine is not connected.",
     };
   }
   const canReadDiagnostics = sessionGrantsScope(input.session, AuthDiagnosticsReadScope);

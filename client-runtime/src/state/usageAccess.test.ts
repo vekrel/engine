@@ -12,7 +12,7 @@ describe("resolveUsageAccess", () => {
       ).toEqual({
         canReadDiagnostics: false,
         isPending: false,
-        error: "This environment is not connected.",
+        error: "This machine is not connected.",
       });
     },
   );
@@ -42,7 +42,7 @@ describe("resolveUsageAccess", () => {
       session: {
         authenticated: true,
         scopes: [AuthOrchestrationReadScope],
-        auth: { serverUpdateScope: "environment:maintain" },
+        auth: { serverUpdateScope: "machine:maintain" },
       },
       hasSessionError: false,
     });

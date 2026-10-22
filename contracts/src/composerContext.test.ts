@@ -108,7 +108,7 @@ const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<strin
     ...base,
     kind: "thread",
     label: "Fix login flow",
-    environmentId: "environment-1",
+    machineId: "machine-1",
     threadId: "thread-1",
     title: "Fix login flow",
   },

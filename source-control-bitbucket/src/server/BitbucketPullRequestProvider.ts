@@ -35,7 +35,7 @@ const CAPABILITIES: PullRequestCapabilities = {
   // viewed file, and the per-pull-request properties it does offer are one value shared by
   // everyone rather than one per reader. So the marks are kept here, and the client says whose
   // they are rather than implying bitbucket.org will show them.
-  viewedFiles: "environment",
+  viewedFiles: "machine",
 };
 
 /**

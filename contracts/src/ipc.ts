@@ -2,7 +2,7 @@ import * as Schema from "effect/Schema";
 import type { PreviewCaptureFailureEncoded } from "./previewCapture.ts";
 
 import { SnapShotSource } from "./chatAttachment.ts";
-import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { MachineId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { BrowserProfileId } from "./browserProfile.ts";
 import type {
   BrowserImportResult,
@@ -11,7 +11,7 @@ import type {
 } from "./browserImport.ts";
 import { AuthAccessTokenResult, AuthSessionState, AuthWebSocketTicketResult } from "./auth.ts";
 import { AdvertisedEndpoint } from "./remoteAccess.ts";
-import { ExecutionEnvironmentDescriptor } from "./environment.ts";
+import { ExecutionMachineDescriptor } from "./machine.ts";
 import { type ClientSettings, type QuitConfirmationMode, SnapShotShortcut } from "./settings.ts";
 import type { EditorId } from "./editor.ts";
 import type { PreviewForwardedShortcut } from "./keybindings.ts";
@@ -346,10 +346,10 @@ export const DesktopUpdateCheckResultSchema = Schema.Struct({
   state: DesktopUpdateStateSchema,
 });
 
-export const PRIMARY_LOCAL_ENVIRONMENT_ID = "primary";
+export const PRIMARY_LOCAL_MACHINE_ID = "primary";
 
-export interface DesktopEnvironmentBootstrap {
-  // The web env runtime keys local environments off this so projects routed to
+export interface DesktopMachineBootstrap {
+  // The web env runtime keys local machines off this so projects routed to
   // a specific backend reopen against the same one.
   id: string;
   label: string;
@@ -362,7 +362,7 @@ export interface DesktopEnvironmentBootstrap {
   bootstrapToken?: string;
 }
 
-export const DesktopEnvironmentBootstrapSchema = Schema.Struct({
+export const DesktopMachineBootstrapSchema = Schema.Struct({
   id: Schema.String,
   label: Schema.String,
   runningDistro: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -371,18 +371,18 @@ export const DesktopEnvironmentBootstrapSchema = Schema.Struct({
   bootstrapToken: Schema.optionalKey(Schema.String),
 });
 
-export const DesktopSshEnvironmentTargetSchema = Schema.Struct({
+export const DesktopSshMachineTargetSchema = Schema.Struct({
   alias: Schema.String,
   hostname: Schema.String,
   username: Schema.NullOr(Schema.String),
   port: Schema.NullOr(Schema.Number),
 });
-export type DesktopSshEnvironmentTarget = typeof DesktopSshEnvironmentTargetSchema.Type;
+export type DesktopSshMachineTarget = typeof DesktopSshMachineTargetSchema.Type;
 
 export type DesktopSshHostSource = "ssh-config" | "known-hosts";
 export const DesktopSshHostSourceSchema = Schema.Literals(["ssh-config", "known-hosts"]);
 
-export interface DesktopDiscoveredSshHost extends DesktopSshEnvironmentTarget {
+export interface DesktopDiscoveredSshHost extends DesktopSshMachineTarget {
   source: DesktopSshHostSource;
 }
 
@@ -394,8 +394,8 @@ export const DesktopDiscoveredSshHostSchema = Schema.Struct({
   source: DesktopSshHostSourceSchema,
 });
 
-export interface DesktopSshEnvironmentBootstrap {
-  target: DesktopSshEnvironmentTarget;
+export interface DesktopSshMachineBootstrap {
+  target: DesktopSshMachineTarget;
   httpBaseUrl: string;
   wsBaseUrl: string;
   pairingToken: string | null;
@@ -403,8 +403,8 @@ export interface DesktopSshEnvironmentBootstrap {
   remoteServerKind?: "external" | "managed";
 }
 
-export const DesktopSshEnvironmentBootstrapSchema = Schema.Struct({
-  target: DesktopSshEnvironmentTargetSchema,
+export const DesktopSshMachineBootstrapSchema = Schema.Struct({
+  target: DesktopSshMachineTargetSchema,
   httpBaseUrl: Schema.String,
   wsBaseUrl: Schema.String,
   pairingToken: Schema.NullOr(Schema.String),
@@ -427,17 +427,17 @@ export const DesktopSshPasswordPromptCancelledResultSchema = Schema.Struct({
   message: Schema.String,
 });
 
-export const DesktopSshEnvironmentEnsureOptionsSchema = Schema.Struct({
+export const DesktopSshMachineEnsureOptionsSchema = Schema.Struct({
   issuePairingToken: Schema.optionalKey(Schema.Boolean),
 });
 
-export const DesktopSshEnvironmentEnsureInputSchema = Schema.Struct({
-  target: DesktopSshEnvironmentTargetSchema,
-  options: Schema.optionalKey(DesktopSshEnvironmentEnsureOptionsSchema),
+export const DesktopSshMachineEnsureInputSchema = Schema.Struct({
+  target: DesktopSshMachineTargetSchema,
+  options: Schema.optionalKey(DesktopSshMachineEnsureOptionsSchema),
 });
 
-export const DesktopSshEnvironmentEnsureResultSchema = Schema.Union([
-  DesktopSshEnvironmentBootstrapSchema,
+export const DesktopSshMachineEnsureResultSchema = Schema.Union([
+  DesktopSshMachineBootstrapSchema,
   DesktopSshPasswordPromptCancelledResultSchema,
 ]);
 
@@ -460,21 +460,21 @@ export const DesktopSshPasswordPromptResolutionInputSchema = Schema.Struct({
   password: Schema.NullOr(Schema.String),
 });
 
-export const PersistedSavedEnvironmentRecordSchema = Schema.Struct({
-  environmentId: EnvironmentId,
+export const PersistedSavedMachineRecordSchema = Schema.Struct({
+  machineId: MachineId,
   label: Schema.String,
   wsBaseUrl: Schema.String,
   httpBaseUrl: Schema.String,
   createdAt: Schema.String,
   lastConnectedAt: Schema.NullOr(Schema.String),
-  desktopSsh: Schema.optionalKey(DesktopSshEnvironmentTargetSchema),
+  desktopSsh: Schema.optionalKey(DesktopSshMachineTargetSchema),
   relayManaged: Schema.optionalKey(
     Schema.Struct({
       relayUrl: Schema.String,
     }),
   ),
 });
-export type PersistedSavedEnvironmentRecord = typeof PersistedSavedEnvironmentRecordSchema.Type;
+export type PersistedSavedMachineRecord = typeof PersistedSavedMachineRecordSchema.Type;
 
 export type DesktopServerExposureMode = "local-only" | "network-accessible";
 
@@ -501,12 +501,12 @@ export const DesktopServerExposureStateSchema = Schema.Struct({
 
 export interface PickFolderOptions {
   initialPath?: string | null;
-  targetEnvironmentId?: string;
+  targetMachineId?: string;
 }
 
 export const PickFolderOptionsSchema = Schema.Struct({
   initialPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  targetEnvironmentId: Schema.optionalKey(Schema.String),
+  targetMachineId: Schema.optionalKey(Schema.String),
 });
 
 /**
@@ -974,7 +974,7 @@ export const DesktopPreviewNavigateInputSchema = Schema.Struct({
 });
 
 export const DesktopPreviewConfigInputSchema = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   /**
    * Derivation stays in main: `will-attach-webview` only prefix-checks the
    * partition string, so a renderer-supplied partition could attach to a
@@ -984,7 +984,7 @@ export const DesktopPreviewConfigInputSchema = Schema.Struct({
 });
 
 export const DesktopPreviewClearDataInputSchema = Schema.Struct({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   /** Omit to clear every profile; otherwise only this profile's partition. */
   profileId: Schema.optional(BrowserProfileId),
 });
@@ -1046,17 +1046,17 @@ export interface DesktopBridge {
    * regardless of OS settings.
    */
   getSystemLocale?: () => string | null;
-  getLocalEnvironmentBootstraps: () => readonly DesktopEnvironmentBootstrap[];
-  getLocalEnvironmentEnabled?: () => boolean;
-  setLocalEnvironmentEnabled?: (enabled: boolean) => Promise<void>;
-  getLocalEnvironmentBearerToken: () => Promise<string>;
+  getLocalMachineBootstraps: () => readonly DesktopMachineBootstrap[];
+  getLocalMachineEnabled?: () => boolean;
+  setLocalMachineEnabled?: (enabled: boolean) => Promise<void>;
+  getLocalMachineBearerToken: () => Promise<string>;
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
   getConnectionCatalog?: () => Promise<string | null>;
   setConnectionCatalog?: (catalog: string) => Promise<boolean>;
   clearConnectionCatalog?: () => Promise<void>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;
-  resolveSshHost: (alias: string) => Promise<DesktopSshEnvironmentTarget>;
+  resolveSshHost: (alias: string) => Promise<DesktopSshMachineTarget>;
   requestSnapShotPermissions?: (includeAccessibility: boolean) => Promise<void>;
   getSnapShotState?: () => Promise<DesktopSnapShotState>;
   setupSnapShot?: (action: DesktopSnapShotSetupAction) => Promise<void>;
@@ -1075,12 +1075,12 @@ export interface DesktopBridge {
   ) => Promise<void>;
   dismissSnapShotAnimation?: (id: DesktopSnapShotId) => Promise<void>;
   acknowledgeSnapShot?: (id: string) => Promise<void>;
-  ensureSshEnvironment: (
-    target: DesktopSshEnvironmentTarget,
+  ensureSshMachine: (
+    target: DesktopSshMachineTarget,
     options?: { issuePairingToken?: boolean },
-  ) => Promise<DesktopSshEnvironmentBootstrap>;
-  disconnectSshEnvironment: (target: DesktopSshEnvironmentTarget) => Promise<void>;
-  fetchSshEnvironmentDescriptor: (httpBaseUrl: string) => Promise<ExecutionEnvironmentDescriptor>;
+  ) => Promise<DesktopSshMachineBootstrap>;
+  disconnectSshMachine: (target: DesktopSshMachineTarget) => Promise<void>;
+  fetchSshMachineDescriptor: (httpBaseUrl: string) => Promise<ExecutionMachineDescriptor>;
   bootstrapSshBearerSession: (
     httpBaseUrl: string,
     credential: string,
@@ -1172,15 +1172,15 @@ export interface DesktopPreviewBridge {
   setColorScheme: (tabId: string, colorScheme: DesktopPreviewColorScheme) => Promise<void>;
   setAudioMuted: (tabId: string, audioMuted: boolean) => Promise<void>;
   openDevTools: (tabId: string) => Promise<void>;
-  clearCookies: (environmentId: EnvironmentId, profileId?: string) => Promise<void>;
-  clearCache: (environmentId: EnvironmentId, profileId?: string) => Promise<void>;
+  clearCookies: (machineId: MachineId, profileId?: string) => Promise<void>;
+  clearCache: (machineId: MachineId, profileId?: string) => Promise<void>;
   getPreviewConfig: (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     profileId?: string,
   ) => Promise<DesktopPreviewWebviewConfig>;
   listBrowserImportSources: () => Promise<ReadonlyArray<BrowserImportSource>>;
   importBrowserCookies: (input: {
-    readonly environmentId: EnvironmentId;
+    readonly machineId: MachineId;
     readonly sourceId: BrowserImportSourceId;
     readonly sourceProfileDirectory: string;
     readonly targetProfileId: string;

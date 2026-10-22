@@ -82,7 +82,7 @@ export function resolveLinkPullRequestInput(input: {
   const url = parseChangeRequestUrl(parsed);
   if (url !== null) {
     if (!input.hasProject({ ...url, url: parsed })) {
-      return { error: `No project in this environment can read ${url.host}/${url.repository}.` };
+      return { error: `No project in this machine can read ${url.host}/${url.repository}.` };
     }
     return {
       link: { host: url.host, repository: url.repository, number: url.number, url: parsed },

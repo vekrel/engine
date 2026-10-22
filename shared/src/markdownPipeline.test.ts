@@ -12,7 +12,7 @@ it("preserves in-app thread links through the shared Markdown sanitizer", () => 
     .use(CHAT_MARKDOWN_REHYPE_PLUGINS);
   const tree = processor.runSync(
     processor.parse(
-      '[Open thread](t3-thread://v1/environment/thread)\n\n<a href="javascript:alert(1)">Unsafe</a>',
+      '[Open thread](t3-thread://v1/machine/thread)\n\n<a href="javascript:alert(1)">Unsafe</a>',
     ),
   );
   expect(tree.children[0]).toMatchObject({
@@ -20,7 +20,7 @@ it("preserves in-app thread links through the shared Markdown sanitizer", () => 
     children: [
       {
         tagName: "a",
-        properties: { href: "t3-thread://v1/environment/thread" },
+        properties: { href: "t3-thread://v1/machine/thread" },
         children: [{ type: "text", value: "Open thread" }],
       },
     ],

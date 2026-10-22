@@ -67,9 +67,9 @@
       "types": "./src/authorization/index.ts",
       "default": "./src/authorization/index.ts"
     },
-    "./environment": {
-      "types": "./src/environment/index.ts",
-      "default": "./src/environment/index.ts"
+    "./machine": {
+      "types": "./src/machine/index.ts",
+      "default": "./src/machine/index.ts"
     },
     "./markdown-images": {
       "types": "./src/markdownImages.ts",

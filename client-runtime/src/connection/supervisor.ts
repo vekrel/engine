@@ -98,7 +98,7 @@ type EstablishmentEvent =
       readonly exit: Exit.Exit<
         {
           readonly attemptSpan: Option.Option<Tracer.Span>;
-          readonly lease: ConnectionDriver.EnvironmentConnectionLease;
+          readonly lease: ConnectionDriver.MachineConnectionLease;
         },
         TracedAttemptFailure
       >;
@@ -116,7 +116,7 @@ function exitUnlessInterrupted<A, E, R>(
   });
 }
 
-export interface EnvironmentSupervisorOptions {
+export interface MachineSupervisorOptions {
   readonly initiallyDesired?: boolean;
   readonly learnRoutes?: (input: {
     readonly activeRoute: ConnectionRoute;
@@ -131,9 +131,9 @@ function retryDelayMs(failureCount: number, random: number): number {
 
 function annotateTarget(target: ConnectionTarget) {
   return Effect.annotateCurrentSpan({
-    "environment.id": target.environmentId,
-    "environment.label": target.label,
-    "environment.target.kind": target._tag,
+    "machine.id": target.machineId,
+    "machine.label": target.label,
+    "machine.target.kind": target._tag,
   });
 }
 
@@ -219,8 +219,8 @@ function failureFromExit<A>(
   };
 }
 
-export class EnvironmentSupervisor extends Context.Service<
-  EnvironmentSupervisor,
+export class MachineSupervisor extends Context.Service<
+  MachineSupervisor,
   {
     readonly target: ConnectionTarget;
     readonly state: SubscriptionRef.SubscriptionRef<SupervisorConnectionState>;
@@ -230,13 +230,13 @@ export class EnvironmentSupervisor extends Context.Service<
     readonly disconnect: Effect.Effect<void>;
     readonly retryNow: Effect.Effect<void>;
   }
->()("@vekrel/client-runtime/connection/supervisor/EnvironmentSupervisor") {}
+>()("@vekrel/client-runtime/connection/supervisor/MachineSupervisor") {}
 
-export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
+export const make = Effect.fn("MachineSupervisor.make")(function* (
   entry: ConnectionCatalogEntry,
-  options?: EnvironmentSupervisorOptions,
+  options?: MachineSupervisorOptions,
 ): Effect.fn.Return<
-  EnvironmentSupervisor["Service"],
+  MachineSupervisor["Service"],
   never,
   | Connectivity.Connectivity
   | ConnectionDriver.ConnectionDriver
@@ -293,8 +293,8 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
   });
 
   const learnRoutesFrom = Effect.fnUntraced(function* (
-    learn: NonNullable<EnvironmentSupervisorOptions["learnRoutes"]>,
-    lease: ConnectionDriver.EnvironmentConnectionLease,
+    learn: NonNullable<MachineSupervisorOptions["learnRoutes"]>,
+    lease: ConnectionDriver.MachineConnectionLease,
   ) {
     const config = yield* lease.session.initialConfig.pipe(Effect.option);
     const reported = Option.getOrUndefined(config)?.directEndpoints;
@@ -311,7 +311,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     }
   });
 
-  const routeIndex = (lease: ConnectionDriver.EnvironmentConnectionLease) =>
+  const routeIndex = (lease: ConnectionDriver.MachineConnectionLease) =>
     currentRoutes.pipe(
       Effect.map((routes) =>
         routes.findIndex(
@@ -321,7 +321,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     );
 
   const checkBetterRoutes = Effect.fnUntraced(function* (
-    lease: ConnectionDriver.EnvironmentConnectionLease,
+    lease: ConnectionDriver.MachineConnectionLease,
   ) {
     const latest = yield* Ref.get(currentEntry);
     const current = yield* routeIndex(lease);
@@ -346,8 +346,8 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     });
   });
 
-  const betterRouteChecks = yield* Queue.dropping<ConnectionDriver.EnvironmentConnectionLease>(1);
-  const requestBetterRouteCheck = (lease: ConnectionDriver.EnvironmentConnectionLease) =>
+  const betterRouteChecks = yield* Queue.dropping<ConnectionDriver.MachineConnectionLease>(1);
+  const requestBetterRouteCheck = (lease: ConnectionDriver.MachineConnectionLease) =>
     routeIndex(lease).pipe(
       Effect.flatMap((index) =>
         index > 0 ? Queue.offer(betterRouteChecks, lease).pipe(Effect.asVoid) : Effect.void,
@@ -359,26 +359,26 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     { discard: true },
   );
 
-  const setState = Effect.fn("EnvironmentSupervisor.setState")(function* (
+  const setState = Effect.fn("MachineSupervisor.setState")(function* (
     next: SupervisorConnectionState,
   ) {
     yield* SubscriptionRef.set(state, next);
   });
 
-  const signal = Effect.fn("EnvironmentSupervisor.signal")(function* (next: SupervisorSignal) {
+  const signal = Effect.fn("MachineSupervisor.signal")(function* (next: SupervisorSignal) {
     yield* Queue.offer(signals, next);
   });
 
   const logManagedRelayAccountChange = Effect.logInfo(
-    "Managed relay account changed; restarting the environment connection.",
+    "Managed relay account changed; restarting the machine connection.",
   ).pipe(
     Effect.annotateLogs({
-      "environment.id": target.environmentId,
-      "environment.label": target.label,
+      "machine.id": target.machineId,
+      "machine.label": target.label,
     }),
   );
 
-  const reportProgress = Effect.fn("EnvironmentSupervisor.reportProgress")(function* (
+  const reportProgress = Effect.fn("MachineSupervisor.reportProgress")(function* (
     attempt: number,
     generation: number,
     lastFailure: ConnectionAttemptError | null,
@@ -409,7 +409,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
   // Low-cardinality dimensions for time-to-connected dashboards; the error
   // detail stays in the span status, never in an attribute.
   const annotateAttemptOutcome = Effect.fnUntraced(function* (
-    exit: Exit.Exit<ConnectionDriver.EnvironmentConnectionLease, ConnectionAttemptError>,
+    exit: Exit.Exit<ConnectionDriver.MachineConnectionLease, ConnectionAttemptError>,
   ) {
     if (Exit.isSuccess(exit)) {
       const leaseTarget = exit.value.prepared.target;
@@ -436,7 +436,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
 
   const traceRelayEstablishment = (
     effect: Effect.Effect<
-      ConnectionDriver.EnvironmentConnectionLease,
+      ConnectionDriver.MachineConnectionLease,
       ConnectionAttemptError,
       Scope.Scope
     >,
@@ -533,12 +533,12 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     }
   });
 
-  const isRelayLease = (lease: ConnectionDriver.EnvironmentConnectionLease) =>
+  const isRelayLease = (lease: ConnectionDriver.MachineConnectionLease) =>
     lease.prepared.target._tag === "RelayConnectionTarget";
 
   const connectedLeaseEnd = Effect.fnUntraced(function* (
     next: SupervisorSignal,
-    lease: ConnectionDriver.EnvironmentConnectionLease,
+    lease: ConnectionDriver.MachineConnectionLease,
   ) {
     if (next._tag === "DisconnectRequested") {
       return "end" as const;
@@ -589,7 +589,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
   // not torn down (the offline report is often wrong, for example for a
   // loopback server).
   const monitorConnectedLease = Effect.fnUntraced(function* (
-    lease: ConnectionDriver.EnvironmentConnectionLease,
+    lease: ConnectionDriver.MachineConnectionLease,
   ) {
     // A probe answers an explicit retry here, so the retry must not also reset
     // the backoff of a later, unrelated failure.
@@ -746,8 +746,8 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
         const defect = establishment.exit.cause.reasons.find(Cause.isDieReason)?.defect;
         yield* Effect.logError("Connection attempt failed with an unexpected defect.").pipe(
           Effect.annotateLogs({
-            "environment.id": target.environmentId,
-            "environment.label": target.label,
+            "machine.id": target.machineId,
+            "machine.label": target.label,
             "cause.reason_count": establishment.exit.cause.reasons.length,
             ...safeErrorLogAttributes(defect),
           }),
@@ -825,12 +825,12 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     );
     if (outcome._tag === "Failure") {
       yield* Effect.void.pipe(
-        Effect.withSpan("EnvironmentSupervisor.connectionLost", {
+        Effect.withSpan("MachineSupervisor.connectionLost", {
           root: true,
           attributes: {
-            "environment.id": target.environmentId,
-            "environment.label": target.label,
-            "environment.target.kind": target._tag,
+            "machine.id": target.machineId,
+            "machine.label": target.label,
+            "machine.target.kind": target._tag,
             "connection.connected_ms": connectedForMs,
             "connection.failure.reason": outcome.failure.error.reason,
             "connection.failure.detail": outcome.failure.error.detail,
@@ -1017,7 +1017,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     desired: true,
   })).pipe(
     Effect.andThen(signal({ _tag: "ConnectRequested" })),
-    Effect.withSpan("EnvironmentSupervisor.connect"),
+    Effect.withSpan("MachineSupervisor.connect"),
   );
 
   const disconnect = Ref.update(intent, (current) => ({
@@ -1025,17 +1025,17 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     desired: false,
   })).pipe(
     Effect.andThen(signal({ _tag: "DisconnectRequested" })),
-    Effect.withSpan("EnvironmentSupervisor.disconnect"),
+    Effect.withSpan("MachineSupervisor.disconnect"),
   );
 
   const retryNow = Ref.set(resetRetryState, true).pipe(
     Effect.andThen(signal({ _tag: "RetryRequested" })),
-    Effect.withSpan("EnvironmentSupervisor.retryNow"),
+    Effect.withSpan("MachineSupervisor.retryNow"),
   );
 
   yield* Effect.addFinalizer(() => Queue.shutdown(signals).pipe(Effect.andThen(clearLease)));
 
-  return EnvironmentSupervisor.of({
+  return MachineSupervisor.of({
     target,
     state,
     session,

@@ -2,10 +2,10 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { AcpRegistryUrlAuthAction } from "./acpRegistry.ts";
 import {
-  type EnvironmentMachineKind,
-  ExecutionEnvironmentDescriptor,
+  type MachineKind,
+  ExecutionMachineDescriptor,
   ServerSelfUpdateMethod,
-} from "./environment.ts";
+} from "./machine.ts";
 import { ServerAuthDescriptor } from "./auth.ts";
 import {
   ForwardCompatibleArray,
@@ -517,27 +517,27 @@ export const ServerSignalProcessResult = Schema.Struct({
 });
 export type ServerSignalProcessResult = typeof ServerSignalProcessResult.Type;
 
-export const EnvironmentThemeColor = Schema.String.check(
+export const MachineThemeColor = Schema.String.check(
   Schema.isPattern(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
 );
-export type EnvironmentThemeColor = typeof EnvironmentThemeColor.Type;
+export type MachineThemeColor = typeof MachineThemeColor.Type;
 
 /**
  * The appearance keywords are excluded outright: a published `dark.json`
  * would otherwise capture every client whose stored preference is the stock
  * `"dark"`, retinting people who never chose it.
  */
-export const EnvironmentThemeId = Schema.String.check(
+export const MachineThemeId = Schema.String.check(
   Schema.isPattern(/^(?!(?:system|light|dark)$)[a-z0-9](?:[a-z0-9-]{0,47})$/),
 );
-export type EnvironmentThemeId = typeof EnvironmentThemeId.Type;
+export type MachineThemeId = typeof MachineThemeId.Type;
 
-const EnvironmentThemeColors = Schema.Record(
+const MachineThemeColors = Schema.Record(
   Schema.String.check(Schema.isPattern(/^[a-zA-Z][a-zA-Z0-9]{0,63}$/)),
   TrimmedNonEmptyString.check(Schema.isMaxLength(64)),
 );
 
-const environmentThemeFields = {
+const machineThemeFields = {
   version: Schema.optional(Schema.Literal(1)),
   name: TrimmedNonEmptyString.check(Schema.isMaxLength(48)),
   appearance: Schema.Literals(["light", "dark"]),
@@ -546,27 +546,27 @@ const environmentThemeFields = {
    * theme editor's generator and layer `colors` on top; when absent, `colors`
    * is the palette, as in an exported theme file.
    */
-  canvas: Schema.optional(EnvironmentThemeColor),
-  accent: Schema.optional(EnvironmentThemeColor),
-  colors: Schema.optional(EnvironmentThemeColors),
+  canvas: Schema.optional(MachineThemeColor),
+  accent: Schema.optional(MachineThemeColor),
+  colors: Schema.optional(MachineThemeColors),
   variants: Schema.optional(
     Schema.Struct({
-      light: Schema.optional(EnvironmentThemeColors),
-      dark: Schema.optional(EnvironmentThemeColors),
+      light: Schema.optional(MachineThemeColors),
+      dark: Schema.optional(MachineThemeColors),
     }),
   ),
 };
 
-export const EnvironmentThemeFile = Schema.Struct(environmentThemeFields);
-export type EnvironmentThemeFile = typeof EnvironmentThemeFile.Type;
+export const MachineThemeFile = Schema.Struct(machineThemeFields);
+export type MachineThemeFile = typeof MachineThemeFile.Type;
 
-export const EnvironmentTheme = Schema.Struct({
-  id: EnvironmentThemeId,
-  ...environmentThemeFields,
+export const MachineTheme = Schema.Struct({
+  id: MachineThemeId,
+  ...machineThemeFields,
 });
-export type EnvironmentTheme = typeof EnvironmentTheme.Type;
+export type MachineTheme = typeof MachineTheme.Type;
 
-export function environmentThemeFileHasColors(file: EnvironmentThemeFile): boolean {
+export function machineThemeFileHasColors(file: MachineThemeFile): boolean {
   return (
     (file.canvas !== undefined && file.accent !== undefined) ||
     (file.colors !== undefined && Object.keys(file.colors).length > 0)
@@ -600,7 +600,7 @@ export const ServerEventLoopStall = Schema.Struct({
 export type ServerEventLoopStall = typeof ServerEventLoopStall.Type;
 
 export const ServerConfig = Schema.Struct({
-  environment: ExecutionEnvironmentDescriptor,
+  machine: ExecutionMachineDescriptor,
   auth: ServerAuthDescriptor,
   cwd: TrimmedNonEmptyString,
   keybindingsConfigPath: TrimmedNonEmptyString,
@@ -610,7 +610,7 @@ export const ServerConfig = Schema.Struct({
   availableEditors: ForwardCompatibleArray(EditorId),
   remoteOpenTargets: Schema.optionalKey(ForwardCompatibleArray(RemoteOpenTarget)),
   /**
-   * Hints only: the client checks each address answers as this environment
+   * Hints only: the client checks each address answers as this machine
    * before using it.
    */
   directEndpoints: Schema.optionalKey(ForwardCompatibleArray(ServerDirectEndpoint)),
@@ -640,7 +640,7 @@ export const ServerConfig = Schema.Struct({
    * before any change, so a snapshot carrying it too would hand every
    * subscriber the same array twice per connect.
    */
-  environmentThemes: Schema.optional(Schema.Array(EnvironmentTheme)),
+  machineThemes: Schema.optional(Schema.Array(MachineTheme)),
   /**
    * Like themes, never in a snapshot: the source stream emits the current set
    * on subscribe, and it stays absent for subscribers that did not opt in.
@@ -649,13 +649,13 @@ export const ServerConfig = Schema.Struct({
 });
 export type ServerConfig = typeof ServerConfig.Type;
 
-export function resolveEnvironmentMachineKind(
+export function resolveMachineKind(
   config: {
-    readonly environment: Pick<ExecutionEnvironmentDescriptor, "platform">;
-    readonly settings?: Pick<ServerSettings, "environmentIcon">;
+    readonly machine: Pick<ExecutionMachineDescriptor, "platform">;
+    readonly settings?: Pick<ServerSettings, "machineIcon">;
   } | null,
-): EnvironmentMachineKind {
-  return config?.settings?.environmentIcon ?? config?.environment.platform.machine ?? "server";
+): MachineKind {
+  return config?.settings?.machineIcon ?? config?.machine.platform.machine ?? "server";
 }
 
 const ServerUpsertKeybindingReplaceTarget = Schema.Struct({
@@ -739,19 +739,19 @@ export const ServerConfigStreamSettingsUpdatedEvent = Schema.Struct({
 export type ServerConfigStreamSettingsUpdatedEvent =
   typeof ServerConfigStreamSettingsUpdatedEvent.Type;
 
-export const ServerConfigEnvironmentThemesUpdatedPayload = Schema.Struct({
-  themes: Schema.Array(EnvironmentTheme),
+export const ServerConfigMachineThemesUpdatedPayload = Schema.Struct({
+  themes: Schema.Array(MachineTheme),
 });
-export type ServerConfigEnvironmentThemesUpdatedPayload =
-  typeof ServerConfigEnvironmentThemesUpdatedPayload.Type;
+export type ServerConfigMachineThemesUpdatedPayload =
+  typeof ServerConfigMachineThemesUpdatedPayload.Type;
 
-export const ServerConfigStreamEnvironmentThemesUpdatedEvent = Schema.Struct({
+export const ServerConfigStreamMachineThemesUpdatedEvent = Schema.Struct({
   version: Schema.Literal(1),
-  type: Schema.Literal("environmentThemesUpdated"),
-  payload: ServerConfigEnvironmentThemesUpdatedPayload,
+  type: Schema.Literal("machineThemesUpdated"),
+  payload: ServerConfigMachineThemesUpdatedPayload,
 });
-export type ServerConfigStreamEnvironmentThemesUpdatedEvent =
-  typeof ServerConfigStreamEnvironmentThemesUpdatedEvent.Type;
+export type ServerConfigStreamMachineThemesUpdatedEvent =
+  typeof ServerConfigStreamMachineThemesUpdatedEvent.Type;
 
 export const ServerConfigUsageLimitSourcesUpdatedPayload = Schema.Struct({
   sources: UsageLimitSourceSnapshots,
@@ -772,7 +772,7 @@ export const ServerConfigStreamEvent = Schema.Union([
   ServerConfigStreamKeybindingsUpdatedEvent,
   ServerConfigStreamProviderStatusesEvent,
   ServerConfigStreamSettingsUpdatedEvent,
-  ServerConfigStreamEnvironmentThemesUpdatedEvent,
+  ServerConfigStreamMachineThemesUpdatedEvent,
   ServerConfigStreamUsageLimitSourcesUpdatedEvent,
 ]);
 export type ServerConfigStreamEvent = typeof ServerConfigStreamEvent.Type;
@@ -788,13 +788,13 @@ export type ServerSelfUpdateOutcome = typeof ServerSelfUpdateOutcome.Type;
 
 export const ServerLifecycleReadyPayload = Schema.Struct({
   at: IsoDateTime,
-  environment: ExecutionEnvironmentDescriptor,
+  machine: ExecutionMachineDescriptor,
   updateOutcome: Schema.optionalKey(ServerSelfUpdateOutcome),
 });
 export type ServerLifecycleReadyPayload = typeof ServerLifecycleReadyPayload.Type;
 
 export const ServerLifecycleWelcomePayload = Schema.Struct({
-  environment: ExecutionEnvironmentDescriptor,
+  machine: ExecutionMachineDescriptor,
   cwd: TrimmedNonEmptyString,
   projectName: TrimmedNonEmptyString,
   bootstrapStatus: Schema.optional(Schema.Literals(["pending", "complete"])),

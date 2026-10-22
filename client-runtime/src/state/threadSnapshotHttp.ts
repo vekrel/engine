@@ -3,14 +3,14 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
 import type { PreparedConnection } from "../connection/model.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
-import type { RemoteEnvironmentRequestError } from "../rpc/http.ts";
+import type { RemoteMachineRequestError } from "../rpc/http.ts";
 import {
-  executeAuthenticatedEnvironmentHttpRequest,
+  executeAuthenticatedMachineHttpRequest,
   withOrchestrationProtocolHeader,
-} from "./environmentHttpAuth.ts";
+} from "./machineHttpAuth.ts";
 
 // Long enough for a slow but alive server to finish. On a cold open a timeout makes the socket
 // ask the same server for the same snapshot again, and older turn pages have no fallback, so a
@@ -33,18 +33,18 @@ export type ThreadSnapshotLoadResult =
   | { readonly _tag: "missing" }
   | { readonly _tag: "unavailable" };
 
-export const fetchEnvironmentThreadSnapshot = Effect.fn(
-  "clientRuntime.state.fetchEnvironmentThreadSnapshot",
+export const fetchMachineThreadSnapshot = Effect.fn(
+  "clientRuntime.state.fetchMachineThreadSnapshot",
 )(function* (input: {
   readonly prepared: PreparedConnection;
   readonly threadId: ThreadId;
   readonly signer: Option.Option<ManagedRelay.ManagedRelayDpopSigner["Service"]>;
   readonly remoteAuthorization?: Option.Option<
-    RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization["Service"]
+    RemoteMachineAuthorization.RemoteMachineAuthorization["Service"]
   >;
   readonly timeoutMs?: number;
 }) {
-  return yield* executeAuthenticatedEnvironmentHttpRequest({
+  return yield* executeAuthenticatedMachineHttpRequest({
     ...input,
     group: "orchestration",
     method: "GET",
@@ -58,7 +58,7 @@ export const fetchEnvironmentThreadSnapshot = Effect.fn(
   });
 });
 
-export type FetchEnvironmentThreadSnapshotError = RemoteEnvironmentRequestError;
+export type FetchMachineThreadSnapshotError = RemoteMachineRequestError;
 
 export class ThreadSnapshotLoader extends Context.Service<
   ThreadSnapshotLoader,

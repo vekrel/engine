@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { EnvironmentId, TerminalSessionSnapshot, ThreadId } from "@vekrel/contracts";
+import { MachineId, TerminalSessionSnapshot, ThreadId } from "@vekrel/contracts";
 
 import {
   applyTerminalAttachStreamEvent,
@@ -14,7 +14,7 @@ import {
 } from "./terminalSession.ts";
 
 const TARGET = {
-  environmentId: EnvironmentId.make("env-local"),
+  machineId: MachineId.make("env-local"),
   threadId: ThreadId.make("thread-1"),
   terminalId: "term-1",
 } as const;

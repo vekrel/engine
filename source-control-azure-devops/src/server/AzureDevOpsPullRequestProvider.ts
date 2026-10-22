@@ -67,7 +67,7 @@ const CAPABILITIES: PullRequestCapabilities = {
   edit: { changeRequest: true, comment: false },
   // Azure does keep a viewed record of its own, but only behind the undocumented contribution
   // endpoint its web UI talks to, keyed on an iteration so a push would drop every mark anyway.
-  viewedFiles: "environment",
+  viewedFiles: "machine",
 };
 
 /**

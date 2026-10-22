@@ -49,8 +49,8 @@ export type T3McpToolSummaryAction =
   | "project-update"
   | "project-delete"
   | "project-clone"
-  | "environment-read"
-  | "environment-update"
+  | "machine-read"
+  | "machine-update"
   | "attachment-prepare"
   | "attachment-discard"
   | "attachment-send"
@@ -305,13 +305,13 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_worktree_list: tool(["List", "Listing", "Listed", "workspace branches"], "worktree-list"),
   t3_preview_list: tool(["List", "Listing", "Listed", "preview tabs"], "browser", "browser"),
   t3_preview_close: tool(["Close", "Closing", "Closed", "a preview tab"], "browser", "browser"),
-  t3_environment_read: tool(
-    ["Read", "Reading", "Read", "environment preferences"],
-    "environment-read",
+  vekrel_machine_read: tool(
+    ["Read", "Reading", "Read", "machine preferences"],
+    "machine-read",
   ),
-  t3_environment_preferences_update: tool(
-    ["Update", "Updating", "Updated", "environment preferences"],
-    "environment-update",
+  vekrel_machine_preferences_update: tool(
+    ["Update", "Updating", "Updated", "machine preferences"],
+    "machine-update",
   ),
   t3_thread_launch: tool(["Launch", "Launching", "Launched", "a project thread"], "thread-create"),
   t3_project_list: tool(["List", "Listing", "Listed", "projects"], "project-list"),

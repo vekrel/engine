@@ -40,7 +40,7 @@ const START_PROCESS_FLAGS = new Set([
 const START_PROCESS_OPTIONS_WITH_VALUE = new Set([
   "-argumentlist",
   "-credential",
-  "-environment",
+  "-machine",
   "-erroraction",
   "-errorvariable",
   "-informationaction",
@@ -213,7 +213,7 @@ const COMMAND_WRAPPER_OPTIONS_WITH_VALUE: Record<CommandWrapper, ReadonlySet<str
 };
 
 const COMMAND_WRAPPER_FLAGS: Record<CommandWrapper, ReadonlySet<string>> = {
-  env: new Set(["-0", "--null", "-i", "--ignore-environment", "--debug", "-v"]),
+  env: new Set(["-0", "--null", "-i", "--ignore-machine", "--debug", "-v"]),
   sudo: new Set(["-A", "--askpass", "-b", "--background", "-E", "-H", "-i", "-n", "-S"]),
 };
 

@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   MessageId,
   NodeId,
   ProviderDriverKind,
@@ -19,7 +19,7 @@ import { isThreadWorking } from "./threadInbox.ts";
 import { derivePendingThreadRequests } from "./threadRequests.ts";
 import { canSnooze, effectiveSnoozed } from "./threadSettled.ts";
 
-const environmentId = EnvironmentId.make("environment-v2");
+const machineId = MachineId.make("machine-v2");
 
 describe("V2 client presentation", () => {
   it("keeps async questions in Working until the run completes", () => {
@@ -38,12 +38,12 @@ describe("V2 client presentation", () => {
         blocking: false,
       },
     };
-    const active = presentThreadShell(environmentId, running);
+    const active = presentThreadShell(machineId, running);
     expect(active.hasPendingUserInput).toBe(false);
     expect(isThreadWorking(active)).toBe(true);
     expect(canSnooze(active, { now: "2026-06-20T00:05:00.000Z" })).toBe(false);
 
-    const completed = presentThreadShell(environmentId, {
+    const completed = presentThreadShell(machineId, {
       ...running,
       activeRunId: null,
       status: "completed",
@@ -55,7 +55,7 @@ describe("V2 client presentation", () => {
 
   it("keeps blocking and legacy questions out of Working", () => {
     for (const capability of [{ blocking: true }, {}]) {
-      const shell = presentThreadShell(environmentId, {
+      const shell = presentThreadShell(machineId, {
         ...v2ThreadShell,
         latestRunId: RunId.make("run-blocking-question"),
         activeRunId: RunId.make("run-blocking-question"),
@@ -74,7 +74,7 @@ describe("V2 client presentation", () => {
 
   it("parks a thread that never ran at idle while a pull request watch holds it", () => {
     const watch = { taskId: "pull-request-watch:github.com/acme/app#1", kind: "monitor" as const };
-    const watched = presentThreadShell(environmentId, {
+    const watched = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: null,
       activeProviderThreadId: null,
@@ -84,7 +84,7 @@ describe("V2 client presentation", () => {
     });
     expect(watched.runtime).toMatchObject({ status: "idle", activeRunId: null });
     expect(
-      presentThreadShell(environmentId, {
+      presentThreadShell(machineId, {
         ...v2ThreadShell,
         latestRunId: null,
         activeProviderThreadId: null,
@@ -103,7 +103,7 @@ describe("V2 client presentation", () => {
       taskId: `bg-${index}`,
       kind,
     }));
-    const shell = presentThreadShell(environmentId, {
+    const shell = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: RunId.make("run-completed"),
       activeRunId: null,
@@ -120,7 +120,7 @@ describe("V2 client presentation", () => {
     "preserves shell %s while only commands remain in the roster",
     (status) => {
       const runId = RunId.make("run-command");
-      const shell = presentThreadShell(environmentId, {
+      const shell = presentThreadShell(machineId, {
         ...v2ThreadShell,
         latestRunId: runId,
         activeRunId: runId,
@@ -135,7 +135,7 @@ describe("V2 client presentation", () => {
   );
 
   it("keeps a failed latest run failed while background tasks are still pending", () => {
-    const shell = presentThreadShell(environmentId, {
+    const shell = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: RunId.make("run-failed"),
       activeRunId: null,
@@ -151,7 +151,7 @@ describe("V2 client presentation", () => {
   it("keeps an older active run visible over a newer cancelled run", () => {
     const activeRunId = RunId.make("run-active");
     const cancelledRunId = RunId.make("run-cancelled");
-    const shell = presentThreadShell(environmentId, {
+    const shell = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: cancelledRunId,
       latestRunStartedAt: null,
@@ -171,7 +171,7 @@ describe("V2 client presentation", () => {
 
   it("keeps a post-settlement background roster ahead of activity status", () => {
     const activeRunId = RunId.make("run-active");
-    const shell = presentThreadShell(environmentId, {
+    const shell = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: RunId.make("run-cancelled"),
       activeRunId,
@@ -187,7 +187,7 @@ describe("V2 client presentation", () => {
 
   it("parks runtime idle over stale shell running when the roster is nonempty", () => {
     const runId = RunId.make("run-stale-running");
-    const shell = presentThreadShell(environmentId, {
+    const shell = presentThreadShell(machineId, {
       ...v2ThreadShell,
       latestRunId: runId,
       activeRunId: runId,
@@ -271,7 +271,7 @@ describe("V2 client presentation", () => {
         completedAt: status === "cancelled" ? later : null,
       };
       const detail = { ...projection, runs: [...projection.runs, latest], updatedAt: later };
-      const shell = presentThreadShell(environmentId, {
+      const shell = presentThreadShell(machineId, {
         ...v2ThreadShell,
         latestRunId: latest.id,
         latestRunStartedAt: null,
@@ -556,7 +556,7 @@ describe("V2 client presentation", () => {
               id: "target",
               header: "Target",
               question: "Which target?",
-              options: [{ label: "Staging", description: "Staging environment" }],
+              options: [{ label: "Staging", description: "Staging machine" }],
             },
           ],
         },

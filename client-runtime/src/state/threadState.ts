@@ -3,20 +3,20 @@ import * as Option from "effect/Option";
 
 import { EMPTY_THREAD_HISTORY_META, type ThreadHistoryMeta } from "./threadHistoryMerge.ts";
 
-export type EnvironmentThreadStatus = "empty" | "cached" | "synchronizing" | "live" | "deleted";
+export type MachineThreadStatus = "empty" | "cached" | "synchronizing" | "live" | "deleted";
 
-export interface EnvironmentThreadState {
+export interface MachineThreadState {
   readonly data: Option.Option<OrchestrationV2ThreadProjection>;
-  readonly status: EnvironmentThreadStatus;
+  readonly status: MachineThreadStatus;
   readonly error: Option.Option<string>;
   /**
-   * Errors here are thread/history-local and must not be promoted into the environment
+   * Errors here are thread/history-local and must not be promoted into the machine
    * disconnect path.
    */
   readonly history: ThreadHistoryMeta;
 }
 
-export const EMPTY_ENVIRONMENT_THREAD_STATE: EnvironmentThreadState = {
+export const EMPTY_MACHINE_THREAD_STATE: MachineThreadState = {
   data: Option.none(),
   status: "empty",
   error: Option.none(),

@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 
@@ -24,19 +24,19 @@ import {
   usableRoutes,
 } from "./routes.ts";
 
-const ENVIRONMENT_ID = EnvironmentId.make("environment-1");
+const MACHINE_ID = MachineId.make("machine-1");
 
 function direct(id: string, httpBaseUrl: string): ConnectionRoute {
   return {
     target: new BearerConnectionTarget({
-      environmentId: ENVIRONMENT_ID,
+      machineId: MACHINE_ID,
       label: "Desk",
       connectionId: id,
     }),
     profile: Option.some(
       new BearerConnectionProfile({
         connectionId: id,
-        environmentId: ENVIRONMENT_ID,
+        machineId: MACHINE_ID,
         label: "Desk",
         httpBaseUrl,
         wsBaseUrl: httpBaseUrl.replace(/^http/, "ws"),
@@ -46,7 +46,7 @@ function direct(id: string, httpBaseUrl: string): ConnectionRoute {
 }
 
 const RELAY: ConnectionRoute = {
-  target: new RelayConnectionTarget({ environmentId: ENVIRONMENT_ID, label: "Desk" }),
+  target: new RelayConnectionTarget({ machineId: MACHINE_ID, label: "Desk" }),
   profile: Option.none(),
 };
 const LAN = direct("lan", "http://192.168.1.10:3773/");
@@ -106,7 +106,7 @@ describe("learned routes", () => {
       reported: [{ httpBaseUrl: "http://192.168.1.10:3773/" }],
       allowInsecure: true,
     });
-    expect(ids(routes)).toEqual([`learned:${ENVIRONMENT_ID}:http://192.168.1.10:3773`, "relay"]);
+    expect(ids(routes)).toEqual([`learned:${MACHINE_ID}:http://192.168.1.10:3773`, "relay"]);
     expect(profileOf(routes![0]!)).toMatchObject({
       learned: true,
       authorization: "t3-connect",
@@ -133,7 +133,7 @@ describe("learned routes", () => {
       reported: [{ httpBaseUrl: "http://10.0.0.42:3773/" }],
       allowInsecure: true,
     });
-    expect(ids(moved)).toEqual([`learned:${ENVIRONMENT_ID}:http://10.0.0.42:3773`, "relay"]);
+    expect(ids(moved)).toEqual([`learned:${MACHINE_ID}:http://10.0.0.42:3773`, "relay"]);
   });
 
   it("keeps a learned route where the user moved it while the server reports it", () => {
@@ -160,9 +160,9 @@ describe("learned routes", () => {
       allowInsecure: true,
     });
     expect(ids(next)).toEqual([
-      `learned:${ENVIRONMENT_ID}:http://100.101.102.103:3773`,
+      `learned:${MACHINE_ID}:http://100.101.102.103:3773`,
       "relay",
-      `learned:${ENVIRONMENT_ID}:http://192.168.1.10:3773`,
+      `learned:${MACHINE_ID}:http://192.168.1.10:3773`,
     ]);
   });
 
@@ -245,8 +245,8 @@ describe("learned routes", () => {
       allowInsecure: true,
     });
     expect(ids(routes)).toEqual([
-      `learned:${ENVIRONMENT_ID}:http://100.101.102.103:3773@public`,
-      `learned:${ENVIRONMENT_ID}:https://desk.tail1234.ts.net@public`,
+      `learned:${MACHINE_ID}:http://100.101.102.103:3773@public`,
+      `learned:${MACHINE_ID}:https://desk.tail1234.ts.net@public`,
       "public",
       "relay",
     ]);
@@ -254,7 +254,7 @@ describe("learned routes", () => {
 
   it("drops a stale plain HTTP route borrowing an HTTPS-paired token while another route is active", () => {
     const lanOrigin = "http://10.0.0.42:3773";
-    const stale = learned(`learned:${ENVIRONMENT_ID}:${lanOrigin}@public`, `${lanOrigin}/`);
+    const stale = learned(`learned:${MACHINE_ID}:${lanOrigin}@public`, `${lanOrigin}/`);
     const entry = entryWithRoutes(relayOnly, [stale, PUBLIC, RELAY]);
     expect(sendsTokenInClear([stale, PUBLIC, RELAY], stale)).toBe(true);
     expect(ids(usableRoutes(entry))).toEqual(["public", "relay"]);
@@ -265,13 +265,13 @@ describe("learned routes", () => {
       allowInsecure: true,
     });
     // The stale route is gone; the address is learned again with T3 Connect's credential.
-    expect(ids(routes)).toEqual([`learned:${ENVIRONMENT_ID}:${lanOrigin}`, "public", "relay"]);
+    expect(ids(routes)).toEqual([`learned:${MACHINE_ID}:${lanOrigin}`, "public", "relay"]);
     expect(profileOf(routes![0]!)).toMatchObject({ authorization: "t3-connect" });
   });
 
   it("keeps plain HTTP routes that don't borrow the active HTTPS-paired token", () => {
     const lanOrigin = "http://10.0.0.42:3773";
-    const overLan = learned(`learned:${ENVIRONMENT_ID}:${lanOrigin}@lan`, `${lanOrigin}/`);
+    const overLan = learned(`learned:${MACHINE_ID}:${lanOrigin}@lan`, `${lanOrigin}/`);
     const routes = mergeLearnedRoutes({
       entry: entryWithRoutes(relayOnly, [overLan, LAN, PUBLIC, RELAY]),
       activeRoute: PUBLIC,
@@ -291,7 +291,7 @@ describe("learned routes", () => {
     });
     expect(ids(routes)).toEqual([
       "lan",
-      `learned:${ENVIRONMENT_ID}:http://10.0.0.42:3773@lan`,
+      `learned:${MACHINE_ID}:http://10.0.0.42:3773@lan`,
       "relay",
     ]);
   });
@@ -335,7 +335,7 @@ describe("learned routes", () => {
     expect(ids(routesAfterRemoving(overLan, "relay"))).toHaveLength(2);
   });
 
-  it("counts an environment reached only through T3 Connect as removed with it", () => {
+  it("counts a machine reached only through T3 Connect as removed with it", () => {
     const learned = mergeLearnedRoutes({
       entry: relayOnly,
       activeRoute: RELAY,

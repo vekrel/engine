@@ -3,7 +3,7 @@ import {
   AuthOrchestrationOperateScope,
   AuthSettingsWriteScope,
   AuthProvidersManageScope,
-  type AuthEnvironmentScope,
+  type AuthMachineScope,
 } from "./auth.ts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -20,7 +20,7 @@ import {
   TrimmedString,
 } from "./baseSchemas.ts";
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
-import { EnvironmentMachineKind, ThreadEnvMode, WorktreeSubmodules } from "./environment.ts";
+import { MachineKind, ThreadEnvMode, WorktreeSubmodules } from "./machine.ts";
 import { KeybindingShortcut } from "./keybindings.ts";
 import {
   CustomModelSetting,
@@ -151,9 +151,9 @@ export const TerminalFontSize = Schema.Int.check(
 export type TerminalFontSize = typeof TerminalFontSize.Type;
 const DEFAULT_TERMINAL_FONT_SIZE: TerminalFontSize = 12;
 
-export const EnvironmentIdentificationMode = Schema.Literals(["artwork", "pill", "none"]);
-export type EnvironmentIdentificationMode = typeof EnvironmentIdentificationMode.Type;
-export const DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE: EnvironmentIdentificationMode = "artwork";
+export const MachineIdentificationMode = Schema.Literals(["artwork", "pill", "none"]);
+export type MachineIdentificationMode = typeof MachineIdentificationMode.Type;
+export const DEFAULT_MACHINE_IDENTIFICATION_MODE: MachineIdentificationMode = "artwork";
 
 export const SnapShotKeyChord = KeybindingShortcut.check(
   Schema.makeFilter(
@@ -243,10 +243,10 @@ export const FontFamilyPreference = Schema.String.check(Schema.isMaxLength(200))
 export type FontFamilyPreference = typeof FontFamilyPreference.Type;
 
 /**
- * The environment's theme, set with `t3 theme set <id>`. Each client applies
+ * The machine's theme, set with `t3 theme set <id>`. Each client applies
  * it once per value — live when connected, on its next connect otherwise — so
  * setting it switches every client, while a theme a user picks in Settings
- * afterwards sticks until the next set. Empty means "no environment theme",
+ * afterwards sticks until the next set. Empty means "no machine theme",
  * which is also how it is cleared.
  */
 export const DefaultThemePreference = Schema.String.check(Schema.isMaxLength(64));
@@ -386,8 +386,8 @@ export const ClientSettingsSchema = Schema.Struct({
   diffFilesCollapsed: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   diffIgnoreWhitespace: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   diffLayout: DiffLayout.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_DIFF_LAYOUT))),
-  environmentIdentificationMode: EnvironmentIdentificationMode.pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE)),
+  machineIdentificationMode: MachineIdentificationMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_MACHINE_IDENTIFICATION_MODE)),
   ),
   glassOpacity: GlassOpacity.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_GLASS_OPACITY)),
@@ -1002,8 +1002,8 @@ export const ProjectProviderInstanceOverride = Schema.Struct({
 export type ProjectProviderInstanceOverride = typeof ProjectProviderInstanceOverride.Type;
 
 /**
- * An absent key inherits the environment value; `null` is a real value where
- * the environment type is nullable (no default model, no dedicated writer
+ * An absent key inherits the machine value; `null` is a real value where
+ * the machine type is nullable (no default model, no dedicated writer
  * model, never auto-settle).
  *
  * `providerInstances` sits outside `PROJECT_SCOPED_SERVER_SETTING_KEYS`: every
@@ -1066,7 +1066,7 @@ const NULLABLE_PROJECT_SETTINGS_OVERRIDES: ReadonlySet<ProjectScopedServerSettin
 /** Reclaimable bytes from which the offline `t3 doctor` repair is worth suggesting. */
 export const DATABASE_COMPACTION_RECOMMENDED_BYTES = 1024 ** 3;
 
-/** Live SQLite file accounting for the environment's state database. */
+/** Live SQLite file accounting for the machine's state database. */
 export const DatabaseStorageStatus = Schema.Struct({
   databaseBytes: Schema.Number,
   /** Free pages inside the file that an offline VACUUM (or incremental auto_vacuum) returns to disk. */
@@ -1224,14 +1224,14 @@ export const ServerSettings = Schema.Struct({
   ),
   defaultTheme: DefaultThemePreference.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   /**
-   * When the environment's theme was last set, so clients can tell a re-set of
+   * When the machine's theme was last set, so clients can tell a re-set of
    * the same value from one they already applied: `t3 theme set` must act even
    * when it names the theme it named before.
    */
   defaultThemeSetAt: Schema.String.check(Schema.isMaxLength(64)).pipe(
     Schema.withDecodingDefault(Effect.succeed("")),
   ),
-  environmentIcon: ForwardCompatibleNullable(EnvironmentMachineKind).pipe(
+  machineIcon: ForwardCompatibleNullable(MachineKind).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   /**
@@ -1378,7 +1378,7 @@ const decodeClaudeSettings = Schema.decodeUnknownOption(ClaudeSettings);
 
 type IdleCompactionSettings = Pick<ServerSettings, "compactIdleThreads" | "idleCompaction">;
 
-/** The environment-wide idle compaction mode, from whichever field the settings carry. */
+/** The machine-wide idle compaction mode, from whichever field the settings carry. */
 export const globalIdleCompaction = (settings: IdleCompactionSettings): IdleCompactionMode =>
   settings.idleCompaction ??
   (typeof settings.compactIdleThreads === "string"
@@ -1581,7 +1581,7 @@ export const ServerSettingsPatch = Schema.Struct({
   automaticGitFetchInterval: Schema.optionalKey(Schema.DurationFromMillis),
   providerHealthRefreshInterval: Schema.optionalKey(Schema.DurationFromMillis),
   backgroundActivityProfile: Schema.optionalKey(BackgroundActivityProfile),
-  environmentIcon: Schema.optionalKey(Schema.NullOr(EnvironmentMachineKind)),
+  machineIcon: Schema.optionalKey(Schema.NullOr(MachineKind)),
   defaultThreadEnvMode: Schema.optionalKey(Schema.NullOr(ThreadEnvMode)),
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
   worktreeSubmodules: Schema.optionalKey(Schema.NullOr(WorktreeSubmodules)),
@@ -1640,7 +1640,7 @@ export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;
 
 export function requiredScopesForServerSettingsPatch(
   patch: ServerSettingsPatch,
-): ReadonlyArray<AuthEnvironmentScope> {
+): ReadonlyArray<AuthMachineScope> {
   let changesProviders = false;
   let changesSettings = false;
   for (const [key, value] of Object.entries(patch)) {
@@ -1664,7 +1664,7 @@ export function requiredScopesForServerSettingsPatch(
  */
 export function requiredScopesForProjectMutation(
   mutation: ProjectMutation,
-): ReadonlyArray<AuthEnvironmentScope> {
+): ReadonlyArray<AuthMachineScope> {
   if (mutation.type === "project.delete" || mutation.scripts === undefined) {
     return [AuthOrchestrationOperateScope];
   }
@@ -1702,7 +1702,7 @@ export const ClientSettingsPatch = Schema.Struct({
   diffFilesCollapsed: Schema.optionalKey(Schema.Boolean),
   diffIgnoreWhitespace: Schema.optionalKey(Schema.Boolean),
   diffLayout: Schema.optionalKey(DiffLayout),
-  environmentIdentificationMode: Schema.optionalKey(EnvironmentIdentificationMode),
+  machineIdentificationMode: Schema.optionalKey(MachineIdentificationMode),
   glassOpacity: Schema.optionalKey(GlassOpacity),
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(Schema.String)),
   fontSizeInterface: Schema.optionalKey(InterfaceFontSize),

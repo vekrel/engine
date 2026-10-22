@@ -2,23 +2,23 @@ import type { ThreadId } from "@vekrel/contracts";
 import * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
 
-import type { RemoteEnvironmentAuthorization } from "../authorization/service.ts";
+import type { RemoteMachineAuthorization } from "../authorization/service.ts";
 import type { PreparedConnection } from "../connection/model.ts";
 import type { ManagedRelayDpopSigner } from "../relay/managedRelay.ts";
 import {
-  executeAuthenticatedEnvironmentHttpRequest,
+  executeAuthenticatedMachineHttpRequest,
   withOrchestrationProtocolHeader,
-} from "./environmentHttpAuth.ts";
+} from "./machineHttpAuth.ts";
 
-export const fetchEnvironmentThreadTranscript = Effect.fn(
-  "clientRuntime.state.fetchEnvironmentThreadTranscript",
+export const fetchMachineThreadTranscript = Effect.fn(
+  "clientRuntime.state.fetchMachineThreadTranscript",
 )(function* (input: {
   readonly prepared: PreparedConnection;
   readonly threadId: ThreadId;
   readonly signer: Option.Option<ManagedRelayDpopSigner["Service"]>;
-  readonly remoteAuthorization?: Option.Option<RemoteEnvironmentAuthorization["Service"]>;
+  readonly remoteAuthorization?: Option.Option<RemoteMachineAuthorization["Service"]>;
 }) {
-  return yield* executeAuthenticatedEnvironmentHttpRequest({
+  return yield* executeAuthenticatedMachineHttpRequest({
     ...input,
     group: "orchestration",
     method: "GET",

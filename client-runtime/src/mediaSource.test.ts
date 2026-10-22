@@ -35,14 +35,14 @@ describe("resolveMediaSource", () => {
     it.each([
       ["/tmp/frame%23one.png:12", "/tmp/frame#one.png"],
       ["/tmp/frame%2523one.png:12", "/tmp/frame%23one.png"],
-    ])("resolves %s through the environment", (href, path) => {
+    ])("resolves %s through the machine", (href, path) => {
       expect(resolveMediaSource(href, { threadId, workspaceRoot: "/repo" })).toEqual({
         kind: "image",
         mimeType: "image/png",
         name: path.split(/[\\/]/).at(-1),
         reference: { kind: "file", path },
         srcFragment: "",
-        access: "environment",
+        access: "machine",
         resource: { _tag: "media-file", threadId, path },
       });
     });
@@ -60,7 +60,7 @@ describe("resolveMediaSource", () => {
           relativePath: "screens/logo.svg",
         },
         srcFragment: "#mark",
-        access: "environment",
+        access: "machine",
         resource: { _tag: "media-file", threadId, path: "/repo/screens/logo.svg" },
       });
     });
@@ -73,7 +73,7 @@ describe("resolveMediaSource", () => {
           resolvedFilePath: "/repo/docs/logo.svg",
         }),
       ).toMatchObject({
-        access: "environment",
+        access: "machine",
         resource: { _tag: "media-file", path: "/repo/docs/logo.svg" },
         reference: { relativePath: "docs/logo.svg" },
       });

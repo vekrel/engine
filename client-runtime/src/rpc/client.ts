@@ -1,8 +1,8 @@
 import {
-  EnvironmentAuthorizationError,
+  MachineAuthorizationError,
   clientRpcRequiredScopes,
   authScopeRequiredResponse,
-  type EnvironmentId,
+  type MachineId,
   type ClientGuardedRpcTag,
   ORCHESTRATION_V2_WS_METHODS,
   WS_METHODS,
@@ -17,38 +17,38 @@ import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { RpcClientError } from "effect/rpc";
 
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
 import type { RpcSession } from "../rpc/session.ts";
 
-export class EnvironmentRpcUnavailableError extends Schema.TaggedError<EnvironmentRpcUnavailableError>()(
-  "EnvironmentRpcUnavailableError",
+export class MachineRpcUnavailableError extends Schema.TaggedError<MachineRpcUnavailableError>()(
+  "MachineRpcUnavailableError",
   {
-    environmentId: Schema.String,
+    machineId: Schema.String,
     message: Schema.String,
   },
 ) {}
 
-export interface EnvironmentRpcRequestObservation {
-  readonly environmentId: string;
-  readonly environmentLabel: string;
+export interface MachineRpcRequestObservation {
+  readonly machineId: string;
+  readonly machineLabel: string;
   readonly method: string;
 }
 
-export class EnvironmentRpcRequestObserver extends Context.Reference<{
+export class MachineRpcRequestObserver extends Context.Reference<{
   readonly observe: (
-    request: EnvironmentRpcRequestObservation,
+    request: MachineRpcRequestObservation,
   ) => Effect.Effect<Effect.Effect<void>>;
-}>("@vekrel/client-runtime/rpc/EnvironmentRpcRequestObserver", {
+}>("@vekrel/client-runtime/rpc/MachineRpcRequestObserver", {
   defaultValue: () => ({
     observe: () => Effect.succeed(Effect.void),
   }),
 }) {}
 
-export type EnvironmentRpcTag = keyof WsRpcProtocolClient & string;
-type RpcMethod<TTag extends EnvironmentRpcTag> = WsRpcProtocolClient[TTag];
+export type MachineRpcTag = keyof WsRpcProtocolClient & string;
+type RpcMethod<TTag extends MachineRpcTag> = WsRpcProtocolClient[TTag];
 
-export type EnvironmentSubscriptionRpcTag =
+export type MachineSubscriptionRpcTag =
   | typeof WS_METHODS.codexAuthCallbackSubscribe
   | typeof WS_METHODS.providerAuthSubscribe
   | typeof WS_METHODS.providerInstallSubscribe
@@ -75,70 +75,70 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.terminalAttach
   | typeof WS_METHODS.terminalObserve;
 
-export type EnvironmentStreamCommandRpcTag =
+export type MachineStreamCommandRpcTag =
   | typeof WS_METHODS.chatGptHandoffSubscribe
   | typeof WS_METHODS.cloudInstallRelayClient
   | typeof WS_METHODS.serverUpdateServerWithProgress
   | typeof WS_METHODS.gitRunStackedAction;
 
-export type EnvironmentStreamRpcTag =
-  | EnvironmentSubscriptionRpcTag
-  | EnvironmentStreamCommandRpcTag;
+export type MachineStreamRpcTag =
+  | MachineSubscriptionRpcTag
+  | MachineStreamCommandRpcTag;
 
-export type EnvironmentUnaryRpcTag = Exclude<EnvironmentRpcTag, EnvironmentStreamRpcTag>;
+export type MachineUnaryRpcTag = Exclude<MachineRpcTag, MachineStreamRpcTag>;
 
-export interface EnvironmentRpcSubscriptionObservation {
-  readonly environmentId: string;
-  readonly method: EnvironmentSubscriptionRpcTag;
+export interface MachineRpcSubscriptionObservation {
+  readonly machineId: string;
+  readonly method: MachineSubscriptionRpcTag;
   readonly input: unknown;
 }
 
-export class EnvironmentRpcSubscriptionObserver extends Context.Reference<{
+export class MachineRpcSubscriptionObserver extends Context.Reference<{
   readonly observe: (
-    subscription: EnvironmentRpcSubscriptionObservation,
+    subscription: MachineRpcSubscriptionObservation,
   ) => Effect.Effect<Effect.Effect<void>>;
-}>("@vekrel/client-runtime/rpc/EnvironmentRpcSubscriptionObserver", {
+}>("@vekrel/client-runtime/rpc/MachineRpcSubscriptionObserver", {
   defaultValue: () => ({
     observe: () => Effect.succeed(Effect.void),
   }),
 }) {}
 
 export const isRpcClientError = Schema.is(RpcClientError.RpcClientError);
-const isEnvironmentAuthorizationError = Schema.is(EnvironmentAuthorizationError);
+const isMachineAuthorizationError = Schema.is(MachineAuthorizationError);
 
 const MAX_EXPECTED_FAILURE_RETRY_DELAY_MS = 30_000;
 
-export type EnvironmentRpcInput<TTag extends EnvironmentRpcTag> = Parameters<RpcMethod<TTag>>[0];
+export type MachineRpcInput<TTag extends MachineRpcTag> = Parameters<RpcMethod<TTag>>[0];
 
-export type EnvironmentRpcSuccess<TTag extends EnvironmentUnaryRpcTag> =
+export type MachineRpcSuccess<TTag extends MachineUnaryRpcTag> =
   RpcMethod<TTag> extends (input: any, options?: any) => Effect.Effect<infer A, any, any>
     ? A
     : never;
 
-export type EnvironmentRpcFailure<TTag extends EnvironmentUnaryRpcTag> =
+export type MachineRpcFailure<TTag extends MachineUnaryRpcTag> =
   RpcMethod<TTag> extends (input: any, options?: any) => Effect.Effect<any, infer E, any>
     ? E
     : never;
 
-export type EnvironmentRpcStreamValue<TTag extends EnvironmentStreamRpcTag> =
+export type MachineRpcStreamValue<TTag extends MachineStreamRpcTag> =
   RpcMethod<TTag> extends (input: any, options?: any) => Stream.Stream<infer A, any, any>
     ? A
     : never;
 
-export type EnvironmentRpcStreamFailure<TTag extends EnvironmentStreamRpcTag> =
+export type MachineRpcStreamFailure<TTag extends MachineStreamRpcTag> =
   RpcMethod<TTag> extends (input: any, options?: any) => Stream.Stream<any, infer E, any>
     ? E
     : never;
 
-const currentSession = Effect.fn("EnvironmentRpc.currentSession")(function* () {
-  const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
+const currentSession = Effect.fn("MachineRpc.currentSession")(function* () {
+  const supervisor = yield* MachineSupervisor.MachineSupervisor;
   return yield* SubscriptionRef.get(supervisor.session).pipe(
     Effect.flatMap(
       Option.match({
         onNone: () =>
           Effect.fail(
-            new EnvironmentRpcUnavailableError({
-              environmentId: supervisor.target.environmentId,
+            new MachineRpcUnavailableError({
+              machineId: supervisor.target.machineId,
               message: `${supervisor.target.label} is not connected.`,
             }),
           ),
@@ -148,7 +148,7 @@ const currentSession = Effect.fn("EnvironmentRpc.currentSession")(function* () {
   );
 });
 
-export const getInitialServerConfig = Effect.fn("EnvironmentRpc.getInitialServerConfig")(
+export const getInitialServerConfig = Effect.fn("MachineRpc.getInitialServerConfig")(
   function* () {
     const session = yield* currentSession();
     return yield* session.initialConfig;
@@ -158,18 +158,18 @@ export const getInitialServerConfig = Effect.fn("EnvironmentRpc.getInitialServer
 /** Installed by the shared command boundary. A missing boundary denies protected writes. */
 export class RpcPermissionGuard extends Context.Reference<{
   readonly authorize: (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     method: string,
     input: unknown,
-  ) => Effect.Effect<void, EnvironmentAuthorizationError>;
+  ) => Effect.Effect<void, MachineAuthorizationError>;
 }>("@vekrel/client-runtime/rpc/RpcPermissionGuard", {
   defaultValue: () => ({
-    authorize: (_environmentId, method, input) => {
+    authorize: (_machineId, method, input) => {
       const scope = clientRpcRequiredScopes(method, input)[0];
       return scope === undefined
         ? Effect.void
         : Effect.fail(
-            new EnvironmentAuthorizationError({
+            new MachineAuthorizationError({
               ...authScopeRequiredResponse(scope),
               message: `This connection requires ${scope}.`,
             }),
@@ -178,93 +178,93 @@ export class RpcPermissionGuard extends Context.Reference<{
   }),
 }) {}
 
-const authorizeRequest = Effect.fn("EnvironmentRpc.authorize")(function* (
+const authorizeRequest = Effect.fn("MachineRpc.authorize")(function* (
   method: string,
   input: unknown,
 ) {
   if (clientRpcRequiredScopes(method, input).length === 0) return;
-  const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
+  const supervisor = yield* MachineSupervisor.MachineSupervisor;
   const guard = yield* RpcPermissionGuard;
-  yield* guard.authorize(supervisor.target.environmentId, method, input);
+  yield* guard.authorize(supervisor.target.machineId, method, input);
 });
 
-export const requestGuarded = Effect.fn("EnvironmentRpc.request")(function* <
-  TTag extends EnvironmentUnaryRpcTag,
->(tag: TTag, input: EnvironmentRpcInput<TTag>) {
-  const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
+export const requestGuarded = Effect.fn("MachineRpc.request")(function* <
+  TTag extends MachineUnaryRpcTag,
+>(tag: TTag, input: MachineRpcInput<TTag>) {
+  const supervisor = yield* MachineSupervisor.MachineSupervisor;
   yield* Effect.annotateCurrentSpan({
-    "environment.id": supervisor.target.environmentId,
+    "machine.id": supervisor.target.machineId,
     "rpc.method": tag,
   });
   const session = yield* currentSession();
   yield* authorizeRequest(tag, input);
-  const observer = yield* EnvironmentRpcRequestObserver;
+  const observer = yield* MachineRpcRequestObserver;
   const method = session.client[tag] as (
-    input: EnvironmentRpcInput<TTag>,
-  ) => Effect.Effect<EnvironmentRpcSuccess<TTag>, EnvironmentRpcFailure<TTag>>;
+    input: MachineRpcInput<TTag>,
+  ) => Effect.Effect<MachineRpcSuccess<TTag>, MachineRpcFailure<TTag>>;
   const completeObservation = yield* observer.observe({
-    environmentId: supervisor.target.environmentId,
-    environmentLabel: supervisor.target.label,
+    machineId: supervisor.target.machineId,
+    machineLabel: supervisor.target.label,
     method: tag,
   });
   return yield* method(input).pipe(Effect.ensuring(completeObservation));
 });
 
-export function runStreamGuarded<TTag extends EnvironmentStreamCommandRpcTag>(
+export function runStreamGuarded<TTag extends MachineStreamCommandRpcTag>(
   tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
+  input: MachineRpcInput<TTag>,
 ): Stream.Stream<
-  EnvironmentRpcStreamValue<TTag>,
-  | EnvironmentRpcStreamFailure<TTag>
-  | EnvironmentRpcUnavailableError
-  | EnvironmentAuthorizationError,
-  EnvironmentSupervisor.EnvironmentSupervisor
+  MachineRpcStreamValue<TTag>,
+  | MachineRpcStreamFailure<TTag>
+  | MachineRpcUnavailableError
+  | MachineAuthorizationError,
+  MachineSupervisor.MachineSupervisor
 > {
   return Stream.unwrap(
     authorizeRequest(tag, input).pipe(
       Effect.andThen(currentSession()),
       Effect.map((session) => {
         const method = session.client[tag] as (
-          input: EnvironmentRpcInput<TTag>,
-        ) => Stream.Stream<EnvironmentRpcStreamValue<TTag>, EnvironmentRpcStreamFailure<TTag>>;
+          input: MachineRpcInput<TTag>,
+        ) => Stream.Stream<MachineRpcStreamValue<TTag>, MachineRpcStreamFailure<TTag>>;
         return method(input);
       }),
     ),
   ).pipe(
-    Stream.withSpan("EnvironmentRpc.runStream", {
+    Stream.withSpan("MachineRpc.runStream", {
       attributes: { "rpc.method": tag },
     }),
   );
 }
 
-interface SubscriptionOptions<TTag extends EnvironmentSubscriptionRpcTag> {
+interface SubscriptionOptions<TTag extends MachineSubscriptionRpcTag> {
   readonly onDefect?: (
-    cause: Cause.Cause<EnvironmentRpcStreamFailure<TTag>>,
+    cause: Cause.Cause<MachineRpcStreamFailure<TTag>>,
   ) => Effect.Effect<void, never, never>;
   readonly onExpectedFailure?: (
-    cause: Cause.Cause<EnvironmentRpcStreamFailure<TTag>>,
+    cause: Cause.Cause<MachineRpcStreamFailure<TTag>>,
   ) => Effect.Effect<void, never, never>;
   readonly retryExpectedFailureAfter?: Duration.Input;
   readonly resubscribe?: Stream.Stream<unknown, never, never>;
 }
 
-function subscribeDynamicMapped<TTag extends EnvironmentSubscriptionRpcTag, A>(
+function subscribeDynamicMapped<TTag extends MachineSubscriptionRpcTag, A>(
   tag: TTag,
-  makeInput: (session: RpcSession) => Effect.Effect<EnvironmentRpcInput<TTag>>,
+  makeInput: (session: RpcSession) => Effect.Effect<MachineRpcInput<TTag>>,
   mapStream: (
     session: RpcSession,
-    stream: Stream.Stream<EnvironmentRpcStreamValue<TTag>, EnvironmentRpcStreamFailure<TTag>>,
-  ) => Stream.Stream<A, EnvironmentRpcStreamFailure<TTag>>,
+    stream: Stream.Stream<MachineRpcStreamValue<TTag>, MachineRpcStreamFailure<TTag>>,
+  ) => Stream.Stream<A, MachineRpcStreamFailure<TTag>>,
   options?: SubscriptionOptions<TTag>,
 ): Stream.Stream<
   A,
-  EnvironmentRpcStreamFailure<TTag>,
-  EnvironmentSupervisor.EnvironmentSupervisor
+  MachineRpcStreamFailure<TTag>,
+  MachineSupervisor.MachineSupervisor
 > {
   return Stream.unwrap(
     Effect.gen(function* () {
-      const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
-      const observer = yield* EnvironmentRpcSubscriptionObserver;
+      const supervisor = yield* MachineSupervisor.MachineSupervisor;
+      const observer = yield* MachineRpcSubscriptionObserver;
       const sessionChanges = SubscriptionRef.changes(supervisor.session);
       const sessions =
         options?.resubscribe === undefined
@@ -285,19 +285,19 @@ function subscribeDynamicMapped<TTag extends EnvironmentSubscriptionRpcTag, A>(
                   ? session.subscribeServerConfig
                   : session.client[tag]
               ) as (
-                input: EnvironmentRpcInput<TTag>,
+                input: MachineRpcInput<TTag>,
               ) => Stream.Stream<
-                EnvironmentRpcStreamValue<TTag>,
-                EnvironmentRpcStreamFailure<TTag>
+                MachineRpcStreamValue<TTag>,
+                MachineRpcStreamFailure<TTag>
               >;
               let expectedFailureRetries = 0;
-              const subscribeToSession = (): Stream.Stream<A, EnvironmentRpcStreamFailure<TTag>> =>
+              const subscribeToSession = (): Stream.Stream<A, MachineRpcStreamFailure<TTag>> =>
                 Stream.suspend(() =>
                   Stream.unwrap(
                     Effect.gen(function* () {
                       const input = yield* makeInput(session);
                       const completeObservation = yield* observer.observe({
-                        environmentId: supervisor.target.environmentId,
+                        machineId: supervisor.target.machineId,
                         method: tag,
                         input,
                       });
@@ -339,7 +339,7 @@ function subscribeDynamicMapped<TTag extends EnvironmentSubscriptionRpcTag, A>(
                             {
                               cause: Cause.pretty(cause),
                               method: tag,
-                              environmentId: supervisor.target.environmentId,
+                              machineId: supervisor.target.machineId,
                             },
                           ),
                         ).pipe(Stream.drain);
@@ -350,7 +350,7 @@ function subscribeDynamicMapped<TTag extends EnvironmentSubscriptionRpcTag, A>(
                         );
                         const isAuthorizationFailure = cause.reasons.some(
                           (reason) =>
-                            reason._tag === "Fail" && isEnvironmentAuthorizationError(reason.error),
+                            reason._tag === "Fail" && isMachineAuthorizationError(reason.error),
                         );
                         if (
                           options.retryExpectedFailureAfter === undefined ||
@@ -384,33 +384,33 @@ function subscribeDynamicMapped<TTag extends EnvironmentSubscriptionRpcTag, A>(
       );
     }),
   ).pipe(
-    Stream.withSpan("EnvironmentRpc.subscribe", {
+    Stream.withSpan("MachineRpc.subscribe", {
       attributes: { "rpc.method": tag },
     }),
   );
 }
 
-export function subscribeDynamic<TTag extends EnvironmentSubscriptionRpcTag>(
+export function subscribeDynamic<TTag extends MachineSubscriptionRpcTag>(
   tag: TTag,
-  makeInput: (session: RpcSession) => Effect.Effect<EnvironmentRpcInput<TTag>>,
+  makeInput: (session: RpcSession) => Effect.Effect<MachineRpcInput<TTag>>,
   options?: SubscriptionOptions<TTag>,
 ): Stream.Stream<
-  EnvironmentRpcStreamValue<TTag>,
-  EnvironmentRpcStreamFailure<TTag>,
-  EnvironmentSupervisor.EnvironmentSupervisor
+  MachineRpcStreamValue<TTag>,
+  MachineRpcStreamFailure<TTag>,
+  MachineSupervisor.MachineSupervisor
 > {
   return subscribeDynamicMapped(tag, makeInput, (_session, stream) => stream, options);
 }
 
 /** Tags each value before `switchMap` can buffer it across a session change. */
-export function subscribeDynamicWithSession<TTag extends EnvironmentSubscriptionRpcTag>(
+export function subscribeDynamicWithSession<TTag extends MachineSubscriptionRpcTag>(
   tag: TTag,
-  makeInput: (session: RpcSession) => Effect.Effect<EnvironmentRpcInput<TTag>>,
+  makeInput: (session: RpcSession) => Effect.Effect<MachineRpcInput<TTag>>,
   options?: SubscriptionOptions<TTag>,
 ): Stream.Stream<
-  readonly [session: RpcSession, value: EnvironmentRpcStreamValue<TTag>],
-  EnvironmentRpcStreamFailure<TTag>,
-  EnvironmentSupervisor.EnvironmentSupervisor
+  readonly [session: RpcSession, value: MachineRpcStreamValue<TTag>],
+  MachineRpcStreamFailure<TTag>,
+  MachineSupervisor.MachineSupervisor
 > {
   return subscribeDynamicMapped(
     tag,
@@ -420,26 +420,26 @@ export function subscribeDynamicWithSession<TTag extends EnvironmentSubscription
   );
 }
 
-export function subscribe<TTag extends EnvironmentSubscriptionRpcTag>(
+export function subscribe<TTag extends MachineSubscriptionRpcTag>(
   tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
+  input: MachineRpcInput<TTag>,
   options?: SubscriptionOptions<TTag>,
 ): Stream.Stream<
-  EnvironmentRpcStreamValue<TTag>,
-  EnvironmentRpcStreamFailure<TTag>,
-  EnvironmentSupervisor.EnvironmentSupervisor
+  MachineRpcStreamValue<TTag>,
+  MachineRpcStreamFailure<TTag>,
+  MachineSupervisor.MachineSupervisor
 > {
   return subscribeDynamic(tag, () => Effect.succeed(input), options);
 }
 
-export const request = <TTag extends Exclude<EnvironmentUnaryRpcTag, ClientGuardedRpcTag>>(
+export const request = <TTag extends Exclude<MachineUnaryRpcTag, ClientGuardedRpcTag>>(
   tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
+  input: MachineRpcInput<TTag>,
 ) => requestGuarded(tag, input);
 
 export const runStream = <
-  TTag extends Exclude<EnvironmentStreamCommandRpcTag, ClientGuardedRpcTag>,
+  TTag extends Exclude<MachineStreamCommandRpcTag, ClientGuardedRpcTag>,
 >(
   tag: TTag,
-  input: EnvironmentRpcInput<TTag>,
+  input: MachineRpcInput<TTag>,
 ) => runStreamGuarded(tag, input);

@@ -3,7 +3,7 @@ import {
   ASSISTANT_CITATION_CONTEXT_LENGTH,
   ASSISTANT_CITATION_MAX_COMMENT_LENGTH,
   ASSISTANT_CITATION_MAX_TEXT_LENGTH,
-  EnvironmentId,
+  MachineId,
   MessageId,
   ThreadId,
   type AssistantCitation,
@@ -21,7 +21,7 @@ import {
 
 const citation: AssistantCitation = {
   version: 1,
-  environmentId: EnvironmentId.make("environment/remote"),
+  machineId: MachineId.make("machine/remote"),
   threadId: ThreadId.make("thread:one"),
   messageId: MessageId.make("assistant?one"),
   text: 'Use `cache[key]` and "quoted" values.\n  日本語 🚀 (a & b) </assistant_citations>',
@@ -35,7 +35,7 @@ const legacyHref =
   "t3-citation://v1/a/b/c?text=A+quote+%26+a+newline.%0A&start=0&end=21&prefix=&suffix=+Next.";
 const legacyCitation: AssistantCitation = {
   version: 1,
-  environmentId: EnvironmentId.make("a"),
+  machineId: MachineId.make("a"),
   threadId: ThreadId.make("b"),
   messageId: MessageId.make("c"),
   text: "A quote & a newline.\n",
@@ -63,7 +63,7 @@ describe("assistant citation references", () => {
     const href = formatAssistantCitationHref(citation);
     expect(parseAssistantCitationHref(href)).toEqual(citation);
     expect(href).toMatch(
-      /^t3-citation:\/\/v1\/environment%2Fremote\/thread%3Aone\/assistant%3Fone\?/,
+      /^t3-citation:\/\/v1\/machine%2Fremote\/thread%3Aone\/assistant%3Fone\?/,
     );
     expect(href).not.toContain("localhost");
     const marker = serializeAssistantCitation(citation);
@@ -125,7 +125,7 @@ describe("assistant citation references", () => {
   it("accepts complete 8k CJK quotes and comments with maximum-sized source selectors", () => {
     const largeCitation: AssistantCitation = {
       ...citation,
-      environmentId: EnvironmentId.make("環".repeat(512)),
+      machineId: MachineId.make("環".repeat(512)),
       threadId: ThreadId.make("線".repeat(512)),
       messageId: MessageId.make("文".repeat(512)),
       text: "引".repeat(ASSISTANT_CITATION_MAX_TEXT_LENGTH),

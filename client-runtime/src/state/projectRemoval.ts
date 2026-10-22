@@ -1,11 +1,11 @@
-import type { EnvironmentProject, EnvironmentThreadShell } from "./models.ts";
+import type { MachineProject, MachineThreadShell } from "./models.ts";
 
 export function planProjectRemoval<
-  Thread extends Pick<EnvironmentThreadShell, "environmentId" | "projectId">,
+  Thread extends Pick<MachineThreadShell, "machineId" | "projectId">,
 >(options: {
   readonly members: ReadonlyArray<
-    Pick<EnvironmentProject, "id" | "environmentId" | "title" | "workspaceRoot"> & {
-      readonly environmentLabel?: string | null;
+    Pick<MachineProject, "id" | "machineId" | "title" | "workspaceRoot"> & {
+      readonly machineLabel?: string | null;
     }
   >;
   readonly groupMemberCount: number;
@@ -14,9 +14,9 @@ export function planProjectRemoval<
   readonly threads: ReadonlyArray<Thread>;
 }) {
   const { members, groupMemberCount, hasOtherMembers, displayName, threads } = options;
-  const memberKeys = new Set(members.map((member) => `${member.environmentId}:${member.id}`));
+  const memberKeys = new Set(members.map((member) => `${member.machineId}:${member.id}`));
   const projectThreads = threads.filter((thread) =>
-    memberKeys.has(`${thread.environmentId}:${thread.projectId}`),
+    memberKeys.has(`${thread.machineId}:${thread.projectId}`),
   );
   const isWholeGroup = members.length === groupMemberCount;
   const targetKind = hasOtherMembers || !isWholeGroup ? "checkout" : "project";
@@ -29,8 +29,8 @@ export function planProjectRemoval<
     ...(singleMember
       ? [
           `Path: ${singleMember.workspaceRoot}`,
-          ...(singleMember.environmentLabel
-            ? [`Environment: ${singleMember.environmentLabel}`]
+          ...(singleMember.machineLabel
+            ? [`Machine: ${singleMember.machineLabel}`]
             : []),
         ]
       : [`This removes ${members.length} grouped project entries.`]),

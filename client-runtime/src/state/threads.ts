@@ -1,6 +1,6 @@
 import {
   ORCHESTRATION_V2_WS_METHODS,
-  type EnvironmentId as EnvironmentIdType,
+  type MachineId as MachineIdType,
   type OrchestrationV2ThreadDetailSnapshot,
   type OrchestrationV2ThreadProjection,
   type OrchestrationV2ThreadStreamItem,
@@ -21,10 +21,10 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 import { HttpClient } from "effect/http";
 import { Atom } from "effect/reactivity";
 
-import * as RemoteEnvironmentAuthorization from "../authorization/service.ts";
-import * as EnvironmentRegistry from "../connection/registry.ts";
+import * as RemoteMachineAuthorization from "../authorization/service.ts";
+import * as MachineRegistry from "../connection/registry.ts";
 import { connectionProjectionPhase } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as ConnectionWakeups from "../connection/wakeups.ts";
 import * as Persistence from "../platform/persistence.ts";
 import { runCachePersistence } from "./cachePersistence.ts";
@@ -33,9 +33,9 @@ import { subscribeDynamic } from "../rpc/client.ts";
 import { parseThreadKey, threadKey } from "./entities.ts";
 import { applyOrchestrationV2ProjectionEvent } from "./orchestrationV2Projection.ts";
 import { THREAD_SNAPSHOT_IDLE_TTL_MS } from "./threadRetention.ts";
-import { followStreamInEnvironment } from "./runtime.ts";
+import { followStreamInMachine } from "./runtime.ts";
 import * as ThreadHistoryController from "./threadHistoryController.ts";
-import { fetchEnvironmentThreadHistoryPage } from "./threadHistoryHttp.ts";
+import { fetchMachineThreadHistoryPage } from "./threadHistoryHttp.ts";
 import {
   applyHistoryPageMeta,
   clearActiveHistoryLoading,
@@ -46,14 +46,14 @@ import {
 } from "./threadHistoryMerge.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
 import {
-  EMPTY_ENVIRONMENT_THREAD_STATE,
-  type EnvironmentThreadState,
-  type EnvironmentThreadStatus,
+  EMPTY_MACHINE_THREAD_STATE,
+  type MachineThreadState,
+  type MachineThreadStatus,
 } from "./threadState.ts";
 
 function statusWithoutLiveData(
   data: Option.Option<OrchestrationV2ThreadProjection>,
-): EnvironmentThreadStatus {
+): MachineThreadStatus {
   return Option.isSome(data) ? "cached" : "empty";
 }
 
@@ -121,7 +121,7 @@ function shouldPersistThread(
 }
 
 interface ThreadResumeSnapshot {
-  readonly state: EnvironmentThreadState;
+  readonly state: MachineThreadState;
   readonly sequence: number;
   readonly persisted: boolean;
   readonly acceptsBoundedSnapshots?: boolean;
@@ -149,7 +149,7 @@ function matchesThreadSnapshot(
   );
 }
 
-function cachedThreadState(value: EnvironmentThreadState): EnvironmentThreadState {
+function cachedThreadState(value: MachineThreadState): MachineThreadState {
   return {
     ...value,
     status:
@@ -161,12 +161,12 @@ function cachedThreadState(value: EnvironmentThreadState): EnvironmentThreadStat
   };
 }
 
-export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make")(function* (
+export const makeMachineThreadState = Effect.fn("MachineThreadState.make")(function* (
   threadId: ThreadIdType,
   resumeCache?: ThreadResumeCache,
 ) {
-  const supervisor = yield* EnvironmentSupervisor.EnvironmentSupervisor;
-  const cache = yield* Persistence.EnvironmentCacheStore;
+  const supervisor = yield* MachineSupervisor.MachineSupervisor;
+  const cache = yield* Persistence.MachineCacheStore;
   const snapshotLoader = yield* ThreadSnapshotLoader.ThreadSnapshotLoader;
   const historyController = yield* Effect.serviceOption(
     ThreadHistoryController.ThreadHistoryController,
@@ -174,20 +174,20 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
   const httpClient = yield* Effect.serviceOption(HttpClient.HttpClient);
   const dpopSigner = yield* Effect.serviceOption(ManagedRelay.ManagedRelayDpopSigner);
   const remoteAuthorization = yield* Effect.serviceOption(
-    RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization,
+    RemoteMachineAuthorization.RemoteMachineAuthorization,
   );
   const wakeups = yield* Effect.serviceOption(ConnectionWakeups.ConnectionWakeups);
-  const environmentId = supervisor.target.environmentId;
+  const machineId = supervisor.target.machineId;
   const retained = resumeCache?.snapshot;
   const owner = {};
   if (resumeCache) resumeCache.owner = owner;
   const cached =
     retained === undefined
-      ? yield* cache.loadThread(environmentId, threadId).pipe(
+      ? yield* cache.loadThread(machineId, threadId).pipe(
           Effect.catch((error) =>
             Effect.logWarning("Could not load cached thread.").pipe(
               Effect.annotateLogs({
-                environmentId,
+                machineId,
                 threadId,
                 error: error.message,
               }),
@@ -197,7 +197,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
         )
       : Option.none<OrchestrationV2ThreadDetailSnapshot>();
   const cachedThread = Option.map(cached, (snapshot) => snapshot.projection);
-  const initialState: EnvironmentThreadState = retained
+  const initialState: MachineThreadState = retained
     ? cachedThreadState(retained.state)
     : {
         data: cachedThread,
@@ -243,7 +243,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
   });
   const persistence = yield* Queue.sliding<OrchestrationV2ThreadDetailSnapshot>(1);
 
-  const persist = Effect.fn("EnvironmentThreadState.persist")(function* (
+  const persist = Effect.fn("MachineThreadState.persist")(function* (
     snapshot: OrchestrationV2ThreadDetailSnapshot,
   ) {
     if (resumeCache !== undefined && resumeCache.owner !== owner) return;
@@ -258,7 +258,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
       )
     )
       return;
-    yield* cache.saveThread(environmentId, snapshot).pipe(
+    yield* cache.saveThread(machineId, snapshot).pipe(
       Effect.tap(() =>
         Effect.sync(() => {
           if (
@@ -277,7 +277,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
       Effect.catch((error) =>
         Effect.logWarning("Could not persist the thread cache.").pipe(
           Effect.annotateLogs({
-            environmentId,
+            machineId,
             threadId,
             error: error.message,
           }),
@@ -345,7 +345,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
       ),
     );
 
-  const setThread = Effect.fn("EnvironmentThreadState.setThread")(function* (
+  const setThread = Effect.fn("MachineThreadState.setThread")(function* (
     thread: OrchestrationV2ThreadProjection,
     options?: {
       readonly resetHistory?: boolean;
@@ -398,7 +398,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
       history: patch(current.history),
     }));
 
-  const setDeleted = Effect.fn("EnvironmentThreadState.setDeleted")(function* () {
+  const setDeleted = Effect.fn("MachineThreadState.setDeleted")(function* () {
     yield* Ref.set(awaitingCompletion, false);
     yield* SubscriptionRef.set(state, {
       data: Option.none(),
@@ -408,11 +408,11 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     });
     yield* remember;
     if (resumeCache !== undefined && resumeCache.owner !== owner) return;
-    yield* cache.removeThread(environmentId, threadId).pipe(
+    yield* cache.removeThread(machineId, threadId).pipe(
       Effect.catch((error) =>
         Effect.logWarning("Could not remove the cached thread.").pipe(
           Effect.annotateLogs({
-            environmentId,
+            machineId,
             threadId,
             error: error.message,
           }),
@@ -426,7 +426,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     OrchestrationV2ThreadStreamItem,
     { kind: "event" | "unknown-event" }
   >;
-  const applyEventsLocked = Effect.fn("EnvironmentThreadState.applyEventsLocked")(function* (
+  const applyEventsLocked = Effect.fn("MachineThreadState.applyEventsLocked")(function* (
     items: ReadonlyArray<SequencedItem>,
   ) {
     const appliedSequence = yield* SubscriptionRef.get(lastSequence);
@@ -441,7 +441,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
       }
       yield* Effect.logDebug("Skipped a thread event type this client does not know.").pipe(
         Effect.annotateLogs({
-          environmentId,
+          machineId,
           threadId,
           eventType: item.eventType.slice(0, 64),
           sequence: item.sequence,
@@ -466,9 +466,9 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
         };
 
     const applyEvent = (
-      current: EnvironmentThreadState,
+      current: MachineThreadState,
       item: EventItem,
-    ): readonly [EventApplyResult, EnvironmentThreadState] => {
+    ): readonly [EventApplyResult, MachineThreadState] => {
       if (current.status === "deleted") {
         return [{ _tag: "noop" }, current];
       }
@@ -505,7 +505,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
         }
       }
 
-      const updated: EnvironmentThreadState = {
+      const updated: MachineThreadState = {
         ...current,
         data: Option.some(next),
         status: waiting ? "synchronizing" : "live",
@@ -517,7 +517,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
 
     const result = yield* SubscriptionRef.modify(
       state,
-      (current): readonly [EventApplyResult, EnvironmentThreadState] => {
+      (current): readonly [EventApplyResult, MachineThreadState] => {
         let result: EventApplyResult = { _tag: "noop" };
         for (const item of fresh) {
           const [applied, next] = applyEvent(current, item);
@@ -547,7 +547,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     }
   });
 
-  const applyItemLocked = Effect.fn("EnvironmentThreadState.applyItemLocked")(function* (
+  const applyItemLocked = Effect.fn("MachineThreadState.applyItemLocked")(function* (
     item: OrchestrationV2ThreadStreamItem,
   ) {
     if (item.kind === "synchronized") {
@@ -587,7 +587,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     yield* applyEventsLocked([item]);
   });
 
-  const applyItems = Effect.fn("EnvironmentThreadState.applyItems")(function* (
+  const applyItems = Effect.fn("MachineThreadState.applyItems")(function* (
     items: ReadonlyArray<OrchestrationV2ThreadStreamItem>,
   ) {
     yield* applyLock.withPermits(1)(
@@ -611,7 +611,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     );
   });
 
-  const loadEarlier = Effect.fn("EnvironmentThreadState.loadEarlier")(function* (
+  const loadEarlier = Effect.fn("MachineThreadState.loadEarlier")(function* (
     throughEntryId?: string,
   ) {
     const current = yield* SubscriptionRef.get(state);
@@ -643,7 +643,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
           latest,
         ): readonly [
           ThreadHistoryController.ThreadHistoryLoadEarlierResult,
-          EnvironmentThreadState,
+          MachineThreadState,
         ] =>
           isActiveHistoryRequestCursor(requestCursor, latest.history)
             ? [
@@ -659,12 +659,12 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
     const runLoad = Effect.gen(function* () {
       const preparedOption = yield* SubscriptionRef.get(supervisor.prepared);
       if (Option.isNone(preparedOption) || Option.isNone(httpClient))
-        return yield* failLoad("Environment is not connected.");
+        return yield* failLoad("Machine is not connected.");
 
       const views =
         throughEntryId === undefined ? [undefined] : ["conversation" as const, undefined];
       for (const view of views) {
-        const pageResult = yield* fetchEnvironmentThreadHistoryPage({
+        const pageResult = yield* fetchMachineThreadHistoryPage({
           prepared: preparedOption.value,
           threadId,
           cursor: requestCursor,
@@ -685,7 +685,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
               latest,
             ): readonly [
               ThreadHistoryController.ThreadHistoryLoadEarlierResult,
-              EnvironmentThreadState,
+              MachineThreadState,
             ] => {
               if (!isActiveHistoryRequestCursor(requestCursor, latest.history))
                 return [{ _tag: "noop" }, latest];
@@ -723,7 +723,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
 
   if (Option.isSome(historyController)) {
     const scope = yield* Scope.Scope;
-    const registration = yield* historyController.value.register(environmentId, threadId, {
+    const registration = yield* historyController.value.register(machineId, threadId, {
       loadEarlier: (throughEntryId) =>
         loadEarlier(throughEntryId).pipe(Effect.forkIn(scope), Effect.flatMap(Fiber.join)),
     });
@@ -767,7 +767,7 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
   yield* Effect.forkScoped(
     subscribeDynamic(
       ORCHESTRATION_V2_WS_METHODS.subscribeThread,
-      Effect.fn("EnvironmentThreadState.makeSubscribeInput")(function* (session) {
+      Effect.fn("MachineThreadState.makeSubscribeInput")(function* (session) {
         let current = yield* SubscriptionRef.get(state);
         // A prior definitive miss (or delete event) already cleared this thread.
         // Park the subscription attempt without opening the socket so we do not
@@ -873,61 +873,61 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
 });
 
 function threadStateChanges(
-  environmentId: EnvironmentIdType,
+  machineId: MachineIdType,
   threadId: ThreadIdType,
   resumeCache?: ThreadResumeCache,
 ) {
-  return followStreamInEnvironment(
-    environmentId,
+  return followStreamInMachine(
+    machineId,
     Stream.unwrap(
-      makeEnvironmentThreadState(threadId, resumeCache).pipe(Effect.map(SubscriptionRef.changes)),
+      makeMachineThreadState(threadId, resumeCache).pipe(Effect.map(SubscriptionRef.changes)),
     ),
   );
 }
 
-export function createEnvironmentThreadStateAtoms<R, E>(
+export function createMachineThreadStateAtoms<R, E>(
   runtime: Atom.AtomRuntime<
-    | EnvironmentRegistry.EnvironmentRegistry
-    | Persistence.EnvironmentCacheStore
+    | MachineRegistry.MachineRegistry
+    | Persistence.MachineCacheStore
     | ThreadSnapshotLoader.ThreadSnapshotLoader
     | R,
     E
   >,
 ) {
   // Cache definitions must outlive collectible live-atom definitions. The
-  // registry retains these nodes without retaining environment or RPC scopes.
+  // registry retains these nodes without retaining machine or RPC scopes.
   const resumeFamily = Atom.family((key: string) =>
     Atom.make((): ThreadResumeCache => ({
       snapshot: undefined,
       owner: undefined,
     })).pipe(
       Atom.setIdleTTL(THREAD_SNAPSHOT_IDLE_TTL_MS),
-      Atom.withLabel(`environment-thread-resume:${key}`),
+      Atom.withLabel(`machine-thread-resume:${key}`),
     ),
   );
   const family = Atom.family((key: string) => {
-    const { environmentId, threadId } = parseThreadKey(key);
+    const { machineId, threadId } = parseThreadKey(key);
     const resumeAtom = resumeFamily(key);
     return runtime
       .atom(
         (get) => {
           get.mount(resumeAtom);
           const resume = get.once(resumeAtom);
-          const live = threadStateChanges(environmentId, threadId, resume);
+          const live = threadStateChanges(machineId, threadId, resume);
           return resume.snapshot === undefined
             ? live
             : Stream.concat(Stream.succeed(cachedThreadState(resume.snapshot.state)), live);
         },
         {
-          initialValue: EMPTY_ENVIRONMENT_THREAD_STATE,
+          initialValue: EMPTY_MACHINE_THREAD_STATE,
         },
       )
-      .pipe(Atom.setIdleTTL(0), Atom.withLabel(`environment-thread-state:${key}`));
+      .pipe(Atom.setIdleTTL(0), Atom.withLabel(`machine-thread-state:${key}`));
   });
 
   return {
-    stateAtom: (environmentId: EnvironmentIdType, threadId: ThreadIdType) =>
-      family(threadKey({ environmentId, threadId })),
+    stateAtom: (machineId: MachineIdType, threadId: ThreadIdType) =>
+      family(threadKey({ machineId, threadId })),
   };
 }
 

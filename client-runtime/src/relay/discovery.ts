@@ -1,11 +1,11 @@
 import type {
-  RelayClientEnvironmentRecord,
-  RelayEnvironmentStatusResponse,
+  RelayClientMachineRecord,
+  RelayMachineStatusResponse,
 } from "@vekrel/contracts/relay";
 import { decodeRelayJwt } from "@vekrel/shared/relayJwt";
 import {
-  RelayEnvironmentConnectScope,
-  RelayEnvironmentStatusScope,
+  RelayMachineConnectScope,
+  RelayMachineStatusScope,
 } from "@vekrel/contracts/relay";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -23,69 +23,69 @@ import { mapManagedRelayError } from "../connection/errors.ts";
 import { ConnectionBlockedError, type ConnectionAttemptError } from "../connection/model.ts";
 import * as ConnectionWakeups from "../connection/wakeups.ts";
 
-export type RelayEnvironmentAvailability = "checking" | "online" | "offline" | "error";
+export type RelayMachineAvailability = "checking" | "online" | "offline" | "error";
 
-export interface RelayDiscoveredEnvironment {
-  readonly environment: RelayClientEnvironmentRecord;
-  readonly availability: RelayEnvironmentAvailability;
-  readonly status: Option.Option<RelayEnvironmentStatusResponse>;
+export interface RelayDiscoveredMachine {
+  readonly machine: RelayClientMachineRecord;
+  readonly availability: RelayMachineAvailability;
+  readonly status: Option.Option<RelayMachineStatusResponse>;
   readonly error: Option.Option<ConnectionAttemptError>;
 }
 
-export interface RelayEnvironmentDiscoveryState {
-  readonly environments: ReadonlyMap<string, RelayDiscoveredEnvironment>;
+export interface RelayMachineDiscoveryState {
+  readonly machines: ReadonlyMap<string, RelayDiscoveredMachine>;
   readonly refreshing: boolean;
   readonly offline: boolean;
   readonly error: Option.Option<ConnectionAttemptError>;
 }
 
-export class RelayEnvironmentDiscovery extends Context.Service<
-  RelayEnvironmentDiscovery,
+export class RelayMachineDiscovery extends Context.Service<
+  RelayMachineDiscovery,
   {
-    readonly state: SubscriptionRef.SubscriptionRef<RelayEnvironmentDiscoveryState>;
+    readonly state: SubscriptionRef.SubscriptionRef<RelayMachineDiscoveryState>;
     readonly refresh: Effect.Effect<void>;
   }
->()("@vekrel/client-runtime/relay/discovery/RelayEnvironmentDiscovery") {}
+>()("@vekrel/client-runtime/relay/discovery/RelayMachineDiscovery") {}
 
-export const EMPTY_RELAY_ENVIRONMENT_DISCOVERY_STATE: RelayEnvironmentDiscoveryState = {
-  environments: new Map(),
+export const EMPTY_RELAY_MACHINE_DISCOVERY_STATE: RelayMachineDiscoveryState = {
+  machines: new Map(),
   refreshing: false,
   offline: false,
   error: Option.none(),
 };
 
 function validateStatus(
-  environment: RelayClientEnvironmentRecord,
-  status: RelayEnvironmentStatusResponse,
-): Effect.Effect<RelayEnvironmentStatusResponse, ConnectionAttemptError> {
-  if (status.environmentId !== environment.environmentId) {
+  machine: RelayClientMachineRecord,
+  status: RelayMachineStatusResponse,
+): Effect.Effect<RelayMachineStatusResponse, ConnectionAttemptError> {
+  if (status.machineId !== machine.machineId) {
     return Effect.fail(
       new ConnectionBlockedError({
         reason: "configuration",
-        detail: "Relay returned status for a different environment.",
+        detail: "Relay returned status for a different machine.",
       }),
     );
   }
   if (
-    status.endpoint.httpBaseUrl !== environment.endpoint.httpBaseUrl ||
-    status.endpoint.wsBaseUrl !== environment.endpoint.wsBaseUrl ||
-    status.endpoint.providerKind !== environment.endpoint.providerKind
+    status.endpoint.httpBaseUrl !== machine.endpoint.httpBaseUrl ||
+    status.endpoint.wsBaseUrl !== machine.endpoint.wsBaseUrl ||
+    status.endpoint.providerKind !== machine.endpoint.providerKind
   ) {
     return Effect.fail(
       new ConnectionBlockedError({
         reason: "configuration",
-        detail: "Relay returned status for a different environment endpoint.",
+        detail: "Relay returned status for a different machine endpoint.",
       }),
     );
   }
   if (
     status.descriptor !== undefined &&
-    status.descriptor.environmentId !== environment.environmentId
+    status.descriptor.machineId !== machine.machineId
   ) {
     return Effect.fail(
       new ConnectionBlockedError({
         reason: "configuration",
-        detail: "Relay returned a descriptor for a different environment.",
+        detail: "Relay returned a descriptor for a different machine.",
       }),
     );
   }
@@ -103,12 +103,12 @@ function relayAccountId(clerkToken: string): Option.Option<string> {
 }
 
 /** @public Service construction is part of the canonical Effect module API. */
-export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
+export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
   const relay = yield* ManagedRelay.ManagedRelayClient;
   const session = yield* ClientCapabilities.CloudSession;
   const connectivity = yield* Connectivity.Connectivity;
   const wakeups = yield* ConnectionWakeups.ConnectionWakeups;
-  const state = yield* SubscriptionRef.make(EMPTY_RELAY_ENVIRONMENT_DISCOVERY_STATE);
+  const state = yield* SubscriptionRef.make(EMPTY_RELAY_MACHINE_DISCOVERY_STATE);
   const refreshLock = yield* Semaphore.make(1);
   const hasRefreshed = yield* Ref.make(false);
   const accountGeneration = yield* Ref.make(0);
@@ -116,52 +116,52 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
   const refreshGeneration = yield* Ref.make(0);
   const offlineReportFingerprints = yield* Ref.make<ReadonlyMap<string, string>>(new Map());
 
-  const clearOfflineReport = Effect.fn("RelayEnvironmentDiscovery.clearOfflineReport")(function* (
-    environmentId: string,
+  const clearOfflineReport = Effect.fn("RelayMachineDiscovery.clearOfflineReport")(function* (
+    machineId: string,
   ) {
     yield* Ref.update(offlineReportFingerprints, (current) => {
-      if (!current.has(environmentId)) {
+      if (!current.has(machineId)) {
         return current;
       }
       const next = new Map(current);
-      next.delete(environmentId);
+      next.delete(machineId);
       return next;
     });
   });
 
-  const updateEnvironment = Effect.fn("RelayEnvironmentDiscovery.updateEnvironment")(function* (
+  const updateMachine = Effect.fn("RelayMachineDiscovery.updateMachine")(function* (
     generation: number,
-    environmentId: string,
-    update: (current: RelayDiscoveredEnvironment) => RelayDiscoveredEnvironment,
+    machineId: string,
+    update: (current: RelayDiscoveredMachine) => RelayDiscoveredMachine,
   ) {
     if ((yield* Ref.get(accountGeneration)) !== generation) {
       return;
     }
     yield* SubscriptionRef.update(state, (current) => {
-      const entry = current.environments.get(environmentId);
+      const entry = current.machines.get(machineId);
       if (entry === undefined) {
         return current;
       }
-      const environments = new Map(current.environments);
-      environments.set(environmentId, update(entry));
-      return { ...current, environments };
+      const machines = new Map(current.machines);
+      machines.set(machineId, update(entry));
+      return { ...current, machines };
     });
   });
 
-  const refreshStatus = Effect.fn("RelayEnvironmentDiscovery.refreshStatus")(function* (
+  const refreshStatus = Effect.fn("RelayMachineDiscovery.refreshStatus")(function* (
     generation: number,
     clerkToken: string,
-    environment: RelayClientEnvironmentRecord,
+    machine: RelayClientMachineRecord,
   ) {
     const result = yield* relay
-      .getEnvironmentStatus({
+      .getMachineStatus({
         clerkToken,
-        scopes: [RelayEnvironmentStatusScope, RelayEnvironmentConnectScope],
-        environmentId: environment.environmentId,
+        scopes: [RelayMachineStatusScope, RelayMachineConnectScope],
+        machineId: machine.machineId,
       })
       .pipe(
         Effect.mapError(mapManagedRelayError),
-        Effect.flatMap((status) => validateStatus(environment, status)),
+        Effect.flatMap((status) => validateStatus(machine, status)),
         Effect.result,
       );
 
@@ -169,23 +169,23 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
       if (result.success.status === "offline") {
         const fingerprint = `${result.success.endpoint.httpBaseUrl}\n${result.success.error ?? ""}`;
         const shouldReport = yield* Ref.modify(offlineReportFingerprints, (current) => {
-          if (current.get(environment.environmentId) === fingerprint) {
+          if (current.get(machine.machineId) === fingerprint) {
             return [false, current];
           }
-          return [true, new Map(current).set(environment.environmentId, fingerprint)];
+          return [true, new Map(current).set(machine.machineId, fingerprint)];
         });
         if (shouldReport) {
-          yield* Effect.logWarning("Relay environment health check reported offline", {
-            environmentId: result.success.environmentId,
+          yield* Effect.logWarning("Relay machine health check reported offline", {
+            machineId: result.success.machineId,
             endpoint: result.success.endpoint.httpBaseUrl,
             message: result.success.error,
             traceId: result.success.traceId,
           });
         }
       } else {
-        yield* clearOfflineReport(environment.environmentId);
+        yield* clearOfflineReport(machine.machineId);
       }
-      yield* updateEnvironment(generation, environment.environmentId, (current) => ({
+      yield* updateMachine(generation, machine.machineId, (current) => ({
         ...current,
         availability: result.success.status,
         status: Option.some(result.success),
@@ -194,8 +194,8 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
       return;
     }
 
-    yield* clearOfflineReport(environment.environmentId);
-    yield* updateEnvironment(generation, environment.environmentId, (current) => ({
+    yield* clearOfflineReport(machine.machineId);
+    yield* updateMachine(generation, machine.machineId, (current) => ({
       ...current,
       availability: "error",
       error: Option.some(result.failure),
@@ -217,7 +217,7 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
       let generation = yield* Ref.get(accountGeneration);
       yield* Ref.set(refreshGeneration, generation);
       yield* SubscriptionRef.set(state, {
-        environments: new Map(),
+        machines: new Map(),
         refreshing: true,
         offline: false,
         error: Option.none(),
@@ -258,16 +258,16 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
       }
       yield* Ref.set(activeAccountId, accountId);
 
-      const environments = yield* relay
-        .listEnvironments({ clerkToken })
+      const machines = yield* relay
+        .listMachines({ clerkToken })
         .pipe(Effect.mapError(mapManagedRelayError));
       if ((yield* Ref.get(accountGeneration)) !== generation) {
         return;
       }
-      const next = new Map<string, RelayDiscoveredEnvironment>();
-      for (const environment of environments) {
-        next.set(environment.environmentId, {
-          environment,
+      const next = new Map<string, RelayDiscoveredMachine>();
+      for (const machine of machines) {
+        next.set(machine.machineId, {
+          machine,
           availability: "checking",
           status: Option.none(),
           error: Option.none(),
@@ -275,12 +275,12 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
       }
       yield* SubscriptionRef.update(state, (current) => ({
         ...current,
-        environments: next,
+        machines: next,
       }));
 
       yield* Effect.forEach(
-        environments,
-        (environment) => refreshStatus(generation, clerkToken, environment),
+        machines,
+        (machine) => refreshStatus(generation, clerkToken, machine),
         {
           concurrency: "unbounded",
           discard: true,
@@ -332,7 +332,7 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
             yield* Ref.update(accountGeneration, (current) => current + 1);
             yield* Ref.set(activeAccountId, Option.none());
             yield* Ref.set(offlineReportFingerprints, new Map());
-            yield* SubscriptionRef.set(state, EMPTY_RELAY_ENVIRONMENT_DISCOVERY_STATE);
+            yield* SubscriptionRef.set(state, EMPTY_RELAY_MACHINE_DISCOVERY_STATE);
             yield* refresh.pipe(Effect.forkScoped);
           })
         : Effect.void,
@@ -340,7 +340,7 @@ export const make = Effect.fn("RelayEnvironmentDiscovery.make")(function* () {
     Effect.forkScoped,
   );
 
-  return RelayEnvironmentDiscovery.of({ state, refresh });
+  return RelayMachineDiscovery.of({ state, refresh });
 });
 
-export const layer = Layer.effect(RelayEnvironmentDiscovery, make());
+export const layer = Layer.effect(RelayMachineDiscovery, make());

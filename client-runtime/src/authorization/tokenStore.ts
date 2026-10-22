@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@vekrel/contracts";
+import { MachineId } from "@vekrel/contracts";
 import { RelayManagedEndpoint } from "@vekrel/contracts/relay";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -11,7 +11,7 @@ import type { ConnectionAttemptError } from "../connection/model.ts";
 export class RemoteDpopAccessToken extends Schema.Class<RemoteDpopAccessToken>(
   "@vekrel/client-runtime/authorization/RemoteDpopAccessToken",
 )({
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   accountId: Schema.optionalKey(Schema.String),
   label: Schema.String,
   endpoint: RelayManagedEndpoint,
@@ -24,10 +24,10 @@ export class RemoteDpopAccessTokenStore extends Context.Service<
   RemoteDpopAccessTokenStore,
   {
     readonly get: (
-      environmentId: EnvironmentId,
+      machineId: MachineId,
     ) => Effect.Effect<Option.Option<RemoteDpopAccessToken>, ConnectionAttemptError>;
     readonly put: (token: RemoteDpopAccessToken) => Effect.Effect<void, ConnectionAttemptError>;
-    readonly remove: (environmentId: EnvironmentId) => Effect.Effect<void, ConnectionAttemptError>;
+    readonly remove: (machineId: MachineId) => Effect.Effect<void, ConnectionAttemptError>;
   }
 >()("@vekrel/client-runtime/authorization/tokenStore/RemoteDpopAccessTokenStore") {}
 

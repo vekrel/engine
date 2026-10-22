@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   ProviderDriverKind,
   ProviderInstanceId,
   UsageDay,
@@ -11,9 +11,9 @@ import * as Effect from "effect/Effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import type { EnvironmentPresentation } from "../connection/presentation.ts";
+import type { MachinePresentation } from "../connection/presentation.ts";
 import {
-  cursorKeychainAccessEnvironments,
+  cursorKeychainAccessMachines,
   needsCursorKeychainAccess,
   refreshUsage,
   refreshUsageLimits,
@@ -42,8 +42,8 @@ afterEach(() => {
 function harness(ids = ["a"]) {
   const registry = AtomRegistry.make();
   registries.push(registry);
-  const environments = ids.map((id) => {
-    const environmentId = EnvironmentId.make(id);
+  const machines = ids.map((id) => {
+    const machineId = MachineId.make(id);
     const rates = Promise.withResolvers<
       AsyncResult.Success<typeof pricing> | AsyncResult.Failure<never, unknown>
     >();
@@ -51,51 +51,51 @@ function harness(ids = ["a"]) {
     const scanStarted = Promise.withResolvers<void>();
     const presentation = Atom.make({
       connection: { phase: "connected" },
-    } as EnvironmentPresentation | null);
+    } as MachinePresentation | null);
     const query = Atom.make(
       Effect.promise(() => {
         scanStarted.resolve();
         return scan.promise;
       }),
     );
-    return { environmentId, rates, scan, scanStarted, presentation, query };
+    return { machineId, rates, scan, scanStarted, presentation, query };
   });
-  function get(environmentId: EnvironmentId) {
-    const environment = environments.find((entry) => entry.environmentId === environmentId);
-    if (!environment) throw new Error(`Unknown environment: ${environmentId}`);
-    return environment;
+  function get(machineId: MachineId) {
+    const machine = machines.find((entry) => entry.machineId === machineId);
+    if (!machine) throw new Error(`Unknown machine: ${machineId}`);
+    return machine;
   }
   const options = {
     registry,
-    environmentIds: environments.map((entry) => entry.environmentId),
+    machineIds: machines.map((entry) => entry.machineId),
     input,
     server: {
-      usageSummary: ({ environmentId }: { environmentId: EnvironmentId }) =>
-        get(environmentId).query,
+      usageSummary: ({ machineId }: { machineId: MachineId }) =>
+        get(machineId).query,
       refreshUsageRates: {
         label: "test:rates",
         requiredScopes: () => [],
         permissionAtom: () => Atom.make(true),
         run: (
           _registry: AtomRegistry.AtomRegistry,
-          { environmentId }: { environmentId: EnvironmentId },
-        ) => get(environmentId).rates.promise,
+          { machineId }: { machineId: MachineId },
+        ) => get(machineId).rates.promise,
       },
     },
     presentations: {
-      presentationAtom: (environmentId: EnvironmentId) => get(environmentId).presentation,
+      presentationAtom: (machineId: MachineId) => get(machineId).presentation,
     },
   } satisfies Parameters<typeof refreshUsage>[0];
-  return { registry, environments, refresh: () => refreshUsage(options) };
+  return { registry, machines, refresh: () => refreshUsage(options) };
 }
 
 describe("manual usage refresh", () => {
   it.each(["success", "failure"])("waits for the rescan after a pricing %s", async (result) => {
     const {
-      environments: [environment],
+      machines: [machine],
       refresh,
     } = harness();
-    const entry = environment!;
+    const entry = machine!;
     let finished = false;
     const refreshing = refresh().then(() => {
       finished = true;
@@ -113,13 +113,13 @@ describe("manual usage refresh", () => {
     expect(finished).toBe(true);
   });
 
-  it("settles when an environment disconnects during the rescan", async () => {
+  it("settles when a machine disconnects during the rescan", async () => {
     const {
       registry,
-      environments: [environment],
+      machines: [machine],
       refresh,
     } = harness();
-    const entry = environment!;
+    const entry = machine!;
     const refreshing = refresh();
     entry.rates.resolve(AsyncResult.success(pricing));
     await entry.scanStarted.promise;
@@ -127,15 +127,15 @@ describe("manual usage refresh", () => {
     await refreshing;
   });
 
-  it("waits for healthy environments without waiting for a recovering environment", async () => {
-    const { registry, environments, refresh } = harness(["healthy", "recovering"]);
-    const [healthy, recovering] = environments;
+  it("waits for healthy machines without waiting for a recovering machine", async () => {
+    const { registry, machines, refresh } = harness(["healthy", "recovering"]);
+    const [healthy, recovering] = machines;
     registry.set(recovering!.presentation, null);
     let finished = false;
     const refreshing = refresh().then(() => {
       finished = true;
     });
-    for (const entry of environments) entry.rates.resolve(AsyncResult.success(pricing));
+    for (const entry of machines) entry.rates.resolve(AsyncResult.success(pricing));
     await healthy!.scanStarted.promise;
     expect(finished).toBe(false);
     healthy!.scan.resolve(summary);
@@ -146,10 +146,10 @@ describe("manual usage refresh", () => {
   it("replaces a scan that started before pricing was refreshed", async () => {
     const {
       registry,
-      environments: [environment],
+      machines: [machine],
       refresh,
     } = harness();
-    const entry = environment!;
+    const entry = machine!;
     let reads = 0;
     const rescanned = Promise.withResolvers<void>();
     const query = Atom.make(
@@ -176,7 +176,7 @@ describe("manual usage refresh", () => {
 
 describe("limits refresh cooldown", () => {
   it("runs a fresh check after an in-flight check when settings change", async () => {
-    const id = EnvironmentId.make("limits-after-enable");
+    const id = MachineId.make("limits-after-enable");
     const oldCheck = Promise.withResolvers<string>();
     const first = refreshUsageLimits(id, () => oldCheck.promise, true);
     const newCheck = vi.fn(async () => "new limits");
@@ -205,7 +205,7 @@ describe("needsCursorKeychainAccess", () => {
         skippedFiles: 0,
         malformedRecords: 0,
         distinctSessions: 0,
-        message: "Cursor account usage is off on this environment.",
+        message: "Cursor account usage is off on this machine.",
         action: "enableCursorKeychain",
       },
     ],
@@ -224,7 +224,7 @@ describe("needsCursorKeychainAccess", () => {
     skills: [],
   });
 
-  it("offers access only when Cursor is ready on that environment", () => {
+  it("offers access only when Cursor is ready on that machine", () => {
     expect(needsCursorKeychainAccess(cursorPrompt, [cursor("ready")])).toBe(true);
     expect(needsCursorKeychainAccess(cursorPrompt, [cursor("error")])).toBe(false);
     expect(needsCursorKeychainAccess(cursorPrompt, [cursor("disabled")])).toBe(false);
@@ -233,7 +233,7 @@ describe("needsCursorKeychainAccess", () => {
     expect(needsCursorKeychainAccess(summary, [cursor("ready")])).toBe(false);
   });
 
-  it("stops offering access once any environment reads the Cursor account", () => {
+  it("stops offering access once any machine reads the Cursor account", () => {
     const off = { summary: cursorPrompt, needsCursorKeychainAccess: true };
     const account: UsageSummary = {
       ...summary,
@@ -254,9 +254,9 @@ describe("needsCursorKeychainAccess", () => {
         },
       ],
     };
-    expect(cursorKeychainAccessEnvironments([off, off])).toEqual([off, off]);
+    expect(cursorKeychainAccessMachines([off, off])).toEqual([off, off]);
     expect(
-      cursorKeychainAccessEnvironments([
+      cursorKeychainAccessMachines([
         off,
         { summary: account, needsCursorKeychainAccess: false },
       ]),

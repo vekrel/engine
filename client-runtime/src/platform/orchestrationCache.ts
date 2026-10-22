@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   OrchestrationV2ShellSnapshotJson,
   OrchestrationV2ThreadDetailSnapshot,
   OrchestrationV2ThreadProjectionJson,
@@ -14,13 +14,13 @@ export const ORCHESTRATION_THREAD_CACHE_SCHEMA_VERSION = 4 as const;
 
 export const StoredOrchestrationShellSnapshot = Schema.Struct({
   schemaVersion: Schema.Literal(ORCHESTRATION_CACHE_SCHEMA_VERSION),
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   snapshot: OrchestrationV2ShellSnapshotJson,
 });
 
 export const StoredOrchestrationThreadSnapshot = Schema.Struct({
   schemaVersion: Schema.Literal(ORCHESTRATION_THREAD_CACHE_SCHEMA_VERSION),
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   threadId: ThreadId,
   snapshot: OrchestrationV2ThreadDetailSnapshot.mapFields((fields) => ({
     ...fields,

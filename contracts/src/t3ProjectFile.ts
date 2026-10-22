@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 
-import { ThreadEnvMode, WorktreeSubmodules } from "./environment.ts";
+import { ThreadEnvMode, WorktreeSubmodules } from "./machine.ts";
 import { ProjectScriptIcon } from "./project.ts";
 import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.ts";
 
@@ -94,7 +94,7 @@ export const T3ProjectFile = Schema.Struct({
   worktreeSubmodules: Schema.optionalKey(
     WorktreeSubmodules.annotate({
       description:
-        'How new worktrees populate git submodules: "recursive" (the default) initializes nested submodules too, "top-level" initializes only those declared by this repository, and "none" leaves every submodule empty for a setup script to handle. A project or environment setting in T3 Code overrides this.',
+        'How new worktrees populate git submodules: "recursive" (the default) initializes nested submodules too, "top-level" initializes only those declared by this repository, and "none" leaves every submodule empty for a setup script to handle. A project or machine setting in T3 Code overrides this.',
     }),
   ),
   scripts: Schema.optionalKey(
@@ -113,7 +113,7 @@ export type T3ProjectFile = typeof T3ProjectFile.Type;
 
 /**
  * A key here must be nullable on `ServerSettings` (null means inherit) so both
- * the project override and the environment value can defer to the file; `field`
+ * the project override and the machine value can defer to the file; `field`
  * names the t3.json field carrying the same value and `builtIn` is what applies
  * when every tier is unset.
  */

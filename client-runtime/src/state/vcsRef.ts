@@ -1,7 +1,7 @@
-import type { EnvironmentId, VcsRef as ContractVcsRef } from "@vekrel/contracts";
+import type { MachineId, VcsRef as ContractVcsRef } from "@vekrel/contracts";
 
 export interface VcsRefTarget {
-  readonly environmentId: EnvironmentId | null;
+  readonly machineId: MachineId | null;
   readonly cwd: string | null;
   readonly query?: string | null;
 }

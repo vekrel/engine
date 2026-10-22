@@ -1,6 +1,6 @@
 import type {
-  EnvironmentId,
-  ExecutionEnvironmentCapabilities,
+  MachineId,
+  ExecutionMachineCapabilities,
   ServerSettings,
   ServerSettingsPatch,
 } from "@vekrel/contracts";
@@ -8,7 +8,7 @@ import { isModelSelectionProviderEnabled } from "@vekrel/shared/serverSettings";
 import * as Equal from "effect/Equal";
 import * as Struct from "effect/Struct";
 
-import type { EnvironmentConnectionPhase } from "../connection/presentation.ts";
+import type { MachineConnectionPhase } from "../connection/presentation.ts";
 
 const SHARED_SERVER_SETTING_KEYS = [
   "continueThreadsAfterServerUpdate",
@@ -46,7 +46,7 @@ export function splitSharedServerPatch(patch: ServerSettingsPatch): {
 
 export function filterSharedServerPatch(
   patch: ServerSettingsPatch,
-  capabilities: Pick<ExecutionEnvironmentCapabilities, "threadRestartContinuation"> | undefined,
+  capabilities: Pick<ExecutionMachineCapabilities, "threadRestartContinuation"> | undefined,
   settings?: ServerSettings,
   sourceSettings = settings,
   targetIsSource = false,
@@ -75,7 +75,7 @@ export function filterSharedServerPatch(
 
 export function pickSharedServerSettings(
   settings: ServerSettings,
-  capabilities?: Pick<ExecutionEnvironmentCapabilities, "threadRestartContinuation">,
+  capabilities?: Pick<ExecutionMachineCapabilities, "threadRestartContinuation">,
 ): ServerSettingsPatch {
   return filterSharedServerPatch(
     Struct.pick(settings, SHARED_SERVER_SETTING_KEYS),
@@ -84,27 +84,27 @@ export function pickSharedServerSettings(
   );
 }
 
-export function supportsSharedSettingsSync(environment: {
-  readonly connection: { readonly phase: EnvironmentConnectionPhase };
+export function supportsSharedSettingsSync(machine: {
+  readonly connection: { readonly phase: MachineConnectionPhase };
   readonly serverConfig: {
-    readonly environment: {
-      readonly capabilities: Pick<ExecutionEnvironmentCapabilities, "threadAutoSettlement">;
+    readonly machine: {
+      readonly capabilities: Pick<ExecutionMachineCapabilities, "threadAutoSettlement">;
     };
   } | null;
 }): boolean {
   return (
-    environment.connection.phase === "connected" &&
-    environment.serverConfig?.environment.capabilities.threadAutoSettlement === true
+    machine.connection.phase === "connected" &&
+    machine.serverConfig?.machine.capabilities.threadAutoSettlement === true
   );
 }
 
-export interface SharedSettingsEnvironment {
-  readonly environmentId: EnvironmentId;
+export interface SharedSettingsMachine {
+  readonly machineId: MachineId;
   readonly label: string;
   readonly syncEligible: boolean;
   readonly settings: ServerSettings | null;
   readonly capabilities?:
-    | Pick<ExecutionEnvironmentCapabilities, "threadRestartContinuation">
+    | Pick<ExecutionMachineCapabilities, "threadRestartContinuation">
     | undefined;
 }
 
@@ -113,44 +113,44 @@ export interface SharedSettingsEnvironment {
  * "apply to all" would push defaults over real values.
  */
 export function findSharedSettingsMismatches(input: {
-  readonly primaryEnvironmentId: EnvironmentId | null;
+  readonly primaryMachineId: MachineId | null;
   readonly primarySettings: ServerSettings | null;
   readonly primaryCapabilities?:
-    | Pick<ExecutionEnvironmentCapabilities, "threadRestartContinuation">
+    | Pick<ExecutionMachineCapabilities, "threadRestartContinuation">
     | undefined;
-  readonly environments: ReadonlyArray<SharedSettingsEnvironment>;
-}): ReadonlyArray<{ readonly environmentId: EnvironmentId; readonly label: string }> {
-  if (input.primaryEnvironmentId === null || input.primarySettings === null) {
+  readonly machines: ReadonlyArray<SharedSettingsMachine>;
+}): ReadonlyArray<{ readonly machineId: MachineId; readonly label: string }> {
+  if (input.primaryMachineId === null || input.primarySettings === null) {
     return [];
   }
   const primarySettings = pickSharedServerSettings(
     input.primarySettings,
     input.primaryCapabilities,
   );
-  return input.environments.flatMap((environment) => {
+  return input.machines.flatMap((machine) => {
     if (
-      environment.environmentId === input.primaryEnvironmentId ||
-      !environment.syncEligible ||
-      environment.settings === null
+      machine.machineId === input.primaryMachineId ||
+      !machine.syncEligible ||
+      machine.settings === null
     ) {
       return [];
     }
     const expected = filterSharedServerPatch(
       primarySettings,
-      environment.capabilities,
-      environment.settings,
+      machine.capabilities,
+      machine.settings,
       input.primarySettings ?? undefined,
     );
     let actual = filterSharedServerPatch(
-      pickSharedServerSettings(environment.settings, environment.capabilities),
+      pickSharedServerSettings(machine.settings, machine.capabilities),
       input.primaryCapabilities,
-      environment.settings,
+      machine.settings,
     );
     if (!expected.textGenerationModelSelection) {
       actual = Struct.omit(actual, ["textGenerationModelSelection"]);
     }
     return Equal.equals(actual, expected)
       ? []
-      : [{ environmentId: environment.environmentId, label: environment.label }];
+      : [{ machineId: machine.machineId, label: machine.label }];
   });
 }

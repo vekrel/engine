@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   EventId,
   ORCHESTRATION_V2_WS_METHODS,
   TurnItemId,
@@ -21,28 +21,28 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 import { Atom, AtomRegistry } from "effect/reactivity";
 
 import type { ConnectionCatalogEntry } from "../connection/catalog.ts";
-import * as EnvironmentRegistry from "../connection/registry.ts";
+import * as MachineRegistry from "../connection/registry.ts";
 import {
   AVAILABLE_CONNECTION_STATE,
   PrimaryConnectionTarget,
   type NetworkStatus,
   type PreparedConnection,
 } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as Persistence from "../platform/persistence.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
 import type { RpcSession } from "../rpc/session.ts";
-import { createEnvironmentThreadDetailAtoms } from "./threadDetail.ts";
+import { createMachineThreadDetailAtoms } from "./threadDetail.ts";
 import { v2Projection, v2ThreadId } from "./orchestrationV2TestFixtures.ts";
 import * as ThreadHistoryController from "./threadHistoryController.ts";
-import { createEnvironmentThreadStateAtoms, type EnvironmentThreadState } from "./threads.ts";
+import { createMachineThreadStateAtoms, type MachineThreadState } from "./threads.ts";
 import * as ThreadSnapshotLoader from "./threadSnapshotHttp.ts";
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Test environment",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  machineId: MachineId.make("machine-1"),
+  label: "Test machine",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 const THREAD_ID = v2ThreadId;
 const THREAD: OrchestrationV2ThreadProjection = {
@@ -102,13 +102,13 @@ const makeHarness = Effect.fn("TestThreadAtoms.makeHarness")(function* (options?
     probe: Effect.void,
     closed: Effect.never,
   };
-  const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+  const supervisor = MachineSupervisor.MachineSupervisor.of({
     target: TARGET,
     state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
     session: yield* SubscriptionRef.make(Option.some(session)),
     prepared: yield* SubscriptionRef.make<Option.Option<PreparedConnection>>(
       Option.some({
-        environmentId: TARGET.environmentId,
+        machineId: TARGET.machineId,
         label: TARGET.label,
         httpBaseUrl: TARGET.httpBaseUrl,
         socketUrl: TARGET.wsBaseUrl,
@@ -120,30 +120,30 @@ const makeHarness = Effect.fn("TestThreadAtoms.makeHarness")(function* (options?
     disconnect: Effect.void,
     retryNow: Effect.void,
   });
-  const environmentRegistry = EnvironmentRegistry.EnvironmentRegistry.of({
-    entries: yield* SubscriptionRef.make<ReadonlyMap<EnvironmentId, ConnectionCatalogEntry>>(
+  const machineRegistry = MachineRegistry.MachineRegistry.of({
+    entries: yield* SubscriptionRef.make<ReadonlyMap<MachineId, ConnectionCatalogEntry>>(
       new Map(),
     ),
     networkStatus: yield* SubscriptionRef.make<NetworkStatus>("online"),
     start: Effect.void,
-    register: () => Effect.die("Unexpected environment registration"),
-    registerPlatform: () => Effect.die("Unexpected environment registration"),
-    reconcilePlatform: () => Effect.die("Unexpected environment reconciliation"),
-    remove: () => Effect.die("Unexpected environment removal"),
+    register: () => Effect.die("Unexpected machine registration"),
+    registerPlatform: () => Effect.die("Unexpected machine registration"),
+    reconcilePlatform: () => Effect.die("Unexpected machine reconciliation"),
+    remove: () => Effect.die("Unexpected machine removal"),
     removeRoute: () => Effect.die("Unexpected route removal"),
     reorderRoutes: () => Effect.die("Unexpected route reorder"),
-    removeRelayEnvironments: () => Effect.die("Unexpected environment removal"),
+    removeRelayMachines: () => Effect.die("Unexpected machine removal"),
     retryNow: () => Effect.void,
-    setEnabled: () => Effect.die("Unexpected environment toggle"),
+    setEnabled: () => Effect.die("Unexpected machine toggle"),
     setCompatibility: () => Effect.die("Unexpected compatibility update"),
     state: () => SubscriptionRef.get(supervisor.state),
     stateChanges: () => SubscriptionRef.changes(supervisor.state),
-    run: (_environmentId, effect) =>
-      Effect.provideService(effect, EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-    runStream: (_environmentId, stream) =>
-      Stream.provideService(stream, EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
-    followStream: (_environmentId, stream) =>
-      Stream.provideService(stream, EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+    run: (_machineId, effect) =>
+      Effect.provideService(effect, MachineSupervisor.MachineSupervisor, supervisor),
+    runStream: (_machineId, stream) =>
+      Stream.provideService(stream, MachineSupervisor.MachineSupervisor, supervisor),
+    followStream: (_machineId, stream) =>
+      Stream.provideService(stream, MachineSupervisor.MachineSupervisor, supervisor),
   });
   const historyController = yield* Effect.service(
     ThreadHistoryController.ThreadHistoryController,
@@ -162,10 +162,10 @@ const makeHarness = Effect.fn("TestThreadAtoms.makeHarness")(function* (options?
     Layer.mergeAll(
       Layer.succeed(ThreadHistoryController.ThreadHistoryController, historyController),
       Layer.succeed(HttpClient.HttpClient, historyHttpClient),
-      Layer.succeed(EnvironmentRegistry.EnvironmentRegistry, environmentRegistry),
+      Layer.succeed(MachineRegistry.MachineRegistry, machineRegistry),
       Layer.succeed(
-        Persistence.EnvironmentCacheStore,
-        Persistence.EnvironmentCacheStore.of({
+        Persistence.MachineCacheStore,
+        Persistence.MachineCacheStore.of({
           loadShell: () => Effect.succeedNone,
           saveShell: () => Effect.void,
           loadThread: () =>
@@ -211,9 +211,9 @@ const makeHarness = Effect.fn("TestThreadAtoms.makeHarness")(function* (options?
       ),
     ),
   );
-  const raw = createEnvironmentThreadStateAtoms(runtime);
-  const details = createEnvironmentThreadDetailAtoms(raw.stateAtom);
-  const ref = { environmentId: TARGET.environmentId, threadId: THREAD_ID };
+  const raw = createMachineThreadStateAtoms(runtime);
+  const details = createMachineThreadDetailAtoms(raw.stateAtom);
+  const ref = { machineId: TARGET.machineId, threadId: THREAD_ID };
   const stateAtom = details.stateAtom(ref);
   const makeRegistry = Effect.acquireRelease(
     Effect.sync(() => AtomRegistry.make({ defaultIdleTTL: 60_000, timeoutResolution: 1 })),
@@ -230,15 +230,15 @@ const makeHarness = Effect.fn("TestThreadAtoms.makeHarness")(function* (options?
     ref,
     subscriptions,
     olderLoads,
-    loadEarlier: () => historyController.loadEarlier(TARGET.environmentId, THREAD_ID),
+    loadEarlier: () => historyController.loadEarlier(TARGET.machineId, THREAD_ID),
     counts: () => ({ httpLoads, diskLoads, opened, active }),
   };
 });
 
 function observeState(
   registry: AtomRegistry.AtomRegistry,
-  atom: Atom.Atom<EnvironmentThreadState>,
-  predicate: (state: EnvironmentThreadState) => boolean,
+  atom: Atom.Atom<MachineThreadState>,
+  predicate: (state: MachineThreadState) => boolean,
 ) {
   return AtomRegistry.toStream(registry, atom).pipe(
     Stream.filter(predicate),
@@ -249,12 +249,12 @@ function observeState(
 
 function currentThread(
   registry: AtomRegistry.AtomRegistry,
-  atom: Atom.Atom<EnvironmentThreadState>,
+  atom: Atom.Atom<MachineThreadState>,
 ) {
   return Option.getOrThrow(registry.get(atom).data);
 }
 
-describe("createEnvironmentThreadStateAtoms", () => {
+describe("createMachineThreadStateAtoms", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();

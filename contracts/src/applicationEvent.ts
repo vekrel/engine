@@ -11,7 +11,7 @@ import {
   ProviderItemId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
-import { RepositoryIdentity, ThreadEnvMode } from "./environment.ts";
+import { RepositoryIdentity, ThreadEnvMode } from "./machine.ts";
 import { ModelSelection } from "./modelSelection.ts";
 import type { OrchestrationV2StoredEvent } from "./orchestrationV2.ts";
 import { ProjectScript, StoredProjectIcon } from "./project.ts";

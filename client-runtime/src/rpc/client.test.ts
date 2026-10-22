@@ -1,5 +1,5 @@
 import {
-  EnvironmentId,
+  MachineId,
   type RelayClientInstallProgressEvent,
   type ServerLifecycleStreamEvent,
   WS_METHODS,
@@ -23,16 +23,16 @@ import {
   type PreparedConnection,
   type SupervisorConnectionState,
 } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import * as RpcSession from "../rpc/session.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
 import { runStream, subscribe, subscribeDynamicWithSession } from "./client.ts";
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-1"),
-  label: "Test environment",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  machineId: MachineId.make("machine-1"),
+  label: "Test machine",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 
 const INSTALL_CHECKING: RelayClientInstallProgressEvent = {
@@ -55,14 +55,14 @@ function session(client: WsRpcProtocolClient): RpcSession.RpcSession {
   };
 }
 
-const makeHarness = Effect.fn("TestEnvironmentRpc.makeHarness")(function* () {
+const makeHarness = Effect.fn("TestMachineRpc.makeHarness")(function* () {
   const state = yield* SubscriptionRef.make<SupervisorConnectionState>(AVAILABLE_CONNECTION_STATE);
   const activeSession = yield* SubscriptionRef.make<Option.Option<RpcSession.RpcSession>>(
     Option.none(),
   );
   const prepared = yield* SubscriptionRef.make<Option.Option<PreparedConnection>>(Option.none());
   const retryCount = yield* Ref.make(0);
-  const supervisor = EnvironmentSupervisor.EnvironmentSupervisor.of({
+  const supervisor = MachineSupervisor.MachineSupervisor.of({
     target: TARGET,
     state,
     session: activeSession,
@@ -70,7 +70,7 @@ const makeHarness = Effect.fn("TestEnvironmentRpc.makeHarness")(function* () {
     connect: Effect.void,
     disconnect: Effect.void,
     retryNow: Ref.update(retryCount, (count) => count + 1),
-  } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+  } satisfies MachineSupervisor.MachineSupervisor["Service"]);
   return {
     activeSession,
     retryCount,
@@ -78,7 +78,7 @@ const makeHarness = Effect.fn("TestEnvironmentRpc.makeHarness")(function* () {
   };
 });
 
-describe("environment RPC", () => {
+describe("machine RPC", () => {
   it.effect("binds finite streaming commands to one active session", () =>
     Effect.gen(function* () {
       const firstEvents = yield* Queue.unbounded<RelayClientInstallProgressEvent>();
@@ -95,7 +95,7 @@ describe("environment RPC", () => {
       const resultFiber = yield* runStream(WS_METHODS.cloudInstallRelayClient, {}).pipe(
         Stream.take(2),
         Stream.runCollect,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.forkChild,
       );
       yield* Effect.yieldNow;
@@ -125,7 +125,7 @@ describe("environment RPC", () => {
         },
       } as unknown as WsRpcProtocolClient;
       const { activeSession, retryCount, supervisor } = yield* makeHarness();
-      const awaitSubscriptions = Effect.fn("TestEnvironmentRpc.awaitSubscriptions")(function* (
+      const awaitSubscriptions = Effect.fn("TestMachineRpc.awaitSubscriptions")(function* (
         count: number,
       ) {
         for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -139,7 +139,7 @@ describe("environment RPC", () => {
 
       const subscriptionFiber = yield* subscribe(WS_METHODS.subscribeTerminalEvents, {}).pipe(
         Stream.runDrain,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.forkChild,
       );
       yield* SubscriptionRef.set(activeSession, Option.some(session(firstClient)));
@@ -199,7 +199,7 @@ describe("environment RPC", () => {
         ),
         Stream.take(3),
         Stream.runCollect,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.forkChild,
       );
 
@@ -245,7 +245,7 @@ describe("environment RPC", () => {
 
       const subscriptionFiber = yield* subscribe(WS_METHODS.subscribeTerminalEvents, {}).pipe(
         Stream.runDrain,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.forkChild,
       );
       yield* SubscriptionRef.set(activeSession, Option.some(session(firstClient)));
@@ -276,7 +276,7 @@ describe("environment RPC", () => {
       yield* SubscriptionRef.set(activeSession, Option.some(session(client)));
       const error = yield* subscribe(WS_METHODS.subscribeTerminalEvents, {}).pipe(
         Stream.runDrain,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.flip,
       );
 
@@ -316,7 +316,7 @@ describe("environment RPC", () => {
         },
       ).pipe(
         Stream.runDrain,
-        Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+        Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
         Effect.forkChild,
       );
       for (let attempt = 0; attempt < 100 && observedFailures.length < 1; attempt += 1) {
@@ -374,7 +374,7 @@ describe("environment RPC", () => {
           },
         ).pipe(
           Stream.runDrain,
-          Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor),
+          Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor),
           Effect.exit,
         );
 

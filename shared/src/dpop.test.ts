@@ -234,7 +234,7 @@ describe("verifyDpopProof", () => {
     const thumbprint = computeDpopJwkThumbprint(publicJwk);
     const accessTokenProof = signDpopProof({
       method: "POST",
-      url: "https://example.com/v1/environments/env/connect",
+      url: "https://example.com/v1/machines/env/connect",
       iat: 100,
       privateKey,
       publicJwk,
@@ -245,7 +245,7 @@ describe("verifyDpopProof", () => {
       verifyDpopProof({
         proof: accessTokenProof,
         method: "POST",
-        url: "https://example.com/v1/environments/env/connect",
+        url: "https://example.com/v1/machines/env/connect",
         nowEpochSeconds: 101,
         expectedThumbprint: thumbprint,
         expectedAccessToken: "clerk-access-token",
@@ -269,7 +269,7 @@ describe("verifyDpopProof", () => {
     const mismatchedHash = verifyDpopProof({
       proof: accessTokenProof,
       method: "POST",
-      url: "https://example.com/v1/environments/env/connect",
+      url: "https://example.com/v1/machines/env/connect",
       nowEpochSeconds: 101,
       expectedThumbprint: thumbprint,
       expectedAccessToken: "other-access-token",
@@ -282,14 +282,14 @@ describe("verifyDpopProof", () => {
 
   it("normalizes htu by excluding query and fragment components per RFC 9449", () => {
     assert.equal(
-      normalizeDpopHtu("https://example.com/v1/environments/env/connect?foo=bar#frag"),
-      "https://example.com/v1/environments/env/connect",
+      normalizeDpopHtu("https://example.com/v1/machines/env/connect?foo=bar#frag"),
+      "https://example.com/v1/machines/env/connect",
     );
 
     const thumbprint = computeDpopJwkThumbprint(publicJwk);
     const queryProof = signDpopProof({
       method: "POST",
-      url: "https://example.com/v1/environments/env/connect",
+      url: "https://example.com/v1/machines/env/connect",
       iat: 100,
       privateKey,
       publicJwk,
@@ -299,7 +299,7 @@ describe("verifyDpopProof", () => {
       verifyDpopProof({
         proof: queryProof,
         method: "POST",
-        url: "https://example.com/v1/environments/env/connect?foo=bar#frag",
+        url: "https://example.com/v1/machines/env/connect?foo=bar#frag",
         nowEpochSeconds: 101,
         expectedThumbprint: thumbprint,
       }).ok,

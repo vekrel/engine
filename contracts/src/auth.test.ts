@@ -2,8 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Schema from "effect/Schema";
 
 import {
-  AuthEnvironmentScopes,
-  AuthEnvironmentScope,
+  AuthMachineScopes,
+  AuthMachineScope,
   authScopeRequiredResponse,
   AuthGrantScopes,
   AuthStandardClientScopes,
@@ -14,7 +14,7 @@ import {
 
 describe("authorization grants", () => {
   it("decodes legacy review credentials without offering them in new grants", () => {
-    expect(Schema.decodeUnknownSync(AuthEnvironmentScopes)(["review:write"])).toEqual([
+    expect(Schema.decodeUnknownSync(AuthMachineScopes)(["review:write"])).toEqual([
       "review:write",
     ]);
     expect(() => Schema.decodeUnknownSync(AuthGrantScopes)(["review:write"])).toThrow();
@@ -38,7 +38,7 @@ describe("authorization grants", () => {
 
   const decodeOldScopes = Schema.decodeUnknownSync(oldScopes);
 
-  it.each(AuthEnvironmentScope.literals)(
+  it.each(AuthMachineScope.literals)(
     "keeps %s permission errors decodable by old clients",
     (scope) => {
       const response = authScopeRequiredResponse(scope);
@@ -100,7 +100,7 @@ describe("authorization grants", () => {
       session: {
         authenticated: true,
         scopes: ["orchestration:operate"],
-        auth: { serverUpdateScope: "environment:maintain" },
+        auth: { serverUpdateScope: "machine:maintain" },
       },
       scope: "settings:write",
       expected: false,

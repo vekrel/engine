@@ -4,29 +4,29 @@ import {
   type AttachmentCreateUploadUrlInput,
   type AttachmentCreateUploadUrlResult,
   type AttachmentDeleteInput,
-  type EnvironmentId,
+  type MachineId,
 } from "@vekrel/contracts";
 import type { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
-import type { EnvironmentRegistry } from "../connection/registry.ts";
+import type { MachineRegistry } from "../connection/registry.ts";
 import {
-  createEnvironmentRpcCommand,
+  createMachineRpcCommand,
   executeAtomQuery,
   runAtomCommand,
   squashAtomCommandFailure,
   type AtomCommand,
 } from "./runtime.ts";
 
-export function createAttachmentEnvironmentAtoms<R, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
+export function createAttachmentMachineAtoms<R, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry | R, E>,
 ) {
   return {
-    createUploadUrl: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:attachments:create-upload-url",
+    createUploadUrl: createMachineRpcCommand(runtime, {
+      label: "machine-command:attachments:create-upload-url",
       tag: WS_METHODS.attachmentsCreateUploadUrl,
     }),
-    remove: createEnvironmentRpcCommand(runtime, {
-      label: "environment-command:attachments:delete",
+    remove: createMachineRpcCommand(runtime, {
+      label: "machine-command:attachments:delete",
       tag: WS_METHODS.attachmentsDelete,
     }),
   };
@@ -54,18 +54,18 @@ export type PersistedAttachmentVerification =
 export async function verifyPersistedAttachmentUpload<A, E>(input: {
   readonly registry: AtomRegistry.AtomRegistry;
   readonly createAssetUrl: (query: {
-    readonly environmentId: EnvironmentId;
+    readonly machineId: MachineId;
     readonly input: {
       readonly resource: { readonly _tag: "attachment"; readonly attachmentId: string };
     };
   }) => Atom.Atom<AsyncResult.AsyncResult<A, E>>;
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly attachmentId: string;
 }): Promise<PersistedAttachmentVerification> {
   const result = await executeAtomQuery(
     input.registry,
     input.createAssetUrl({
-      environmentId: input.environmentId,
+      machineId: input.machineId,
       input: { resource: { _tag: "attachment", attachmentId: input.attachmentId } },
     }),
     // `refresh` forces a server round trip: the asset URL query atom caches
@@ -83,13 +83,13 @@ export async function verifyPersistedAttachmentUpload<A, E>(input: {
 }
 
 type AttachmentCreateUploadUrlCommand<E> = AtomCommand<
-  { readonly environmentId: EnvironmentId; readonly input: AttachmentCreateUploadUrlInput },
+  { readonly machineId: MachineId; readonly input: AttachmentCreateUploadUrlInput },
   AttachmentCreateUploadUrlResult,
   E
 >;
 
 type AttachmentRemoveCommand<E> = AtomCommand<
-  { readonly environmentId: EnvironmentId; readonly input: AttachmentDeleteInput },
+  { readonly machineId: MachineId; readonly input: AttachmentDeleteInput },
   unknown,
   E
 >;
@@ -97,13 +97,13 @@ type AttachmentRemoveCommand<E> = AtomCommand<
 export function deletePendingAttachmentUpload<E>(input: {
   readonly registry: AtomRegistry.AtomRegistry;
   readonly remove: AttachmentRemoveCommand<E>;
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly attachmentId: string;
 }): void {
   void runAtomCommand(
     input.registry,
     input.remove,
-    { environmentId: input.environmentId, input: { attachmentId: input.attachmentId } },
+    { machineId: input.machineId, input: { attachmentId: input.attachmentId } },
     { reportFailure: false, reportDefect: false },
   );
 }
@@ -133,7 +133,7 @@ export async function runAttachmentUploadCycle<E, RE>(input: {
   readonly registry: AtomRegistry.AtomRegistry;
   readonly createUploadUrl: AttachmentCreateUploadUrlCommand<E>;
   readonly remove: AttachmentRemoveCommand<RE>;
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly upload: AttachmentCreateUploadUrlInput;
   readonly resolveUploadUrl: (relativeUrl: string) => string | null;
   readonly transport: (url: string) => AttachmentByteUpload;
@@ -143,7 +143,7 @@ export async function runAttachmentUploadCycle<E, RE>(input: {
   const minted = await runAtomCommand(
     input.registry,
     input.createUploadUrl,
-    { environmentId: input.environmentId, input: input.upload },
+    { machineId: input.machineId, input: input.upload },
     { reportFailure: false },
   );
   if (minted._tag !== "Success") {
@@ -159,7 +159,7 @@ export async function runAttachmentUploadCycle<E, RE>(input: {
     deletePendingAttachmentUpload({
       registry: input.registry,
       remove: input.remove,
-      environmentId: input.environmentId,
+      machineId: input.machineId,
       attachmentId,
     });
     return { status: "cancelled", attachmentId };
@@ -171,7 +171,7 @@ export async function runAttachmentUploadCycle<E, RE>(input: {
       status: "failed",
       step: "resolve-url",
       attachmentId,
-      error: new Error("The environment is not connected."),
+      error: new Error("The machine is not connected."),
     };
   }
 

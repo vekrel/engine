@@ -1,12 +1,12 @@
 import type { QueryPersistence } from "./queryPersistence.ts";
 import { createCommandPermissions } from "./commandPermissions.ts";
-import { followStreamInEnvironment } from "./environmentStreams.ts";
+import { followStreamInMachine } from "./machineStreams.ts";
 import { reuseUnchanged } from "./serverConfigProjection.ts";
-export { runStreamInEnvironment, followStreamInEnvironment } from "./environmentStreams.ts";
+export { runStreamInMachine, followStreamInMachine } from "./machineStreams.ts";
 import {
   type ClientGuardedRpcTag,
-  EnvironmentId,
-  type EnvironmentId as EnvironmentIdType,
+  MachineId,
+  type MachineId as MachineIdType,
 } from "@vekrel/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
@@ -18,25 +18,25 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 import { AsyncResult, Atom, AtomRegistry } from "effect/reactivity";
 
 import type { ConnectionAttemptError } from "../connection/model.ts";
-import * as EnvironmentRegistry from "../connection/registry.ts";
+import * as MachineRegistry from "../connection/registry.ts";
 import {
-  type EnvironmentRpcInput,
-  type EnvironmentRpcSuccess,
-  type EnvironmentRpcFailure,
-  type EnvironmentRpcStreamFailure,
-  type EnvironmentRpcStreamValue,
-  type EnvironmentSubscriptionRpcTag,
-  type EnvironmentUnaryRpcTag,
-  EnvironmentRpcUnavailableError,
+  type MachineRpcInput,
+  type MachineRpcSuccess,
+  type MachineRpcFailure,
+  type MachineRpcStreamFailure,
+  type MachineRpcStreamValue,
+  type MachineSubscriptionRpcTag,
+  type MachineUnaryRpcTag,
+  MachineRpcUnavailableError,
   request,
   requestGuarded,
   RpcPermissionGuard,
   subscribe,
 } from "../rpc/client.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import type * as RpcSession from "../rpc/session.ts";
 
-const isEnvironmentRpcUnavailable = Schema.is(EnvironmentRpcUnavailableError);
+const isMachineRpcUnavailable = Schema.is(MachineRpcUnavailableError);
 
 /**
  * Holds back the unavailable failure of a query whose session went away. The
@@ -49,8 +49,8 @@ const pendingOnceSessionReplaced =
   <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       // The query's error type is generic, so its tags are unknown to `catchTags`.
-      Effect.catchIf(isEnvironmentRpcUnavailable, (error) =>
-        EnvironmentSupervisor.EnvironmentSupervisor.pipe(
+      Effect.catchIf(isMachineRpcUnavailable, (error) =>
+        MachineSupervisor.MachineSupervisor.pipe(
           Effect.flatMap((supervisor) => SubscriptionRef.get(supervisor.session)),
           Effect.flatMap((current) =>
             Option.isSome(current) && current.value === session ? Effect.fail(error) : Effect.never,
@@ -59,29 +59,29 @@ const pendingOnceSessionReplaced =
       ),
     );
 
-interface EnvironmentAtomOptions<Input, A, E, R> {
+interface MachineAtomOptions<Input, A, E, R> {
   readonly label: string;
   readonly execute: (input: Input) => Effect.Effect<A, E, R>;
   readonly scheduler?: AtomCommandScheduler;
   readonly concurrency?: AtomCommandConcurrency<{
-    readonly environmentId: EnvironmentIdType;
+    readonly machineId: MachineIdType;
     readonly input: Input;
   }>;
 }
 
-interface EnvironmentCommandAtomOptions<Input, A, E, R> extends Omit<
-  EnvironmentAtomOptions<Input, A, E, R>,
+interface MachineCommandAtomOptions<Input, A, E, R> extends Omit<
+  MachineAtomOptions<Input, A, E, R>,
   "execute"
 > {
   readonly execute: (
     input: Input,
     registry: AtomRegistry.AtomRegistry,
-    environmentId: EnvironmentIdType,
+    machineId: MachineIdType,
   ) => Effect.Effect<A, E, R>;
 }
 
-interface EnvironmentQueryAtomOptions<Input, A, E, R> extends Omit<
-  EnvironmentAtomOptions<Input, A, E, R>,
+interface MachineQueryAtomOptions<Input, A, E, R> extends Omit<
+  MachineAtomOptions<Input, A, E, R>,
   "execute"
 > {
   /**
@@ -97,13 +97,13 @@ interface EnvironmentQueryAtomOptions<Input, A, E, R> extends Omit<
   readonly idleTtlMs?: number;
   readonly refreshIntervalMs?: number;
   readonly refreshTrigger?: (target: {
-    readonly environmentId: EnvironmentIdType;
+    readonly machineId: MachineIdType;
     readonly input: Input;
   }) => Atom.Atom<unknown> | undefined;
   readonly isFinal?: (value: A) => boolean;
 }
 
-interface EnvironmentSubscriptionAtomOptions<Input, A, E, R> {
+interface MachineSubscriptionAtomOptions<Input, A, E, R> {
   readonly sensitiveInput?: boolean;
   readonly label: string;
   readonly subscribe: (input: Input) => Stream.Stream<A, E, R>;
@@ -464,34 +464,34 @@ export async function settlePromise<A>(
   }
 }
 
-export function environmentRpcKey<Input>(target: {
-  readonly environmentId: EnvironmentIdType;
+export function machineRpcKey<Input>(target: {
+  readonly machineId: MachineIdType;
   readonly input: Input;
 }): string {
-  return JSON.stringify([target.environmentId, target.input]);
+  return JSON.stringify([target.machineId, target.input]);
 }
 
-function parseEnvironmentRpcKey<Input>(key: string): {
-  readonly environmentId: EnvironmentIdType;
+function parseMachineRpcKey<Input>(key: string): {
+  readonly machineId: MachineIdType;
   readonly input: Input;
 } {
-  const decoded = JSON.parse(key) as [EnvironmentIdType, Input];
+  const decoded = JSON.parse(key) as [MachineIdType, Input];
   return {
-    environmentId: EnvironmentId.make(decoded[0]),
+    machineId: MachineId.make(decoded[0]),
     input: decoded[1],
   };
 }
 
-function runInEnvironment<A, E, R>(
-  environmentId: EnvironmentIdType,
+function runInMachine<A, E, R>(
+  machineId: MachineIdType,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<
   A,
-  E | EnvironmentRegistry.EnvironmentNotRegisteredError,
-  EnvironmentRegistry.EnvironmentRegistry | Exclude<R, EnvironmentSupervisor.EnvironmentSupervisor>
+  E | MachineRegistry.MachineNotRegisteredError,
+  MachineRegistry.MachineRegistry | Exclude<R, MachineSupervisor.MachineSupervisor>
 > {
-  return EnvironmentRegistry.EnvironmentRegistry.pipe(
-    Effect.flatMap((registry) => registry.run(environmentId, effect)),
+  return MachineRegistry.MachineRegistry.pipe(
+    Effect.flatMap((registry) => registry.run(machineId, effect)),
   );
 }
 
@@ -545,30 +545,30 @@ const refreshEveryUntilFinal =
  * timestamp, `waiting` on and off), while equal data keeps its identity, so a
  * reader of only this skips the refetches that changed nothing.
  */
-export const selectEnvironmentQueryData = <A, E>(result: AsyncResult.AsyncResult<A, E>): A | null =>
+export const selectMachineQueryData = <A, E>(result: AsyncResult.AsyncResult<A, E>): A | null =>
   Option.getOrNull(AsyncResult.value(result));
 
-export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
-  options: EnvironmentQueryAtomOptions<
+export function createMachineQueryAtomFamily<R, ER, Input, A, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
+  options: MachineQueryAtomOptions<
     Input,
     A,
     E,
-    | EnvironmentSupervisor.EnvironmentSupervisor
-    | EnvironmentRegistry.EnvironmentRegistry
+    | MachineSupervisor.MachineSupervisor
+    | MachineRegistry.MachineRegistry
     | AtomRegistry.AtomRegistry
     | R
   >,
 ): (target: {
-  readonly environmentId: EnvironmentIdType;
+  readonly machineId: MachineIdType;
   readonly input: Input;
 }) => Atom.Atom<AsyncResult.AsyncResult<A, E | ER | Error>> {
-  const connectionAtom = Atom.family((environmentId: EnvironmentIdType) =>
+  const connectionAtom = Atom.family((machineId: MachineIdType) =>
     runtime.atom(
-      followStreamInEnvironment(
-        environmentId,
+      followStreamInMachine(
+        machineId,
         Stream.unwrap(
-          EnvironmentSupervisor.EnvironmentSupervisor.pipe(
+          MachineSupervisor.MachineSupervisor.pipe(
             Effect.map((supervisor) =>
               SubscriptionRef.changes(supervisor.state).pipe(
                 Stream.zipLatest(SubscriptionRef.changes(supervisor.session)),
@@ -581,18 +581,18 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
     ),
   );
   const family = Atom.family((key: string) => {
-    const target = parseEnvironmentRpcKey<Input>(key);
+    const target = parseMachineRpcKey<Input>(key);
     const idleTtlMs = options.idleTtlMs ?? 5 * 60_000;
     const queryAtom = runtime
       .atom<
         A,
         | E
         | ConnectionAttemptError
-        | EnvironmentRegistry.EnvironmentNotRegisteredError
-        | EnvironmentRpcUnavailableError
+        | MachineRegistry.MachineNotRegisteredError
+        | MachineRpcUnavailableError
       >((get) => {
         const connection = Option.getOrNull(
-          AsyncResult.value(get(connectionAtom(target.environmentId))),
+          AsyncResult.value(get(connectionAtom(target.machineId))),
         );
         // A refetch that returns equal content keeps the previous value's
         // references, so readers of the data skip re-rendering on idle polls.
@@ -615,19 +615,19 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
           A,
           | E
           | ConnectionAttemptError
-          | EnvironmentRegistry.EnvironmentNotRegisteredError
-          | EnvironmentRpcUnavailableError,
-          | EnvironmentRegistry.EnvironmentRegistry
+          | MachineRegistry.MachineNotRegisteredError
+          | MachineRpcUnavailableError,
+          | MachineRegistry.MachineRegistry
           | AtomRegistry.AtomRegistry
-          | Exclude<R, EnvironmentSupervisor.EnvironmentSupervisor>
+          | Exclude<R, MachineSupervisor.MachineSupervisor>
         > => {
           if (connection === null) return Effect.never;
           const [connectionState, session] = connection;
           switch (connectionState.phase) {
             case "connected":
               return Option.isSome(session)
-                ? runInEnvironment(
-                    target.environmentId,
+                ? runInMachine(
+                    target.machineId,
                     options
                       .execute(target.input, emit)
                       .pipe(pendingOnceSessionReplaced(session.value)),
@@ -643,9 +643,9 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
                 return Effect.fail(connectionState.lastFailure);
               }
               return Effect.fail(
-                new EnvironmentRpcUnavailableError({
-                  environmentId: target.environmentId,
-                  message: `Environment ${target.environmentId} is ${
+                new MachineRpcUnavailableError({
+                  machineId: target.machineId,
+                  message: `Machine ${target.machineId} is ${
                     connectionState.phase === "available" ? "not connected" : connectionState.phase
                   }.`,
                 }),
@@ -662,7 +662,7 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
         return Effect.gen(function* () {
           const cached = Option.isSome(previous)
             ? previous
-            : yield* persistence.load(target.environmentId, cacheKey);
+            : yield* persistence.load(target.machineId, cacheKey);
           if (
             Option.isSome(cached) &&
             (connection === null || connection[0].phase !== "connected")
@@ -672,7 +672,7 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
           if (Option.isNone(previous) && Option.isSome(cached)) yield* emit(cached.value);
           return yield* execute().pipe(
             Effect.map(share),
-            Effect.tap((value) => persistence.save(target.environmentId, cacheKey, value)),
+            Effect.tap((value) => persistence.save(target.machineId, cacheKey, value)),
           );
         });
       })
@@ -696,46 +696,46 @@ export function createEnvironmentQueryAtomFamily<R, ER, Input, A, E>(
         : intervalQuery.pipe(refreshOnSignalWhileRead(refreshTrigger, isFinal))
     ).pipe(Atom.setIdleTTL(idleTtlMs), Atom.withLabel(`${options.label}:${key}`));
   });
-  return (target) => family(environmentRpcKey(target));
+  return (target) => family(machineRpcKey(target));
 }
 
-export function createEnvironmentSubscriptionAtomFamily<R, ER, Input, A, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
-  options: EnvironmentSubscriptionAtomOptions<
+export function createMachineSubscriptionAtomFamily<R, ER, Input, A, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
+  options: MachineSubscriptionAtomOptions<
     Input,
     A,
     E,
-    EnvironmentSupervisor.EnvironmentSupervisor | R
+    MachineSupervisor.MachineSupervisor | R
   >,
 ) {
   const family = Atom.family((key: string) => {
-    const target = parseEnvironmentRpcKey<Input>(key);
+    const target = parseMachineRpcKey<Input>(key);
     return runtime
       .atom(
         Stream.suspend(() =>
-          followStreamInEnvironment(target.environmentId, options.subscribe(target.input)),
+          followStreamInMachine(target.machineId, options.subscribe(target.input)),
         ).pipe(options.completeWhen ? Stream.takeUntil(options.completeWhen) : (stream) => stream),
       )
       .pipe(
         Atom.setIdleTTL(options.idleTtlMs ?? 5 * 60_000),
         Atom.withLabel(
           options.sensitiveInput
-            ? `${options.label}:${target.environmentId}`
+            ? `${options.label}:${target.machineId}`
             : `${options.label}:${key}`,
         ),
       );
   });
-  return (target: { readonly environmentId: EnvironmentIdType; readonly input: Input }) =>
-    family(environmentRpcKey(target));
+  return (target: { readonly machineId: MachineIdType; readonly input: Input }) =>
+    family(machineRpcKey(target));
 }
 
-export function createEnvironmentCommand<R, ER, Input, A, E>(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
-  options: EnvironmentCommandAtomOptions<
+export function createMachineCommand<R, ER, Input, A, E>(
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
+  options: MachineCommandAtomOptions<
     Input,
     A,
     E,
-    EnvironmentSupervisor.EnvironmentSupervisor | EnvironmentRegistry.EnvironmentRegistry | R
+    MachineSupervisor.MachineSupervisor | MachineRegistry.MachineRegistry | R
   >,
 ) {
   return createRuntimeCommand(runtime, {
@@ -743,42 +743,42 @@ export function createEnvironmentCommand<R, ER, Input, A, E>(
     ...(options.scheduler === undefined ? {} : { scheduler: options.scheduler }),
     ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
     execute: (target, registry) =>
-      runInEnvironment(
-        target.environmentId,
-        options.execute(target.input, registry, target.environmentId),
+      runInMachine(
+        target.machineId,
+        options.execute(target.input, registry, target.machineId),
       ),
   });
 }
 
-export function createEnvironmentRpcQueryAtomFamily<
+export function createMachineRpcQueryAtomFamily<
   R,
   ER,
-  TTag extends Exclude<EnvironmentUnaryRpcTag, ClientGuardedRpcTag>,
+  TTag extends Exclude<MachineUnaryRpcTag, ClientGuardedRpcTag>,
 >(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
   options: {
     readonly label: string;
     readonly tag: TTag;
     readonly execute?: (
-      input: EnvironmentRpcInput<TTag>,
-      emit: (value: EnvironmentRpcSuccess<TTag>) => Effect.Effect<void>,
+      input: MachineRpcInput<TTag>,
+      emit: (value: MachineRpcSuccess<TTag>) => Effect.Effect<void>,
     ) => Effect.Effect<
-      EnvironmentRpcSuccess<TTag>,
-      EnvironmentRpcFailure<TTag> | EnvironmentRpcUnavailableError,
-      EnvironmentSupervisor.EnvironmentSupervisor | EnvironmentRegistry.EnvironmentRegistry
+      MachineRpcSuccess<TTag>,
+      MachineRpcFailure<TTag> | MachineRpcUnavailableError,
+      MachineSupervisor.MachineSupervisor | MachineRegistry.MachineRegistry
     >;
-    readonly persistence?: QueryPersistence<EnvironmentRpcSuccess<TTag>>;
+    readonly persistence?: QueryPersistence<MachineRpcSuccess<TTag>>;
     readonly staleTimeMs?: number;
     readonly idleTtlMs?: number;
     readonly refreshIntervalMs?: number;
     readonly refreshTrigger?: (target: {
-      readonly environmentId: EnvironmentIdType;
-      readonly input: EnvironmentRpcInput<TTag>;
+      readonly machineId: MachineIdType;
+      readonly input: MachineRpcInput<TTag>;
     }) => Atom.Atom<unknown> | undefined;
-    readonly isFinal?: (value: EnvironmentRpcSuccess<TTag>) => boolean;
+    readonly isFinal?: (value: MachineRpcSuccess<TTag>) => boolean;
   },
 ) {
-  return createEnvironmentQueryAtomFamily(runtime, {
+  return createMachineQueryAtomFamily(runtime, {
     label: options.label,
     ...(options.persistence === undefined ? {} : { persistence: options.persistence }),
     ...(options.staleTimeMs === undefined ? {} : { staleTimeMs: options.staleTimeMs }),
@@ -789,19 +789,19 @@ export function createEnvironmentRpcQueryAtomFamily<
     ...(options.refreshTrigger === undefined ? {} : { refreshTrigger: options.refreshTrigger }),
     ...(options.isFinal === undefined ? {} : { isFinal: options.isFinal }),
     execute: (
-      input: EnvironmentRpcInput<TTag>,
-      emit: (value: EnvironmentRpcSuccess<TTag>) => Effect.Effect<void>,
+      input: MachineRpcInput<TTag>,
+      emit: (value: MachineRpcSuccess<TTag>) => Effect.Effect<void>,
     ) => options.execute?.(input, emit) ?? request(options.tag, input),
   });
 }
 
-export function createEnvironmentRpcSubscriptionAtomFamily<
+export function createMachineRpcSubscriptionAtomFamily<
   R,
   ER,
-  TTag extends EnvironmentSubscriptionRpcTag,
-  B = EnvironmentRpcStreamValue<TTag>,
+  TTag extends MachineSubscriptionRpcTag,
+  B = MachineRpcStreamValue<TTag>,
 >(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
   options: {
     readonly label: string;
     readonly tag: TTag;
@@ -809,67 +809,67 @@ export function createEnvironmentRpcSubscriptionAtomFamily<
     readonly completeWhen?: (value: B) => boolean;
     readonly transform?: (
       stream: Stream.Stream<
-        EnvironmentRpcStreamValue<TTag>,
-        EnvironmentRpcStreamFailure<TTag>,
-        EnvironmentSupervisor.EnvironmentSupervisor | R
+        MachineRpcStreamValue<TTag>,
+        MachineRpcStreamFailure<TTag>,
+        MachineSupervisor.MachineSupervisor | R
       >,
     ) => Stream.Stream<
       B,
-      EnvironmentRpcStreamFailure<TTag>,
-      EnvironmentSupervisor.EnvironmentSupervisor | R
+      MachineRpcStreamFailure<TTag>,
+      MachineSupervisor.MachineSupervisor | R
     >;
   },
 ) {
-  return createEnvironmentSubscriptionAtomFamily(runtime, {
+  return createMachineSubscriptionAtomFamily(runtime, {
     label: options.label,
     ...(options.completeWhen === undefined ? {} : { completeWhen: options.completeWhen }),
     ...(options.idleTtlMs === undefined ? {} : { idleTtlMs: options.idleTtlMs }),
-    subscribe: (input: EnvironmentRpcInput<TTag>) => {
+    subscribe: (input: MachineRpcInput<TTag>) => {
       const stream = subscribe(options.tag, input);
       return options.transform === undefined
         ? (stream as Stream.Stream<
             B,
-            EnvironmentRpcStreamFailure<TTag>,
-            EnvironmentSupervisor.EnvironmentSupervisor | R
+            MachineRpcStreamFailure<TTag>,
+            MachineSupervisor.MachineSupervisor | R
           >)
         : options.transform(stream);
     },
   });
 }
 
-export function createEnvironmentRpcCommand<
+export function createMachineRpcCommand<
   R,
   ER,
-  TTag extends EnvironmentUnaryRpcTag,
-  Input extends EnvironmentRpcInput<TTag> = EnvironmentRpcInput<TTag>,
+  TTag extends MachineUnaryRpcTag,
+  Input extends MachineRpcInput<TTag> = MachineRpcInput<TTag>,
 >(
-  runtime: Atom.AtomRuntime<EnvironmentRegistry.EnvironmentRegistry | R, ER>,
+  runtime: Atom.AtomRuntime<MachineRegistry.MachineRegistry | R, ER>,
   options: {
     readonly label: string;
     readonly tag: TTag;
     readonly execute?: (
       input: Input,
     ) => Effect.Effect<
-      EnvironmentRpcSuccess<TTag>,
-      EnvironmentRpcFailure<TTag> | EnvironmentRpcUnavailableError,
-      EnvironmentSupervisor.EnvironmentSupervisor | EnvironmentRegistry.EnvironmentRegistry
+      MachineRpcSuccess<TTag>,
+      MachineRpcFailure<TTag> | MachineRpcUnavailableError,
+      MachineSupervisor.MachineSupervisor | MachineRegistry.MachineRegistry
     >;
     readonly scheduler?: AtomCommandScheduler;
     readonly concurrency?: AtomCommandConcurrency<{
-      readonly environmentId: EnvironmentIdType;
+      readonly machineId: MachineIdType;
       readonly input: NoInfer<Input>;
     }>;
     readonly onSuccess?: (
       target: {
-        readonly environmentId: EnvironmentIdType;
+        readonly machineId: MachineIdType;
         readonly input: NoInfer<Input>;
       },
       registry: AtomRegistry.AtomRegistry,
-      result: EnvironmentRpcSuccess<TTag>,
+      result: MachineRpcSuccess<TTag>,
     ) => Effect.Effect<void, never, R>;
     readonly onSettled?: (
       target: {
-        readonly environmentId: EnvironmentIdType;
+        readonly machineId: MachineIdType;
         readonly input: NoInfer<Input>;
       },
       registry: AtomRegistry.AtomRegistry,
@@ -877,18 +877,18 @@ export function createEnvironmentRpcCommand<
   },
 ) {
   const permissions = createCommandPermissions(runtime, options.tag);
-  const command = createEnvironmentCommand(runtime, {
+  const command = createMachineCommand(runtime, {
     label: options.label,
     ...(options.scheduler === undefined ? {} : { scheduler: options.scheduler }),
     ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
-    execute: (input: Input, registry, environmentId) => {
+    execute: (input: Input, registry, machineId) => {
       const target = {
-        environmentId,
+        machineId,
         input,
       };
       // Routing requires consent on the origin as well as the actual destination.
       // The transport check below deliberately checks the destination again.
-      return permissions.authorize(registry, environmentId, input).pipe(
+      return permissions.authorize(registry, machineId, input).pipe(
         Effect.andThen(() => options.execute?.(input) ?? requestGuarded(options.tag, input)),
         Effect.provideService(RpcPermissionGuard, {
           authorize: (id, method, payload) =>

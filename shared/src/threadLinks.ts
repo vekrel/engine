@@ -33,7 +33,7 @@ export function resolveThreadLinkRef(
   const ids = decodedId === null ? [source.threadId] : [source.threadId, decodedId];
   for (const threadId of ids) {
     const local = refs.find(
-      (ref) => ref.environmentId === source.environmentId && ref.threadId === threadId,
+      (ref) => ref.machineId === source.machineId && ref.threadId === threadId,
     );
     if (local) return local;
   }

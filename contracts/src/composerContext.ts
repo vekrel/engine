@@ -1,7 +1,7 @@
 import * as Schema from "effect/Schema";
 
 import {
-  EnvironmentId,
+  MachineId,
   ForwardCompatibleArray,
   NonNegativeInt,
   PositiveInt,
@@ -207,7 +207,7 @@ export type SkillContextRecord = typeof SkillContextRecord.Type;
 export const ThreadContextRecord = Schema.Struct({
   ...recordBase,
   kind: Schema.Literal("thread"),
-  environmentId: EnvironmentId,
+  machineId: MachineId,
   threadId: ThreadId,
   title: ContextLabel,
 });

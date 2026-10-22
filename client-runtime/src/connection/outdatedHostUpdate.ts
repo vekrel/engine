@@ -1,7 +1,7 @@
 import {
   ORCHESTRATION_PROTOCOL_VERSION,
-  type EnvironmentId,
-  type ExecutionEnvironmentDescriptor,
+  type MachineId,
+  type ExecutionMachineDescriptor,
   type ServerSelfUpdateInput,
   type ServerSelfUpdateResult,
   WS_METHODS,
@@ -20,12 +20,12 @@ import * as RpcClient from "effect/rpc/RpcClient";
 import * as RpcSerialization from "effect/rpc/RpcSerialization";
 import * as Socket from "effect/socket/Socket";
 
-import { fetchRemoteEnvironmentDescriptor } from "../environment/descriptor.ts";
+import { fetchRemoteMachineDescriptor } from "../machine/descriptor.ts";
 import { makeWsRpcProtocolClient, PING_TIMEOUT } from "../rpc/protocol.ts";
 import { isLegacyUpdateHandoffLoss, resolveServerUpdateProgressResult } from "../state/server.ts";
-import * as RelayEnvironmentDiscovery from "../relay/discovery.ts";
+import * as RelayMachineDiscovery from "../relay/discovery.ts";
 import * as ConnectionResolver from "./resolver.ts";
-import * as EnvironmentRegistry from "./registry.ts";
+import * as MachineRegistry from "./registry.ts";
 import {
   connectionRoutes,
   hasRelayRoute,
@@ -41,7 +41,7 @@ const SOCKET_OPEN_TIMEOUT = "15 seconds";
 export class OutdatedHostUpdateError extends Schema.TaggedError<OutdatedHostUpdateError>()(
   "OutdatedHostUpdateError",
   {
-    environmentId: Schema.String,
+    machineId: Schema.String,
     message: Schema.String,
   },
 ) {}
@@ -49,13 +49,13 @@ export class OutdatedHostUpdateError extends Schema.TaggedError<OutdatedHostUpda
 export type OutdatedHostUpdateStage = "downloading" | "installing" | "resuming";
 
 const reachOutdatedHost = Effect.fn("clientRuntime.connection.reachOutdatedHost")(function* (
-  environmentId: EnvironmentId,
+  machineId: MachineId,
 ) {
-  const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+  const registry = yield* MachineRegistry.MachineRegistry;
   const resolver = yield* ConnectionResolver.ConnectionResolver;
-  const entry = (yield* SubscriptionRef.get(registry.entries)).get(environmentId);
+  const entry = (yield* SubscriptionRef.get(registry.entries)).get(machineId);
   if (entry === undefined) {
-    return yield* new EnvironmentRegistry.EnvironmentNotRegisteredError({ environmentId });
+    return yield* new MachineRegistry.MachineNotRegisteredError({ machineId });
   }
   const { prepared, descriptor } = yield* Effect.firstSuccessOf(
     usableRoutes(entry).map((route) => resolver.prepareForUpdate(routeEntry(entry, route))),
@@ -64,8 +64,8 @@ const reachOutdatedHost = Effect.fn("clientRuntime.connection.reachOutdatedHost"
 });
 
 // The normal session cannot read config from a host behind the protocol gate.
-export const describeOutdatedHost = (environmentId: EnvironmentId) =>
-  reachOutdatedHost(environmentId).pipe(Effect.map(({ descriptor }) => descriptor));
+export const describeOutdatedHost = (machineId: MachineId) =>
+  reachOutdatedHost(machineId).pipe(Effect.map(({ descriptor }) => descriptor));
 
 /**
  * The normal session refuses to open against such a host, so this opens a bare
@@ -74,23 +74,23 @@ export const describeOutdatedHost = (environmentId: EnvironmentId) =>
  */
 export const updateOutdatedHost = Effect.fn("clientRuntime.connection.updateOutdatedHost")(
   function* (
-    environmentId: EnvironmentId,
+    machineId: MachineId,
     input: ServerSelfUpdateInput,
     onStage: (stage: OutdatedHostUpdateStage) => Effect.Effect<void>,
   ) {
-    const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+    const registry = yield* MachineRegistry.MachineRegistry;
     const webSocketConstructor = yield* Socket.WebSocketConstructor;
     const httpClient = yield* HttpClient.HttpClient;
-    const { entry, prepared, descriptor } = yield* reachOutdatedHost(environmentId);
+    const { entry, prepared, descriptor } = yield* reachOutdatedHost(machineId);
     // Discovery still holds the old relay descriptor and would re-block the
-    // environment from it, so replace that before clearing the block.
+    // machine from it, so replace that before clearing the block.
     const switchBackOn = Effect.gen(function* () {
       if (hasRelayRoute(entry)) {
-        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
         yield* discovery.refresh;
       }
-      yield* registry.setCompatibility(environmentId, null);
-      yield* registry.setEnabled(environmentId, true);
+      yield* registry.setCompatibility(machineId, null);
+      yield* registry.setEnabled(machineId, true);
     });
 
     // A host updated by hand is already compatible, and a bare socket would be
@@ -107,7 +107,7 @@ export const updateOutdatedHost = Effect.fn("clientRuntime.connection.updateOutd
         capabilities.desktopAppUpdate !== true)
     ) {
       return yield* new OutdatedHostUpdateError({
-        environmentId,
+        machineId,
         message: `Update T3 Code on ${descriptor.label} manually; it cannot update itself.`,
       });
     }
@@ -197,10 +197,10 @@ export const updateOutdatedHost = Effect.fn("clientRuntime.connection.updateOutd
     ].filter((url, index, all) => all.indexOf(url) === index);
     const resumed = yield* Effect.firstSuccessOf(
       pollUrls.map((httpBaseUrl) =>
-        fetchRemoteEnvironmentDescriptor({ httpBaseUrl }).pipe(
+        fetchRemoteMachineDescriptor({ httpBaseUrl }).pipe(
           Effect.filterOrFail(
             (descriptor) =>
-              descriptor.environmentId === environmentId && isCompatibleDescriptor(descriptor),
+              descriptor.machineId === machineId && isCompatibleDescriptor(descriptor),
             () => "not-ready" as const,
           ),
         ),
@@ -217,7 +217,7 @@ export const updateOutdatedHost = Effect.fn("clientRuntime.connection.updateOutd
     );
     if (Option.isNone(resumed)) {
       return yield* new OutdatedHostUpdateError({
-        environmentId,
+        machineId,
         message: `${descriptor.label} did not come back on a compatible T3 Code version.`,
       });
     }
@@ -227,6 +227,6 @@ export const updateOutdatedHost = Effect.fn("clientRuntime.connection.updateOutd
   },
 );
 
-function isCompatibleDescriptor(descriptor: ExecutionEnvironmentDescriptor): boolean {
+function isCompatibleDescriptor(descriptor: ExecutionMachineDescriptor): boolean {
   return (descriptor.orchestrationProtocolVersion ?? 1) === ORCHESTRATION_PROTOCOL_VERSION;
 }

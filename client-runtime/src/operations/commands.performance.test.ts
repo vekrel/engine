@@ -1,6 +1,6 @@
 import {
   CommandId,
-  EnvironmentId,
+  MachineId,
   MessageId,
   ORCHESTRATION_V2_WS_METHODS,
   OrchestrationV2RpcSchemas,
@@ -24,7 +24,7 @@ import {
   PrimaryConnectionTarget,
   type PreparedConnection,
 } from "../connection/model.ts";
-import * as EnvironmentSupervisor from "../connection/supervisor.ts";
+import * as MachineSupervisor from "../connection/supervisor.ts";
 import type { WsRpcProtocolClient } from "../rpc/protocol.ts";
 import * as RpcSession from "../rpc/session.ts";
 import { v2Now, v2Projection, v2ThreadId } from "../state/orchestrationV2TestFixtures.ts";
@@ -131,10 +131,10 @@ function makeLargeProjection(): OrchestrationV2ThreadProjection {
 }
 
 const TARGET = new PrimaryConnectionTarget({
-  environmentId: EnvironmentId.make("environment-perf"),
+  machineId: MachineId.make("machine-perf"),
   label: "Performance fixture",
-  httpBaseUrl: "https://environment.example.test",
-  wsBaseUrl: "wss://environment.example.test",
+  httpBaseUrl: "https://machine.example.test",
+  wsBaseUrl: "wss://machine.example.test",
 });
 
 const layerTestCrypto = Layer.succeed(
@@ -167,7 +167,7 @@ const makeSupervisor = Effect.fn("CommandPerformance.makeSupervisor")(function* 
   const session: RpcSession.RpcSession = {
     client,
     initialConfig: Effect.succeed({
-      environment: {
+      machine: {
         capabilities: {
           repositoryIdentity: true,
           serverResolvedCommandContext: true,
@@ -179,7 +179,7 @@ const makeSupervisor = Effect.fn("CommandPerformance.makeSupervisor")(function* 
     probe: Effect.void,
     closed: Effect.never,
   };
-  return EnvironmentSupervisor.EnvironmentSupervisor.of({
+  return MachineSupervisor.MachineSupervisor.of({
     target: TARGET,
     state: yield* SubscriptionRef.make(AVAILABLE_CONNECTION_STATE),
     session: yield* SubscriptionRef.make(Option.some(session)),
@@ -187,7 +187,7 @@ const makeSupervisor = Effect.fn("CommandPerformance.makeSupervisor")(function* 
     connect: Effect.void,
     disconnect: Effect.void,
     retryNow: Effect.void,
-  } satisfies EnvironmentSupervisor.EnvironmentSupervisor["Service"]);
+  } satisfies MachineSupervisor.MachineSupervisor["Service"]);
 });
 
 describe("routine command transport budget", () => {
@@ -216,7 +216,7 @@ describe("routine command transport budget", () => {
         runtimeMode: "full-access",
         interactionMode: "default",
         titleSeed: "continue",
-      }).pipe(Effect.provideService(EnvironmentSupervisor.EnvironmentSupervisor, supervisor));
+      }).pipe(Effect.provideService(MachineSupervisor.MachineSupervisor, supervisor));
 
       const command = commands[0]!;
       if (command.type !== "message.dispatch") {

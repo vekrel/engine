@@ -1,6 +1,6 @@
 import {
   USAGE_MERGE_COMPATIBLE_SINCE,
-  type EnvironmentId,
+  type MachineId,
   type UsageBucket,
   type UsageProviderKind,
   type UsageSource,
@@ -9,8 +9,8 @@ import {
   type UsageTokenTotals,
 } from "@vekrel/contracts";
 
-export interface EnvironmentUsage {
-  readonly environmentId: EnvironmentId;
+export interface MachineUsage {
+  readonly machineId: MachineId;
   readonly label: string;
   readonly summary: UsageSummary;
 }
@@ -84,7 +84,7 @@ export interface SpeedCost {
 }
 
 export interface UsageContractMismatch {
-  readonly environmentId: EnvironmentId;
+  readonly machineId: MachineId;
   readonly direction: "serverBehind" | "clientBehind";
   readonly contractVersion: number;
 }
@@ -107,7 +107,7 @@ export interface MergedUsage {
   readonly categoryCost: CategoryCost;
   readonly speedCost: SpeedCost;
   readonly duplicateSources: readonly string[];
-  readonly contributingEnvironments: readonly EnvironmentId[];
+  readonly contributingMachines: readonly MachineId[];
   readonly contractMismatches: readonly UsageContractMismatch[];
 }
 
@@ -140,39 +140,39 @@ function bucketKey(bucket: UsageBucket): string {
   return JSON.stringify([bucket.day, bucket.hourStart ?? null, bucket.provider, bucket.model]);
 }
 
-function claimSources(environments: readonly EnvironmentUsage[]): {
-  readonly ownerByFingerprint: ReadonlyMap<string, EnvironmentId>;
-  readonly supplementalBucketsByEnvironment: ReadonlyMap<EnvironmentId, ReadonlySet<UsageBucket>>;
+function claimSources(machines: readonly MachineUsage[]): {
+  readonly ownerByFingerprint: ReadonlyMap<string, MachineId>;
+  readonly supplementalBucketsByMachine: ReadonlyMap<MachineId, ReadonlySet<UsageBucket>>;
   readonly sessionsByFingerprint: ReadonlyMap<string, number>;
   readonly duplicates: readonly string[];
 } {
-  const ownerByFingerprint = new Map<string, EnvironmentId>();
+  const ownerByFingerprint = new Map<string, MachineId>();
   const ownerScanByFingerprint = new Map<
     string,
-    { environment: EnvironmentUsage; source: UsageSource }
+    { machine: MachineUsage; source: UsageSource }
   >();
   const seenBucketKeysByFingerprint = new Map<string, Set<string>>();
-  const supplementalBucketsByEnvironment = new Map<EnvironmentId, Set<UsageBucket>>();
+  const supplementalBucketsByMachine = new Map<MachineId, Set<UsageBucket>>();
   const sessionsByFingerprint = new Map<string, number>();
   const duplicates: string[] = [];
 
-  const ordered = [...environments].sort(
+  const ordered = [...machines].sort(
     (a, b) =>
       (Date.parse(b.summary.readAt) || 0) - (Date.parse(a.summary.readAt) || 0) ||
-      a.environmentId.localeCompare(b.environmentId),
+      a.machineId.localeCompare(b.machineId),
   );
 
   for (const status of ["ok", "partial", "failed"] as const) {
-    for (const environment of ordered) {
-      for (const source of environment.summary.sources) {
+    for (const machine of ordered) {
+      for (const source of machine.summary.sources) {
         if (source.status !== status) continue;
         const key = fingerprintKey(source.fingerprint);
         if (ownerByFingerprint.has(key)) {
-          duplicates.push(`${environment.label}: ${source.fingerprint.resolvedHomePath}`);
+          duplicates.push(`${machine.label}: ${source.fingerprint.resolvedHomePath}`);
           continue;
         }
-        ownerByFingerprint.set(key, environment.environmentId);
-        ownerScanByFingerprint.set(key, { environment, source });
+        ownerByFingerprint.set(key, machine.machineId);
+        ownerScanByFingerprint.set(key, { machine, source });
         sessionsByFingerprint.set(key, source.distinctSessions);
       }
     }
@@ -181,26 +181,26 @@ function claimSources(environments: readonly EnvironmentUsage[]): {
   // A newer partial scan may contain usage recorded after an older complete
   // scan. Keep cells absent from the complete scan. Aggregated cells do not
   // reveal enough to reconcile overlapping records without double counting.
-  for (const environment of ordered) {
-    for (const source of environment.summary.sources) {
+  for (const machine of ordered) {
+    for (const source of machine.summary.sources) {
       if (source.status !== "partial") continue;
       const key = fingerprintKey(source.fingerprint);
       const owner = ownerScanByFingerprint.get(key);
       if (
         owner?.source.status !== "ok" ||
-        Date.parse(environment.summary.readAt) <= Date.parse(owner.environment.summary.readAt)
+        Date.parse(machine.summary.readAt) <= Date.parse(owner.machine.summary.readAt)
       ) {
         continue;
       }
       let seen = seenBucketKeysByFingerprint.get(key);
       if (seen === undefined) {
-        seen = new Set(bucketsForSource(owner.environment.summary, owner.source).map(bucketKey));
+        seen = new Set(bucketsForSource(owner.machine.summary, owner.source).map(bucketKey));
         seenBucketKeysByFingerprint.set(key, seen);
       }
       const supplemental =
-        supplementalBucketsByEnvironment.get(environment.environmentId) ?? new Set<UsageBucket>();
+        supplementalBucketsByMachine.get(machine.machineId) ?? new Set<UsageBucket>();
       let added = false;
-      for (const bucket of bucketsForSource(environment.summary, source)) {
+      for (const bucket of bucketsForSource(machine.summary, source)) {
         const cell = bucketKey(bucket);
         if (seen.has(cell)) continue;
         seen.add(cell);
@@ -208,7 +208,7 @@ function claimSources(environments: readonly EnvironmentUsage[]): {
         added = true;
       }
       if (!added) continue;
-      supplementalBucketsByEnvironment.set(environment.environmentId, supplemental);
+      supplementalBucketsByMachine.set(machine.machineId, supplemental);
       sessionsByFingerprint.set(
         key,
         Math.max(sessionsByFingerprint.get(key) ?? 0, source.distinctSessions),
@@ -218,15 +218,15 @@ function claimSources(environments: readonly EnvironmentUsage[]): {
 
   return {
     ownerByFingerprint,
-    supplementalBucketsByEnvironment,
+    supplementalBucketsByMachine,
     sessionsByFingerprint,
     duplicates,
   };
 }
 
 function ownedContribution(
-  environment: EnvironmentUsage,
-  ownerByFingerprint: ReadonlyMap<string, EnvironmentId>,
+  machine: MachineUsage,
+  ownerByFingerprint: ReadonlyMap<string, MachineId>,
   supplementalBuckets: ReadonlySet<UsageBucket>,
   sessionsByFingerprint: ReadonlyMap<string, number>,
 ): {
@@ -236,10 +236,10 @@ function ownedContribution(
   const ownedProviders = new Set<UsageProviderKind>();
   const ownedSources = new Set<string>();
   const sessionsByProvider = new Map<UsageProviderKind, number>();
-  for (const source of environment.summary.sources) {
+  for (const source of machine.summary.sources) {
     if (source.status === "missing") continue;
     const key = fingerprintKey(source.fingerprint);
-    if (ownerByFingerprint.get(key) === environment.environmentId) {
+    if (ownerByFingerprint.get(key) === machine.machineId) {
       const provider = source.fingerprint.provider;
       ownedProviders.add(provider);
       ownedSources.add(`${provider}\u0000${source.fingerprint.resolvedHomePath}`);
@@ -253,7 +253,7 @@ function ownedContribution(
     }
   }
   return {
-    buckets: environment.summary.buckets.filter(
+    buckets: machine.summary.buckets.filter(
       (bucket) =>
         supplementalBuckets.has(bucket) ||
         (bucket.sourcePath === undefined
@@ -301,38 +301,38 @@ const EMPTY_MERGED: MergedUsage = {
   categoryCost: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, unsplit: 0 },
   speedCost: { standard: 0, fast: 0, ultrafast: 0, premium: 0 },
   duplicateSources: [],
-  contributingEnvironments: [],
+  contributingMachines: [],
   contractMismatches: [],
 };
 
 export function mergeUsage(
-  environments: readonly EnvironmentUsage[],
+  machines: readonly MachineUsage[],
   expectedContractVersion: number,
 ): MergedUsage {
-  if (environments.length === 0) return EMPTY_MERGED;
+  if (machines.length === 0) return EMPTY_MERGED;
 
-  const current: EnvironmentUsage[] = [];
+  const current: MachineUsage[] = [];
   const contractMismatches: UsageContractMismatch[] = [];
-  for (const environment of environments) {
+  for (const machine of machines) {
     if (
-      isCompatibleUsageContractVersion(environment.summary.contractVersion, expectedContractVersion)
+      isCompatibleUsageContractVersion(machine.summary.contractVersion, expectedContractVersion)
     ) {
-      current.push(environment);
+      current.push(machine);
     } else {
       contractMismatches.push({
-        environmentId: environment.environmentId,
+        machineId: machine.machineId,
         direction:
-          environment.summary.contractVersion < expectedContractVersion
+          machine.summary.contractVersion < expectedContractVersion
             ? "serverBehind"
             : "clientBehind",
-        contractVersion: environment.summary.contractVersion,
+        contractVersion: machine.summary.contractVersion,
       });
     }
   }
 
   const {
     ownerByFingerprint,
-    supplementalBucketsByEnvironment,
+    supplementalBucketsByMachine,
     sessionsByFingerprint,
     duplicates,
   } = claimSources(current);
@@ -385,16 +385,16 @@ export function mergeUsage(
       byProvider: Map<UsageProviderKind, { costUsd: number; totalTokens: number }>;
     }
   >();
-  const contributingEnvironments: EnvironmentId[] = [];
+  const contributingMachines: MachineId[] = [];
 
-  for (const environment of current) {
+  for (const machine of current) {
     const { buckets, sessionsByProvider } = ownedContribution(
-      environment,
+      machine,
       ownerByFingerprint,
-      supplementalBucketsByEnvironment.get(environment.environmentId) ?? new Set(),
+      supplementalBucketsByMachine.get(machine.machineId) ?? new Set(),
       sessionsByFingerprint,
     );
-    if (buckets.length > 0) contributingEnvironments.push(environment.environmentId);
+    if (buckets.length > 0) contributingMachines.push(machine.machineId);
 
     for (const [providerKind, providerSessions] of sessionsByProvider) {
       sessions += providerSessions;
@@ -589,7 +589,7 @@ export function mergeUsage(
       standard: Math.max(0, costUsd - speedCost.fast - speedCost.ultrafast),
     },
     duplicateSources: duplicates,
-    contributingEnvironments,
+    contributingMachines,
     contractMismatches,
   };
 }

@@ -6,7 +6,7 @@ import {
 } from "@vekrel/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { usageEnvironmentProgress, usageLoadingState, usageProgress } from "./usageProgress.ts";
+import { usageMachineProgress, usageLoadingState, usageProgress } from "./usageProgress.ts";
 
 function summary(refreshing: readonly UsageProviderKind[] = []): UsageSummary {
   return {
@@ -31,7 +31,7 @@ function summary(refreshing: readonly UsageProviderKind[] = []): UsageSummary {
   };
 }
 
-function environment(
+function machine(
   label: string,
   overrides: Partial<{
     isConnected: boolean;
@@ -54,32 +54,32 @@ const options = { providerLabel: (provider: UsageProviderKind) => `${provider} l
 
 describe("usageProgress", () => {
   it("undims once one device answers and names the slow one", () => {
-    const waiting = [environment("a", { isPending: true }), environment("b", { isPending: true })];
+    const waiting = [machine("a", { isPending: true }), machine("b", { isPending: true })];
     expect(usageProgress(waiting, options)).toEqual({
       dimmed: true,
-      label: "Updating 2 environments…",
+      label: "Updating 2 machines…",
     });
     expect(
-      usageProgress([environment("a"), ...waiting.slice(1), environment("c")], options),
+      usageProgress([machine("a"), ...waiting.slice(1), machine("c")], options),
     ).toEqual({ dimmed: false, label: "Updating b…" });
     expect(
       usageProgress(
-        [environment("a"), environment("b", { summary: null, isPending: true })],
+        [machine("a"), machine("b", { summary: null, isPending: true })],
         options,
       ),
     ).toEqual({ dimmed: false, label: "Updating b…" });
   });
 
-  it("names a slow source without dimming once its environment answers from cache", () => {
-    const partway = environment("a", { isPending: true, summary: summary(["cursor"]) });
-    expect(usageEnvironmentProgress(partway)).toEqual({ phase: "partway", providers: ["cursor"] });
-    expect(usageProgress([partway, environment("b")], options)).toEqual({
+  it("names a slow source without dimming once its machine answers from cache", () => {
+    const partway = machine("a", { isPending: true, summary: summary(["cursor"]) });
+    expect(usageMachineProgress(partway)).toEqual({ phase: "partway", providers: ["cursor"] });
+    expect(usageProgress([partway, machine("b")], options)).toEqual({
       dimmed: false,
       label: "Updating cursor label…",
     });
     expect(
       usageProgress(
-        [partway, environment("b", { isPending: true, summary: summary(["cursor", "grok"]) })],
+        [partway, machine("b", { isPending: true, summary: summary(["cursor", "grok"]) })],
         options,
       ),
     ).toEqual({ dimmed: false, label: "Updating 2 providers…" });
@@ -89,31 +89,31 @@ describe("usageProgress", () => {
     });
   });
 
-  it("ignores reconnecting and failed environments", () => {
+  it("ignores reconnecting and failed machines", () => {
     const ignored = [
-      environment("reconnecting", { isPending: true, isConnected: false }),
-      environment("failed", { error: "Offline", summary: null }),
+      machine("reconnecting", { isPending: true, isConnected: false }),
+      machine("failed", { error: "Offline", summary: null }),
     ];
-    expect(usageProgress([environment("a"), ...ignored], options)).toEqual({
+    expect(usageProgress([machine("a"), ...ignored], options)).toEqual({
       dimmed: false,
       label: null,
     });
     expect(
       usageProgress(
-        [environment("a"), ...ignored, environment("slow", { summary: null, isPending: true })],
+        [machine("a"), ...ignored, machine("slow", { summary: null, isPending: true })],
         options,
       ),
     ).toEqual({ dimmed: false, label: "Updating slow…" });
-    expect(usageEnvironmentProgress(ignored[0]!)).toEqual({ phase: "inactive" });
+    expect(usageMachineProgress(ignored[0]!)).toEqual({ phase: "inactive" });
   });
 });
 
 describe("usageLoadingState", () => {
-  it("ignores environments that cannot answer and settles once all have", () => {
+  it("ignores machines that cannot answer and settles once all have", () => {
     const state = usageLoadingState([
-      environment("a"),
-      environment("b", { summary: null, isConnected: false }),
-      environment("c", { summary: null, error: "Offline" }),
+      machine("a"),
+      machine("b", { summary: null, isConnected: false }),
+      machine("c", { summary: null, error: "Offline" }),
     ]);
     expect(state).toEqual({ partial: false, everyProvider: false, providers: new Set() });
   });

@@ -1,7 +1,7 @@
-import type { EnvironmentConnectionPhase } from "../connection/presentation.ts";
+import type { MachineConnectionPhase } from "../connection/presentation.ts";
 import type {
   CommandId,
-  EnvironmentId,
+  MachineId,
   ProjectMutation,
   ProjectId,
   ServerConfig,
@@ -23,23 +23,23 @@ import {
   isUnsupportedWindowsProjectPath,
   resolveProjectPathForDispatch,
 } from "../state/projects.ts";
-import type { EnvironmentProject } from "../state/models.ts";
+import type { MachineProject } from "../state/models.ts";
 import { sourceControlClients } from "../sourceControlClients.ts";
 import type { SourceControlClientDefinition } from "../sourceControlClients.ts";
 
 export type AddProjectRemoteSource = SourceControlProviderKind | "url";
 
-export function canCreateProjectInEnvironment(
-  connectionPhase: EnvironmentConnectionPhase | null | undefined,
+export function canCreateProjectInMachine(
+  connectionPhase: MachineConnectionPhase | null | undefined,
 ): boolean {
   return connectionPhase === "connected";
 }
 
 export function availableScratchWorkspaceRoot(
-  connectionPhase: EnvironmentConnectionPhase | null | undefined,
+  connectionPhase: MachineConnectionPhase | null | undefined,
   serverConfig: Pick<ServerConfig, "scratchWorkspaceRoot"> | null | undefined,
 ): string | null {
-  return canCreateProjectInEnvironment(connectionPhase)
+  return canCreateProjectInMachine(connectionPhase)
     ? (serverConfig?.scratchWorkspaceRoot ?? null)
     : null;
 }
@@ -56,12 +56,12 @@ export type AddProjectRemoteSourceReadiness = (
 export type AddProjectCloneFlow =
   | {
       readonly step: "repository";
-      readonly environmentId: EnvironmentId;
+      readonly machineId: MachineId;
       readonly source: AddProjectRemoteSource;
     }
   | {
       readonly step: "confirm";
-      readonly environmentId: EnvironmentId;
+      readonly machineId: MachineId;
       readonly source: AddProjectRemoteSource;
       readonly repositoryInput: string;
       readonly repository: SourceControlRepositoryInfo | null;
@@ -257,23 +257,23 @@ export function resolveAddProjectPath(input: {
     return { ok: false, error: "Enter a project path." };
   }
   if (isUnsupportedWindowsProjectPath(rawPath, input.platform)) {
-    return { ok: false, error: "Windows-style paths are only supported on Windows environments." };
+    return { ok: false, error: "Windows-style paths are only supported on Windows machines." };
   }
   if (isExplicitRelativeProjectPath(rawPath) && !input.currentProjectCwd) {
-    return { ok: false, error: "Relative paths require an active project in this environment." };
+    return { ok: false, error: "Relative paths require an active project in this machine." };
   }
   const path = resolveProjectPathForDispatch(rawPath, input.currentProjectCwd);
   return path.length === 0 ? { ok: false, error: "Enter a project path." } : { ok: true, path };
 }
 
 export function findExistingAddProject(input: {
-  readonly projects: ReadonlyArray<EnvironmentProject>;
-  readonly environmentId: EnvironmentId;
+  readonly projects: ReadonlyArray<MachineProject>;
+  readonly machineId: MachineId;
   readonly path: string;
-}): EnvironmentProject | null {
+}): MachineProject | null {
   return (
     findProjectByPath(
-      input.projects.filter((project) => project.environmentId === input.environmentId),
+      input.projects.filter((project) => project.machineId === input.machineId),
       input.path,
     ) ?? null
   );

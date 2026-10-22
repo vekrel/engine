@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@vekrel/contracts";
+import type { MachineId } from "@vekrel/contracts";
 
 export interface ComposerPathSearchEntry {
   readonly path: string;
@@ -13,7 +13,7 @@ export interface ComposerPathSearchState {
 }
 
 export interface ComposerPathSearchTarget {
-  readonly environmentId: EnvironmentId | null;
+  readonly machineId: MachineId | null;
   readonly cwd: string | null;
   readonly query: string | null;
 }

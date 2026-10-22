@@ -1,9 +1,9 @@
 import type { HostResourcesSnapshot } from "@vekrel/contracts";
 
 /** Callers supply only connected machines hosting the project and selected provider. */
-export function chooseLoadBalancedEnvironment(
+export function chooseLoadBalancedMachine(
   candidates: ReadonlyArray<{
-    environmentId: string;
+    machineId: string;
     resources: HostResourcesSnapshot | null;
     /** Client receipt time avoids comparing clocks on different machines. */
     receivedAt?: number;
@@ -13,7 +13,7 @@ export function chooseLoadBalancedEnvironment(
 ): string | null {
   let selected: string | null = null;
   let bestScore = 0;
-  for (const { environmentId, resources, receivedAt, weight } of candidates) {
+  for (const { machineId, resources, receivedAt, weight } of candidates) {
     const sampledAt = receivedAt ?? resources?.sampledAt ?? 0;
     if (
       !resources ||
@@ -32,7 +32,7 @@ export function chooseLoadBalancedEnvironment(
     if (memoryAvailable <= 0.05) continue;
     const score = weight * resources.cpuCount * (1 - resources.cpuUtilization) * memoryAvailable;
     if (score > bestScore) {
-      selected = environmentId;
+      selected = machineId;
       bestScore = score;
     }
   }

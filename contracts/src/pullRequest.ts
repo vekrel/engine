@@ -258,7 +258,7 @@ export const PullRequestReviewerCapabilities = Schema.Struct({
 });
 export type PullRequestReviewerCapabilities = typeof PullRequestReviewerCapabilities.Type;
 
-export const PullRequestViewedFilesStore = Schema.Literals(["host", "environment"]);
+export const PullRequestViewedFilesStore = Schema.Literals(["host", "machine"]);
 export type PullRequestViewedFilesStore = typeof PullRequestViewedFilesStore.Type;
 
 export const PullRequestCapabilities = Schema.Struct({
@@ -728,7 +728,7 @@ export const PullRequestStackHead = Schema.Struct({
 export type PullRequestStackHead = typeof PullRequestStackHead.Type;
 
 export const PullRequestActionInput = Schema.Struct({
-  /** Native stack scope; only send to environments advertising pullRequestStackActions. */
+  /** Native stack scope; only send to machines advertising pullRequestStackActions. */
   stackNumber: Schema.optional(PositiveInt),
   expectedStackHeads: Schema.optional(Schema.Array(PullRequestStackHead)),
   ...PullRequestRef.fields,

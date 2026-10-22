@@ -1,5 +1,5 @@
 import type { DpopFailureReason } from "@vekrel/contracts";
-import type { RelayEnvironmentStatusResponse, RelayProtectedError } from "@vekrel/contracts/relay";
+import type { RelayMachineStatusResponse, RelayProtectedError } from "@vekrel/contracts/relay";
 
 export const DPOP_CLOCK_HINT =
   "Hint: Check that automatic date and time is enabled on both devices, then try again.";
@@ -33,37 +33,37 @@ export function relayProtectedErrorMessage(error: RelayProtectedError): string {
         case "not_authorized":
           return "Relay rejected the authenticated request.";
       }
-    case "RelayEnvironmentLinkProofExpiredError":
-      return "Relay rejected an expired environment link proof.";
-    case "RelayEnvironmentLinkProofInvalidError":
-      return `Relay rejected the environment link proof (${error.reason}).`;
-    case "RelayEnvironmentConnectNotAuthorizedError":
+    case "RelayMachineLinkProofExpiredError":
+      return "Relay rejected an expired machine link proof.";
+    case "RelayMachineLinkProofInvalidError":
+      return `Relay rejected the machine link proof (${error.reason}).`;
+    case "RelayMachineConnectNotAuthorizedError":
       // "Not authorized" covers non-auth causes too; surface the reason so a
       // missing link does not read as a credential problem.
-      if (error.reason === "environment_link_not_found") {
-        return "Relay has no active link for this environment. If it was deregistered from T3 Connect, link it again on that machine.";
+      if (error.reason === "machine_link_not_found") {
+        return "Relay has no active link for this machine. If it was deregistered from T3 Connect, link it again on that machine.";
       }
       if (error.reason === "managed_endpoint_allocation_not_ready") {
-        return "The environment's T3 Connect tunnel is still being set up.";
+        return "The machine's T3 Connect tunnel is still being set up.";
       }
       if (error.reason === "endpoint_provider_not_managed") {
-        return "This environment is linked only to publish agent activity, so it cannot accept connections. On that computer, open Settings > Connections and turn T3 Connect on.";
+        return "This machine is linked only to publish agent activity, so it cannot accept connections. On that computer, open Settings > Connections and turn T3 Connect on.";
       }
       return error.reason
-        ? `Relay rejected the environment connection request (${error.reason}).`
-        : "Relay rejected the environment connection request.";
-    case "RelayEnvironmentEndpointUnavailableError":
-      return `Relay could not reach the environment endpoint (${error.reason}).`;
-    case "RelayEnvironmentEndpointTimedOutError":
-      return "Relay timed out while contacting the environment endpoint.";
-    case "RelayEnvironmentLinkFailedError":
-      return `Relay could not link the environment (${error.reason}).`;
-    case "RelayEnvironmentLinkUnavailableError":
+        ? `Relay rejected the machine connection request (${error.reason}).`
+        : "Relay rejected the machine connection request.";
+    case "RelayMachineEndpointUnavailableError":
+      return `Relay could not reach the machine endpoint (${error.reason}).`;
+    case "RelayMachineEndpointTimedOutError":
+      return "Relay timed out while contacting the machine endpoint.";
+    case "RelayMachineLinkFailedError":
+      return `Relay could not link the machine (${error.reason}).`;
+    case "RelayMachineLinkUnavailableError":
       return `Relay cannot provision the managed endpoint (${error.reason}).${
         error.provisioningStage ? ` Failed stage: ${error.provisioningStage}.` : ""
       }`;
-    case "RelayEnvironmentLinkLimitExceededError":
-      return `Relay refused the link: this account already has its maximum of ${error.maxTunnels} managed tunnels. Unlink an environment to free one up.`;
+    case "RelayMachineLinkLimitExceededError":
+      return `Relay refused the link: this account already has its maximum of ${error.maxTunnels} managed tunnels. Unlink a machine to free one up.`;
     case "RelayAgentActivityPublishProofExpiredError":
       return "Relay rejected an expired agent activity publish proof.";
     case "RelayAgentActivityPublishProofInvalidError":
@@ -92,7 +92,7 @@ const RELAY_TUNNEL_RELEASED_MESSAGE =
   "Offline for a while, so its T3 Connect tunnel was removed. Start T3 Code on that computer and update it to the latest version to reconnect.";
 
 export function relayOfflineReasonMessage(
-  status: Pick<RelayEnvironmentStatusResponse, "offlineReason">,
+  status: Pick<RelayMachineStatusResponse, "offlineReason">,
 ): string | null {
   switch (status.offlineReason) {
     case "tunnel_released":

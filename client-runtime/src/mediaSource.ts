@@ -30,7 +30,7 @@ export type ResolvedMediaSource = {
       readonly uri: string;
     }
   | {
-      readonly access: "environment";
+      readonly access: "machine";
       readonly resource: MediaSourceResource;
     }
   | {
@@ -95,7 +95,7 @@ export function resolveMediaSource(
   if (input.threadId === undefined) return { ...common, access: "unavailable" };
   return {
     ...common,
-    access: "environment",
+    access: "machine",
     resource: { _tag: "media-file", threadId: input.threadId, path },
   };
 }

@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
-import { RepositoryIdentity, ThreadEnvMode } from "./environment.ts";
+import { RepositoryIdentity, ThreadEnvMode } from "./machine.ts";
 import { ModelSelection } from "./modelSelection.ts";
 import {
   CommandId,
