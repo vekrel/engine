@@ -214,7 +214,7 @@ export function cursorMcpServers(
     return undefined;
   }
   return {
-    "t3-code": {
+    "vekrel": {
       type: "http",
       url: session.endpoint,
       headers: {

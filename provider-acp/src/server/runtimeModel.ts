@@ -1076,19 +1076,19 @@ function acpMcpFallbackInput(value: string | undefined): Record<string, unknown>
 }
 
 /**
- * T3 always injects its server as "t3-code", and matches are additionally gated on the known T3
+ * T3 always injects its server as "vekrel", and matches are additionally gated on the known T3
  * tool inventory, so the separator match can stay loose.
  */
 const T3_MCP_TITLE_CALL =
-  /^(?:mcp[-_]{1,2})?t3[-_ ]?code[-_.:/ ]{1,3}(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*)(?::.*)?$/i;
+  /^(?:mcp[-_]{1,2})?vekrel[-_.:/ ]{1,3}(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*)(?::.*)?$/i;
 
 /**
  * Gemini CLI titles injected MCP calls "<tool> (<server> MCP Server)" and
  * qwen-code appends ": <args json>" to the same template; Auggie namespaces
- * tool-first as "<tool>_t3-code".
+ * tool-first as "<tool>_vekrel".
  */
 const T3_MCP_TITLE_SUFFIX_CALL =
-  /^(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*?)(?: \(t3[-_ ]?code MCP Server\)(?::|$)|[-_.]t3[-_ ]?code$)/i;
+  /^(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*?)(?: \(vekrel MCP Server\)(?::|$)|[-_.]vekrel$)/i;
 
 /**
  * glm and Kimi use bare names; Antigravity uses "Running <tool>". Kimi appends
@@ -1124,7 +1124,7 @@ export function extractMcpToolCallIdentity(
     : undefined;
   const metaServerId = typeof meta?.serverId === "string" ? meta.serverId.trim() : "";
   const metaToolName = typeof meta?.toolName === "string" ? meta.toolName.trim() : "";
-  if (/^t3[-_ ]?code$/i.test(metaServerId) && metaToolName.length > 0) {
+  if (/^vekrel$/i.test(metaServerId) && metaToolName.length > 0) {
     for (const knownTool of T3_MCP_TOOL_NAMES) {
       const boundary = metaToolName.length - knownTool.length - 1;
       if (
@@ -1133,15 +1133,15 @@ export function extractMcpToolCallIdentity(
           boundary >= 0 &&
           !/[A-Za-z0-9]/.test(metaToolName.charAt(boundary)))
       ) {
-        return { server: "t3-code", tool: knownTool };
+        return { server: "vekrel", tool: knownTool };
       }
     }
   }
   const gooseExtension =
     typeof gooseToolCall?.extensionName === "string" ? gooseToolCall.extensionName.trim() : "";
   const assertsForeignOrigin =
-    (metaServerId.length > 0 && !/^t3[-_ ]?code$/i.test(metaServerId)) ||
-    (gooseExtension.length > 0 && !/^t3[-_ ]?code$/i.test(gooseExtension));
+    (metaServerId.length > 0 && !/^vekrel$/i.test(metaServerId)) ||
+    (gooseExtension.length > 0 && !/^vekrel$/i.test(gooseExtension));
   // qwen's serverId marks a real MCP server, but goose reports its built-in
   // extensions (developer__shell, edits) the same way as user MCP servers, so
   // goose stays unclassified and keeps its command and file-change projections.
@@ -1162,15 +1162,15 @@ export function extractMcpToolCallIdentity(
   for (const candidate of candidates) {
     const trimmed = candidate.trim();
     const qualified = /^mcp__(.+?)__(.+)$/i.exec(trimmed);
-    if (qualified?.[1] && qualified[2] && !/^t3[-_ ]?code$/i.test(qualified[1]))
+    if (qualified?.[1] && qualified[2] && !/^vekrel$/i.test(qualified[1]))
       return { server: qualified[1], tool: qualified[2] };
-    const match =
-      T3_MCP_TITLE_CALL.exec(trimmed) ??
-      T3_MCP_TITLE_SUFFIX_CALL.exec(trimmed) ??
-      T3_MCP_BARE_TITLE_CALL.exec(trimmed);
-    const candidateTool = match?.groups?.tool;
-    if (candidateTool !== undefined && T3_MCP_TOOL_NAMES.has(candidateTool)) {
-      return { server: "t3-code", tool: candidateTool };
+    // Tool names such as vekrel_machine_read start with the server name, so a
+    // prefix match that leaves an unknown tool must not hide the bare match.
+    const candidateTool = [T3_MCP_TITLE_CALL, T3_MCP_TITLE_SUFFIX_CALL, T3_MCP_BARE_TITLE_CALL]
+      .map((pattern) => pattern.exec(trimmed)?.groups?.tool)
+      .find((tool) => tool !== undefined && T3_MCP_TOOL_NAMES.has(tool));
+    if (candidateTool !== undefined) {
+      return { server: "vekrel", tool: candidateTool };
     }
   }
   const commands = [
@@ -1183,7 +1183,7 @@ export function extractMcpToolCallIdentity(
     const match = ACP_MCP_FALLBACK_CALL.exec(command);
     if (match?.[1] !== undefined) {
       const input = acpMcpFallbackInput(match[2]);
-      return { server: "t3-code", tool: match[1], ...(input === undefined ? {} : { input }) };
+      return { server: "vekrel", tool: match[1], ...(input === undefined ? {} : { input }) };
     }
   }
   return undefined;
