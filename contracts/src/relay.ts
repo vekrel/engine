@@ -332,7 +332,7 @@ export const RelayMachineLinkRequest = Schema.Struct({
   notificationsEnabled: Schema.Boolean,
   liveActivitiesEnabled: Schema.Boolean,
   managedTunnelsEnabled: Schema.Boolean,
-}).annotate({ description: "Links an authenticated cloud user to a T3 machine." });
+}).annotate({ description: "Links an authenticated cloud user to a Vekrel machine." });
 export type RelayMachineLinkRequest = typeof RelayMachineLinkRequest.Type;
 
 export const RelayMachineLinkResponse = Schema.Struct({
@@ -672,7 +672,7 @@ export class RelayMachinePrincipal extends Context.Service<
 const RelayClientBearerAuthorization = HttpApiSecurity.http({ scheme: "bearer" }).pipe(
   HttpApiSecurity.annotate(
     OpenApi.Description,
-    "Clerk session or OAuth bearer token for the signed-in T3 Connect user.",
+    "Clerk session or OAuth bearer token for the signed-in Vekrel Connect user.",
   ),
 );
 
@@ -1273,10 +1273,10 @@ export const RelayApi = HttpApi.make("RelayApi")
     RelayServerGroup,
     RelayHooksGroup,
   )
-  .annotate(OpenApi.Title, "T3 Code Relay API")
+  .annotate(OpenApi.Title, "Vekrel Relay API")
   .annotate(OpenApi.Version, "1.0.0")
   .annotate(
     OpenApi.Description,
-    "Control-plane API for linking T3 machines, connecting authorized clients, and publishing agent activity.",
+    "Control-plane API for linking Vekrel machines, connecting authorized clients, and publishing agent activity.",
   );
 export type RelayApi = typeof RelayApi;
