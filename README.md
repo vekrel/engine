@@ -1,6 +1,6 @@
 # Vekrel-Engine
 
-The Node server that runs agents and serves the clients; derived from T3 Code (MIT, see NOTICE).
+The Node server that runs agents and serves the clients. Highly inspired by T3 Code (MIT, see NOTICE).
 
 `packages/` is a git subtree of Vekrel-Shared's `packages/` (split with `git subtree split --prefix=packages`).
 
