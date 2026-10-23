@@ -230,7 +230,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
         Effect.provideService(HostProcess.Platform, "linux"),
         Effect.provideService(HostProcess.Environment, { VEKREL_NPM_LAUNCHER_PATH: launcher }),
       );
-      // A launcher for another version is some other `t3` the server spawned
+      // A launcher for another version is some other `vekrel` the server spawned
       // (the variable is inherited), not the install this executable runs from.
       for (const [version, expected] of [
         ["0.0.1", null],
