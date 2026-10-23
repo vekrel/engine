@@ -603,7 +603,7 @@ const make = Effect.gen(function* () {
     const nowSeconds = Math.floor(now.epochMilliseconds / 1_000);
     const descriptor = yield* machine.getDescriptor;
     const payload = {
-      iss: `t3-env:${descriptor.machineId}`,
+      iss: `vekrel-machine:${descriptor.machineId}`,
       aud: normalizeRelayIssuer(request.relayIssuer),
       sub: descriptor.machineId,
       jti: yield* crypto.randomUUIDv4(),
@@ -941,7 +941,7 @@ const make = Effect.gen(function* () {
       const now = yield* DateTime.now;
       const issuedAt = Math.floor(now.epochMilliseconds / 1_000);
       const claims = {
-        iss: `t3-env:${input.machineId}`,
+        iss: `vekrel-machine:${input.machineId}`,
         aud: normalizeRelayIssuer(
           Option.isSome(configuredIssuer) ? bytesToString(configuredIssuer.value) : input.relayUrl,
         ),
@@ -1481,7 +1481,7 @@ const make = Effect.gen(function* () {
         token: request.proof,
         typ: RELAY_HEALTH_REQUEST_TYP,
         issuer: normalizeRelayIssuer(relayIssuer),
-        audience: `t3-env:${machineId}`,
+        audience: `vekrel-machine:${machineId}`,
         nowEpochSeconds: nowSeconds,
       }).pipe(Effect.flatMap(decodeCloudHealthProof), Effect.option);
       if (
@@ -1510,7 +1510,7 @@ const make = Effect.gen(function* () {
       const descriptor = yield* machine.getDescriptor;
       const responseExpiresAt = DateTime.add(now, { minutes: 5 });
       const responsePayload = {
-        iss: `t3-env:${machineId}`,
+        iss: `vekrel-machine:${machineId}`,
         aud: normalizeRelayIssuer(relayIssuer),
         sub: machineId,
         jti: yield* crypto.randomUUIDv4(),
@@ -1583,7 +1583,7 @@ const make = Effect.gen(function* () {
         token: request.proof,
         typ: RELAY_MINT_REQUEST_TYP,
         issuer: normalizeRelayIssuer(relayIssuer),
-        audience: `t3-env:${machineId}`,
+        audience: `vekrel-machine:${machineId}`,
         nowEpochSeconds: nowSeconds,
       }).pipe(Effect.flatMap(decodeCloudMintProof), Effect.option);
       if (
@@ -1618,7 +1618,7 @@ const make = Effect.gen(function* () {
         proofKeyThumbprint: proof.clientProofKeyThumbprint,
       });
       const responsePayload = {
-        iss: `t3-env:${machineId}`,
+        iss: `vekrel-machine:${machineId}`,
         aud: normalizeRelayIssuer(relayIssuer),
         sub: machineId,
         jti: yield* crypto.randomUUIDv4(),

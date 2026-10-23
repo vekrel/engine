@@ -56,7 +56,7 @@ const relayProof = Effect.fn("relayProof")(function* (claims: {
     typ: RELAY_HOOK_DELIVERY_TYP,
     payload: {
       iss: relayIssuer,
-      aud: `t3-env:${machineId}`,
+      aud: `vekrel-machine:${machineId}`,
       sub: machineId,
       jti: `proof:${claims.deliveryId}`,
       iat: now,
@@ -206,7 +206,7 @@ describe("webhook route", () => {
       try {
         const response = await handler(post("/api/hooks/id/tok", "{}"));
         expect(response.status).toBe(status);
-        expect(response.headers.get("x-t3-hook-outcome")).toBe(outcome);
+        expect(response.headers.get("x-vekrel-hook-outcome")).toBe(outcome);
         if (status === 429) expect(await response.json()).toEqual({ error: outcome });
       } finally {
         await dispose();

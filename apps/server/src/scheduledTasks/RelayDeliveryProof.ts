@@ -65,7 +65,7 @@ const make = Effect.gen(function* () {
         token: proof,
         typ: RELAY_HOOK_DELIVERY_TYP,
         issuer: normalizeRelayIssuer(relayIssuer.value),
-        audience: `t3-env:${machineId}`,
+        audience: `vekrel-machine:${machineId}`,
         nowEpochSeconds: Math.floor((yield* Clock.currentTimeMillis) / 1_000),
         maxTokenAge: MAX_PROOF_AGE_SECONDS,
       }).pipe(Effect.map(decodePayload), Effect.orElseSucceed(Option.none));

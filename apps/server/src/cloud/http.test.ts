@@ -177,7 +177,7 @@ describe("link proof over a non-loopback desktop transport", () => {
         {
           algorithms: ["EdDSA"],
           typ: RELAY_LINK_PROOF_TYP,
-          issuer: "t3-env:wsl-machine",
+          issuer: "vekrel-machine:wsl-machine",
           audience: proofRequest.relayIssuer,
         },
       );

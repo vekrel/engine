@@ -256,7 +256,7 @@ const makePublishProof = Effect.fn("makePublishProof")(function* (input: {
   const now = yield* DateTime.now;
   const expiresAt = DateTime.add(now, { minutes: 5 });
   const payload = {
-    iss: `t3-env:${input.machineId}`,
+    iss: `vekrel-machine:${input.machineId}`,
     aud: normalizeRelayIssuer(input.relayIssuer),
     sub: input.machineId,
     jti: input.jti,
