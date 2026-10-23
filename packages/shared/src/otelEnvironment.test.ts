@@ -26,7 +26,12 @@ describe("OtelEnvironment", () => {
       disabled: false,
       warnings: [specIgnored("1")],
     },
-    { name: "t3 1", env: { VEKREL_OTEL_SDK_DISABLED: "1" }, disabled: true, warnings: [VEKREL_OFF] },
+    {
+      name: "t3 1",
+      env: { VEKREL_OTEL_SDK_DISABLED: "1" },
+      disabled: true,
+      warnings: [VEKREL_OFF],
+    },
     {
       name: "t3 false overrides spec true",
       env: { VEKREL_OTEL_SDK_DISABLED: "false", OTEL_SDK_DISABLED: "true" },

@@ -6,10 +6,7 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as EffectAcpSchema from "effect-acp/compat";
 import * as EffectAcpSchemaV1 from "effect-acp/schema-v1";
-import {
-  deriveToolActivityPresentation,
-  mergeToolActivityData,
-} from "@vekrel/shared/toolActivity";
+import { deriveToolActivityPresentation, mergeToolActivityData } from "@vekrel/shared/toolActivity";
 import { VEKREL_MCP_TOOL_NAMES } from "@vekrel/shared/t3McpToolPresentation";
 import type {
   OrchestrationV2ProviderThreadNativeMetadata,
@@ -1166,7 +1163,11 @@ export function extractMcpToolCallIdentity(
       return { server: qualified[1], tool: qualified[2] };
     // Tool names such as vekrel_machine_read start with the server name, so a
     // prefix match that leaves an unknown tool must not hide the bare match.
-    const candidateTool = [VEKREL_MCP_TITLE_CALL, VEKREL_MCP_TITLE_SUFFIX_CALL, VEKREL_MCP_BARE_TITLE_CALL]
+    const candidateTool = [
+      VEKREL_MCP_TITLE_CALL,
+      VEKREL_MCP_TITLE_SUFFIX_CALL,
+      VEKREL_MCP_BARE_TITLE_CALL,
+    ]
       .map((pattern) => pattern.exec(trimmed)?.groups?.tool)
       .find((tool) => tool !== undefined && VEKREL_MCP_TOOL_NAMES.has(tool));
     if (candidateTool !== undefined) {
