@@ -215,8 +215,8 @@ export function mergeLearnedRoutes(input: {
   const authorization =
     active._tag === "RelayConnectionTarget" ||
     (activeProfile?._tag === "BearerConnectionProfile" &&
-      activeProfile.authorization === "t3-connect")
-      ? ("t3-connect" as const)
+      activeProfile.authorization === "vekrel-connect")
+      ? ("vekrel-connect" as const)
       : undefined;
   const sharedCredential =
     authorization === undefined && active._tag === "BearerConnectionTarget"
@@ -271,11 +271,7 @@ export function mergeLearnedRoutes(input: {
       continue;
     }
     const httpBaseUrl = `${url.origin}/`;
-    const connectionId = learnedConnectionId(
-      entry.target.machineId,
-      url.origin,
-      sharedCredential,
-    );
+    const connectionId = learnedConnectionId(entry.target.machineId, url.origin, sharedCredential);
     next = insertRoute(next, {
       target: new BearerConnectionTarget({
         machineId: entry.target.machineId,
@@ -333,7 +329,7 @@ export function sendsTokenInClear(
   tailscale?: boolean,
 ): boolean {
   const profile = Option.getOrNull(route.profile);
-  if (profile?._tag !== "BearerConnectionProfile" || profile.authorization === "t3-connect") {
+  if (profile?._tag !== "BearerConnectionProfile" || profile.authorization === "vekrel-connect") {
     return false;
   }
   if ((tailscale ?? profile.network === "tailscale") || !profile.httpBaseUrl.startsWith("http:")) {
@@ -415,7 +411,7 @@ export function routesAfterRemoving(
     if (route === removed) return false;
     if (!isLearned(route)) return true;
     const profile = Option.getOrNull(route.profile);
-    if (profile?._tag === "BearerConnectionProfile" && profile.authorization === "t3-connect") {
+    if (profile?._tag === "BearerConnectionProfile" && profile.authorization === "vekrel-connect") {
       return removed.target._tag !== "RelayConnectionTarget";
     }
     return credentialConnectionId(connectionRouteId(route.target)) !== removedId;
