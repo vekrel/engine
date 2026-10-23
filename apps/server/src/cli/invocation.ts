@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema";
 
 import type { ServerInstallation } from "@vekrel/contracts";
 import * as HostProcess from "@vekrel/shared/HostProcess";
+import { NPM_LAUNCHER_PACKAGE_NAME } from "@vekrel/shared/cliRelease";
 import { isCommandAvailable } from "@vekrel/shared/shell";
 
 import packageJson from "../../package.json" with { type: "json" };
@@ -58,7 +59,7 @@ const resolveEntryPath = Effect.gen(function* () {
       .pipe(Effect.flatMap(decodeInstallManifest), Effect.option);
     if (
       Option.isSome(manifest) &&
-      manifest.value.name === "vekrel" &&
+      manifest.value.name === NPM_LAUNCHER_PACKAGE_NAME &&
       manifest.value.version === packageJson.version
     ) {
       return npmLauncher;
@@ -73,7 +74,9 @@ export const resolveServerInstallation = Effect.gen(function* () {
   const path = yield* Path.Path;
   const platform = yield* HostProcess.Platform;
   const entry = yield* fs.realPath(yield* resolveEntryPath);
-  const match = /^(.*)\/lib\/node_modules\/vekrel\/(?:dist\/bin\.mjs|bin\/vekrel\.mjs)$/.exec(entry);
+  const match = new RegExp(
+    `^(.*)/lib/node_modules/${NPM_LAUNCHER_PACKAGE_NAME}/(?:dist/bin\\.mjs|bin/vekrel\\.mjs)$`,
+  ).exec(entry);
   if (!match) {
     const runner = detectCliRunner(entry);
     return runner === null
@@ -89,11 +92,11 @@ export const resolveServerInstallation = Effect.gen(function* () {
   )
     return null;
 
-  const packageRoot = path.join(prefix, "lib/node_modules/vekrel");
+  const packageRoot = path.join(prefix, "lib/node_modules", NPM_LAUNCHER_PACKAGE_NAME);
   const manifest = yield* fs
     .readFileString(path.join(packageRoot, "package.json"))
     .pipe(Effect.flatMap(decodeInstallManifest));
-  if (manifest.name !== "vekrel" || !manifest.bin) return null;
+  if (manifest.name !== NPM_LAUNCHER_PACKAGE_NAME || !manifest.bin) return null;
   const bin = yield* fs.realPath(path.join(packageRoot, manifest.bin.vekrel));
   const globalBin = yield* fs.realPath(path.join(prefix, "bin/vekrel"));
   if (globalBin !== bin || bin !== entry) return null;
@@ -107,7 +110,7 @@ export const resolveServerInstallation = Effect.gen(function* () {
  */
 function suggestedPackageSpec(version: string): string {
   const channel = /^[^-+]+-(nightly|preview)\./.exec(version)?.[1];
-  return channel === undefined ? "vekrel" : `vekrel@${channel}`;
+  return channel === undefined ? NPM_LAUNCHER_PACKAGE_NAME : `${NPM_LAUNCHER_PACKAGE_NAME}@${channel}`;
 }
 
 function formatCliCommand(input: {

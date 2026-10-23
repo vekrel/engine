@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - Serves a fake GitHub Release over real HTTP to the published launcher.
+import { NPM_LAUNCHER_PACKAGE_NAME } from "@vekrel/shared/cliRelease";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import * as HostProcess from "@vekrel/shared/HostProcess";
@@ -114,9 +115,9 @@ it.layer(NodeServices.layer)("build-npm-launcher", (it) => {
         const manifest = yield* decodeManifest(
           yield* fs.readFileString(path.join(output.packageDir, "package.json")),
         );
-        assert.equal(manifest.name, "t3");
+        assert.equal(manifest.name, NPM_LAUNCHER_PACKAGE_NAME);
         assert.equal(manifest.version, VERSION);
-        assert.deepStrictEqual(manifest.bin, { t3: "./bin/t3.mjs" });
+        assert.deepStrictEqual(manifest.bin, { vekrel: "./bin/vekrel.mjs" });
         // Nothing for npm to resolve, so nothing that can lag behind the launcher.
         assert.isUndefined(manifest.dependencies);
         assert.isUndefined(manifest.optionalDependencies);
@@ -138,7 +139,7 @@ it.layer(NodeServices.layer)("build-npm-launcher", (it) => {
           VEKREL_HOME: home,
           VEKREL_RELEASE_BASE_URL: release.baseUrl,
         };
-        const launcher = path.join(packageDir, "bin/t3.mjs");
+        const launcher = path.join(packageDir, "bin/vekrel.mjs");
         const first = yield* run(process.execPath, [launcher, "serve", "a b"], {
           cwd: root,
           env,
