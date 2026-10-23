@@ -132,7 +132,7 @@ export class ServePortOccupiedError extends Schema.TaggedError<ServePortOccupied
 }
 
 const resolveDirectPairingBaseUrl = (state: PersistedServerRuntimeState): string =>
-  state.devUrl ?? resolveHeadlessConnectionString(state.host, state.port);
+  state.devUrl ?? state.advertisedOrigin ?? resolveHeadlessConnectionString(state.host, state.port);
 
 export class DevServerNotProxiableError extends Schema.TaggedError<DevServerNotProxiableError>()(
   "DevServerNotProxiableError",
@@ -529,7 +529,7 @@ export const pairCommand = Command.make("pair", {
       yield* Console.log(
         formatPairOutput({
           serverLabel: target.descriptor.label,
-          origin: target.state.origin,
+          origin: target.state.advertisedOrigin ?? target.state.origin,
           pairingUrl,
           token: issued.credential,
           expiresAt: issued.expiresAt,

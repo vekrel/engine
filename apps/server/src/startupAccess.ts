@@ -1,7 +1,9 @@
 import * as NodeOS from "node:os";
 
 import { QrCode } from "@vekrel/shared/qrCode";
+import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import { HttpServer } from "effect/http";
 import * as NetAddress from "effect/net/NetAddress";
 
@@ -125,6 +127,35 @@ export const renderTerminalQrCode = (value: string, margin = 2): string => {
   return rows.join("\n");
 };
 
+// Vekrel: the daemon fronts the engine on another port and sets this so printed URLs use its origin.
+export const ADVERTISED_ORIGIN_ENV = "VEKREL_ADVERTISED_ORIGIN";
+
+export const parseAdvertisedOrigin = (raw: string): string | undefined => {
+  if (!URL.canParse(raw)) return undefined;
+  const { origin, protocol } = new URL(raw);
+  const isOrigin = raw === origin || raw === `${origin}/`;
+  return isOrigin && (protocol === "http:" || protocol === "https:") ? origin : undefined;
+};
+
+const rawAdvertisedOrigin = Config.String(ADVERTISED_ORIGIN_ENV).pipe(
+  Config.option,
+  Config.map(Option.getOrUndefined),
+);
+
+// Silent, for the runtime state; resolveAdvertisedOrigin warns once at startup.
+export const advertisedOriginConfig = rawAdvertisedOrigin.pipe(
+  Config.map((raw) => (raw === undefined ? undefined : parseAdvertisedOrigin(raw))),
+);
+
+export const resolveAdvertisedOrigin = Effect.gen(function* () {
+  const raw = yield* rawAdvertisedOrigin;
+  const origin = raw === undefined ? undefined : parseAdvertisedOrigin(raw);
+  if (raw !== undefined && origin === undefined) {
+    yield* Effect.logWarning(`Ignoring ${ADVERTISED_ORIGIN_ENV}: not an http(s) origin.`);
+  }
+  return origin;
+}).pipe(Effect.orElseSucceed(() => undefined));
+
 export const formatHeadlessServeOutput = (accessInfo: HeadlessServeAccessInfo): string =>
   [
     "Vekrel server is ready.",
@@ -136,14 +167,18 @@ export const formatHeadlessServeOutput = (accessInfo: HeadlessServeAccessInfo): 
     "",
   ].join("\n");
 
-export const issueHeadlessServeAccessInfo = Effect.fn("issueHeadlessServeAccessInfo")(function* () {
+export const issueHeadlessServeAccessInfo = Effect.fn("issueHeadlessServeAccessInfo")(function* (
+  advertisedOrigin?: string,
+) {
   const serverConfig = yield* ServerConfig.ServerConfig;
   const httpServer = yield* HttpServer.HttpServer;
   const serverAuth = yield* MachineAuth.MachineAuth;
-  const connectionString = resolveHeadlessConnectionString(
-    serverConfig.host,
-    resolveListeningPort(httpServer.address, serverConfig.port),
-  );
+  const connectionString =
+    advertisedOrigin ??
+    resolveHeadlessConnectionString(
+      serverConfig.host,
+      resolveListeningPort(httpServer.address, serverConfig.port),
+    );
   const issued = yield* serverAuth.issueStartupPairingCredential();
 
   return {

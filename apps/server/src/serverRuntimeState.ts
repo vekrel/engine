@@ -16,6 +16,8 @@ export const PersistedServerRuntimeState = Schema.Struct({
   host: Schema.optional(Schema.String),
   port: Schema.Int,
   origin: Schema.String,
+  // Vekrel: what `t3 pair` prints (VEKREL_ADVERTISED_ORIGIN); `origin` stays the connect address.
+  advertisedOrigin: Schema.optional(Schema.String),
   // Dev is single-origin: browsers must pair through this URL, not `origin`.
   devUrl: Schema.optional(Schema.String),
   startedAt: Schema.String,
@@ -54,6 +56,7 @@ export const makePersistedServerRuntimeState = (input: {
   readonly config: Pick<ServerConfig.ServerConfig["Service"], "host" | "devUrl">;
   readonly port: number;
   readonly serviceManaged?: boolean;
+  readonly advertisedOrigin?: string | undefined;
 }): Effect.Effect<PersistedServerRuntimeState> =>
   Effect.map(DateTime.now, (now) => ({
     version: 1,
@@ -61,6 +64,7 @@ export const makePersistedServerRuntimeState = (input: {
     ...(input.config.host ? { host: input.config.host } : {}),
     port: input.port,
     origin: runtimeOriginForConfig(input.config, input.port),
+    ...(input.advertisedOrigin ? { advertisedOrigin: input.advertisedOrigin } : {}),
     ...(input.config.devUrl ? { devUrl: input.config.devUrl.toString() } : {}),
     startedAt: DateTime.formatIso(now),
     ...(input.serviceManaged ? { serviceManaged: true } : {}),

@@ -53,6 +53,7 @@ import {
   formatHostForUrl,
   isWildcardHost,
   issueHeadlessServeAccessInfo,
+  resolveAdvertisedOrigin,
 } from "./startupAccess.ts";
 
 export class ServerRuntimeStartupError extends Schema.TaggedError<ServerRuntimeStartupError>()(
@@ -331,14 +332,17 @@ const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
   } satisfies AutoBootstrapWelcomeTargets;
 });
 
-const resolveStartupBrowserTarget = Effect.gen(function* () {
+export const resolveStartupBrowserTarget = Effect.fn("resolveStartupBrowserTarget")(function* (
+  advertisedOrigin?: string,
+) {
   const serverConfig = yield* ServerConfig.ServerConfig;
   const serverAuth = yield* MachineAuth.MachineAuth;
   const localUrl = `http://localhost:${serverConfig.port}`;
   const bindUrl =
-    serverConfig.host && !isWildcardHost(serverConfig.host)
+    advertisedOrigin ??
+    (serverConfig.host && !isWildcardHost(serverConfig.host)
       ? `http://${formatHostForUrl(serverConfig.host)}:${serverConfig.port}`
-      : localUrl;
+      : localUrl);
   const baseTarget = serverConfig.devUrl?.toString() ?? bindUrl;
   return serverConfig.mode === "desktop"
     ? baseTarget
@@ -621,16 +625,17 @@ const make = Effect.fn("serverRuntimeStartup.make")(function* (options?: Startup
           }),
           Effect.ignoreCause({ log: true }),
         );
+        const advertisedOrigin = yield* resolveAdvertisedOrigin;
         if (serverConfig.startupPresentation === "headless") {
           yield* Effect.logDebug("startup phase: headless access info");
-          const accessInfo = yield* issueHeadlessServeAccessInfo();
+          const accessInfo = yield* issueHeadlessServeAccessInfo(advertisedOrigin);
           yield* runStartupPhase(
             "headless.output",
             Console.log(formatHeadlessServeOutput(accessInfo)),
           );
         } else {
           yield* Effect.logDebug("startup phase: browser open check");
-          const startupBrowserTarget = yield* resolveStartupBrowserTarget;
+          const startupBrowserTarget = yield* resolveStartupBrowserTarget(advertisedOrigin);
           if (serverConfig.mode !== "desktop") {
             yield* announceStartupPairingUrl(startupBrowserTarget);
           }

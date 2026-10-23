@@ -241,6 +241,50 @@ describe("t3 pair", () => {
     ),
   );
 
+  it.effect("prints the recorded advertised origin but mints through the runtime origin", () =>
+    withDescriptorServer((origin) =>
+      Effect.suspend(() => {
+        const baseDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-pair-test-"));
+        return Effect.gen(function* () {
+          const advertised = "http://127.0.0.1:1";
+          yield* persistServerRuntimeState({
+            path: NodePath.join(baseDir, "userdata", "server-runtime.json"),
+            state: yield* makePersistedServerRuntimeState({
+              config: { host: "127.0.0.1", devUrl: undefined },
+              port: Number(new URL(origin).port),
+              advertisedOrigin: advertised,
+            }),
+          });
+
+          const output = yield* captureStdout(runCli(["pair", "--base-dir", baseDir]));
+
+          assert.include(output, `Pairing with pair-test (${advertised})`);
+          assert.include(output, `Pairing URL: ${advertised}/pair#token=`);
+          assert.notInclude(output, origin);
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => NodeFS.rmSync(baseDir, { recursive: true, force: true })),
+          ),
+        );
+      }),
+    ).pipe(
+      Effect.provide(NodeServices.layer),
+      Effect.provideService(HostProcess.Environment, {
+        ...process.env,
+        [SERVICE_LAUNCHER_CONTEXT_ENV]: JSON.stringify({
+          protocol: SERVICE_LAUNCHER_PROTOCOL,
+          childVersion: packageJson.version,
+        }),
+      }),
+      Effect.provideService(ServiceLauncherClient.ServiceLauncherHostProcess, {
+        connected: false,
+        send: () => false,
+        on: () => undefined,
+        off: () => undefined,
+      }),
+    ),
+  );
+
   it.effect("pairs through the recorded dev web URL for dev servers", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {

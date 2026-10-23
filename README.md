@@ -17,6 +17,7 @@ The Node server that runs agents and serves the clients. Highly inspired by T3 C
 - `scripts` is not a workspace member (its typecheck references app files); kept on disk.
 - Effect service keys `t3/...` renamed to `vekrel-engine/...` (required by the deterministicKeys check after the package rename).
 - `SessionStore.awaitInvalidation` also re-reads the session row every 5 s while a socket is open, so revokes/expiry done outside Node (Rust daemon, CLI) close sockets and publish `clientRemoved`.
+- `VEKREL_ADVERTISED_ORIGIN` (an http(s) origin; set by the Rust daemon to its public origin) replaces the engine's own origin in the startup `Connection string:`, `Pairing URL:`, QR and `pairingUrl:`, and is recorded as `advertisedOrigin` in the runtime state for `t3 pair` to print. `origin` is unchanged. Unset or invalid (one warning): upstream behaviour.
 - Runtime CLI/executable names (`"t3"` in invocation.ts, serviceLauncher.ts, binCli.ts, etc.) are NOT renamed yet.
 - Removed `patchedDependencies` entries (and patch files) for packages not installed here: 
   - react-native-image-viewing@0.2.2
