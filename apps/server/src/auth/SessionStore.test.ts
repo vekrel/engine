@@ -10,6 +10,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import * as TestClock from "effect/testing/TestClock";
+import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as ServerConfig from "../config.ts";
@@ -111,6 +112,47 @@ it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
         expect(yield* Deferred.isDone(ownerInvalidated)).toBe(false);
         yield* sessions.awaitInvalidation(client.sessionId);
       }).pipe(Effect.scoped, Effect.provide(Layer.merge(layerSessionStore(), TestClock.layer()))),
+  );
+
+  it.effect.each(["revoked", "expired", "deleted"] as const)(
+    "closes a connected session within 6s when its row is %s out-of-process",
+    (change) =>
+      Effect.gen(function* () {
+        const sessions = yield* SessionStore.SessionStore;
+        const sql = yield* SqlClient.SqlClient;
+        const client = yield* sessions.issue(relaySessionInput);
+        yield* sessions.markConnected(client.sessionId);
+        const removed = yield* sessions.streamChanges.pipe(
+          Stream.filter((c) => c.type === "clientRemoved" && c.sessionId === client.sessionId),
+          Stream.runHead,
+          Effect.forkScoped({ startImmediately: true }),
+        );
+        const invalidated = yield* Deferred.make<void>();
+        yield* sessions
+          .awaitInvalidation(client.sessionId)
+          .pipe(
+            Effect.andThen(Deferred.succeed(invalidated, undefined)),
+            Effect.forkScoped({ startImmediately: true }),
+          );
+        const past = "1960-01-01T00:00:00.000Z";
+        if (change === "revoked") {
+          yield* sql`UPDATE auth_sessions SET revoked_at = ${past} WHERE session_id = ${client.sessionId}`;
+        } else if (change === "expired") {
+          yield* sql`UPDATE auth_sessions SET expires_at = ${past} WHERE session_id = ${client.sessionId}`;
+        } else {
+          yield* sql`DELETE FROM auth_sessions WHERE session_id = ${client.sessionId}`;
+        }
+        yield* Effect.yieldNow; // let the watcher register its sleeps
+        yield* TestClock.adjust(Duration.seconds(5));
+        yield* TestClock.adjust(Duration.seconds(1));
+        yield* Deferred.await(invalidated);
+        expect(Option.isSome(yield* Fiber.join(removed))).toBe(true);
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(
+          Layer.mergeAll(layerSessionStore(), SqlitePersistence.layerMemory, TestClock.layer()),
+        ),
+      ),
   );
 
   it.effect("expires a connected session at its credential deadline", () =>

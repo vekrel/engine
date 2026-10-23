@@ -539,6 +539,13 @@ const make = Effect.gen(function* () {
       sessionId,
     }).pipe(Effect.asVoid);
 
+  const dropSession = (sessionId: AuthSessionId) =>
+    Ref.update(connectedSessionsRef, (current) => {
+      const next = new Map(current);
+      next.delete(sessionId);
+      return next;
+    }).pipe(Effect.andThen(emitRemoved(sessionId)));
+
   const loadActiveSession = Effect.fn("SessionStore.loadActiveSession")(function* (
     sessionId: AuthSessionId,
   ) {
@@ -997,14 +1004,7 @@ const make = Effect.gen(function* () {
           revokedAt,
         })
         .pipe(Effect.mapError((cause) => new SessionRevocationError({ sessionId, cause })));
-      if (revoked) {
-        yield* Ref.update(connectedSessionsRef, (current) => {
-          const next = new Map(current);
-          next.delete(sessionId);
-          return next;
-        });
-        yield* emitRemoved(sessionId);
-      }
+      if (revoked) yield* dropSession(sessionId);
       return revoked;
     },
   );
@@ -1059,7 +1059,7 @@ const make = Effect.gen(function* () {
         const now = yield* DateTime.now;
         const remaining = row.value.expiresAt.epochMilliseconds - now.epochMilliseconds;
         if (remaining <= 0) return;
-        yield* Effect.raceFirst(
+        yield* Effect.raceAll([
           Stream.fromSubscription(subscription).pipe(
             Stream.filter(
               (change) => change.type === "clientRemoved" && change.sessionId === sessionId,
@@ -1067,7 +1067,24 @@ const make = Effect.gen(function* () {
             Stream.runHead,
           ),
           Effect.sleep(Duration.millis(remaining)),
-        );
+          // Vekrel: re-check row so out-of-process revokes (Rust daemon, CLI) close sockets
+          Effect.gen(function* () {
+            while (true) {
+              yield* Effect.sleep(Duration.seconds(5));
+              const current = yield* Effect.option(authSessions.getById({ sessionId }));
+              if (Option.isNone(current)) continue; // read failed: retry next tick
+              const at = yield* DateTime.now;
+              const live = current.value;
+              if (
+                Option.isNone(live) ||
+                live.value.revokedAt !== null ||
+                live.value.expiresAt.epochMilliseconds <= at.epochMilliseconds
+              ) {
+                return yield* dropSession(sessionId);
+              }
+            }
+          }),
+        ]);
       }),
     );
   });

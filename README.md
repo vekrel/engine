@@ -16,6 +16,7 @@ The Node server that runs agents and serves the clients. Highly inspired by T3 C
 - `@vekrel/web` devDependency and the `build` task's `dependsOn: ["@vekrel/web#build"]` removed (web lives in another repo).
 - `scripts` is not a workspace member (its typecheck references app files); kept on disk.
 - Effect service keys `t3/...` renamed to `vekrel-engine/...` (required by the deterministicKeys check after the package rename).
+- `SessionStore.awaitInvalidation` also re-reads the session row every 5 s while a socket is open, so revokes/expiry done outside Node (Rust daemon, CLI) close sockets and publish `clientRemoved`.
 - Runtime CLI/executable names (`"t3"` in invocation.ts, serviceLauncher.ts, binCli.ts, etc.) are NOT renamed yet.
 - Removed `patchedDependencies` entries (and patch files) for packages not installed here: 
   - react-native-image-viewing@0.2.2
