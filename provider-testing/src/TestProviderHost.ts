@@ -62,7 +62,7 @@ export const layer = (
           Effect.sync(() => {
             const key = `${namespace}:${bindingId}`;
             return {
-              binding: { owner: "t3" as const, key },
+              binding: { owner: "vekrel" as const, key },
               get: Effect.sync(() => Option.fromUndefinedOr(credentials.get(key))),
               set: (value: Uint8Array) => Effect.sync(() => void credentials.set(key, value)),
               remove: Effect.sync(() => void credentials.delete(key)),

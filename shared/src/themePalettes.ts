@@ -115,7 +115,7 @@ export type ThemeDefinition = Readonly<{
   managed?: boolean;
 }>;
 
-export const T3_CODE_LIGHT_THEME_COLORS: ThemeColors = {
+export const VEKREL_CODE_LIGHT_THEME_COLORS: ThemeColors = {
   searchMatchBackground: "#ffde8b",
   searchMatchForeground: "#21180a",
   searchMatchActiveBackground: "#eea52b",
@@ -179,7 +179,7 @@ export const T3_CODE_LIGHT_THEME_COLORS: ThemeColors = {
   terminalScrollbarHover: "#bdbdbd",
 };
 
-export const T3_CODE_DARK_THEME_COLORS: ThemeColors = {
+export const VEKREL_CODE_DARK_THEME_COLORS: ThemeColors = {
   searchMatchBackground: "#8c6c1f",
   searchMatchForeground: "#f5f5f5",
   searchMatchActiveBackground: "#eea52b",
@@ -243,7 +243,7 @@ export const T3_CODE_DARK_THEME_COLORS: ThemeColors = {
   terminalScrollbarHover: "#363636",
 };
 
-export const T3_CHAT_THEME: ThemeDefinition = {
+export const VEKREL_CHAT_THEME: ThemeDefinition = {
   id: "t3-chat",
   label: "T3 Chat",
   appearance: "light",
@@ -919,7 +919,7 @@ export const IRIS_THEME: ThemeDefinition = {
 };
 
 export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
-  T3_CHAT_THEME,
+  VEKREL_CHAT_THEME,
   GROVE_THEME,
   OCEAN_THEME,
   EMBER_THEME,

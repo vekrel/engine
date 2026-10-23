@@ -5,12 +5,12 @@ import { ThreadEnvMode, WorktreeSubmodules } from "./machine.ts";
 import { ProjectScriptIcon } from "./project.ts";
 import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.ts";
 
-export const T3_PROJECT_FILE_NAME = "t3.json";
+export const VEKREL_PROJECT_FILE_NAME = "t3.json";
 
-export const T3_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/t3.json";
+export const VEKREL_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/t3.json";
 
-const T3_PROJECT_FILE_PATH_MAX_LENGTH = 512;
-const T3_PROJECT_FILE_MAX_SCRIPTS = 50;
+const VEKREL_PROJECT_FILE_PATH_MAX_LENGTH = 512;
+const VEKREL_PROJECT_FILE_MAX_SCRIPTS = 50;
 
 // Annotations go on the encoded (string) side so they survive into the
 // published JSON Schema; decoding still trims and re-validates non-emptiness.
@@ -73,7 +73,7 @@ export type T3ProjectFileScript = typeof T3ProjectFileScript.Type;
 export const T3ProjectFile = Schema.Struct({
   $schema: Schema.optionalKey(
     Schema.String.annotate({
-      description: `URL of the JSON Schema for this file, typically "${T3_PROJECT_FILE_SCHEMA_URL}".`,
+      description: `URL of the JSON Schema for this file, typically "${VEKREL_PROJECT_FILE_SCHEMA_URL}".`,
     }),
   ),
   iconPath: Schema.optionalKey(
@@ -82,7 +82,7 @@ export const T3ProjectFile = Schema.Struct({
         description:
           'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before Vekrel\'s built-in icon locations.',
       },
-      T3_PROJECT_FILE_PATH_MAX_LENGTH,
+      VEKREL_PROJECT_FILE_PATH_MAX_LENGTH,
     ),
   ),
   defaultThreadEnvMode: Schema.optionalKey(
@@ -102,7 +102,7 @@ export const T3ProjectFile = Schema.Struct({
       .annotate({
         description: "Project scripts shared with everyone who opens this repository in Vekrel.",
       })
-      .check(Schema.isMaxLength(T3_PROJECT_FILE_MAX_SCRIPTS)),
+      .check(Schema.isMaxLength(VEKREL_PROJECT_FILE_MAX_SCRIPTS)),
   ),
 }).annotate({
   title: "Vekrel project file",

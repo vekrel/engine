@@ -5,7 +5,7 @@ import type { ProviderInteractionMode } from "@vekrel/contracts";
  * each instruction entry can deliver every one whole. Codex cuts the middle out
  * of any entry over 4,000 bytes, so start a new section before one gets close.
  */
-export const T3_CODE_ORCHESTRATION_SECTIONS: ReadonlyArray<string> = [
+export const VEKREL_CODE_ORCHESTRATION_SECTIONS: ReadonlyArray<string> = [
   `## Vekrel orchestration
 
 The \`vekrel\` MCP server provides app-owned orchestration. Treat these concepts distinctly:
@@ -31,7 +31,7 @@ For stacked work, set \`baseRef\` to the intended parent branch and \`startFromO
 \`t3_thread_launch\` has no idempotency key. Retain its returned threadId and inspect it with \`t3_thread_read\` / \`t3_thread_wait\`; preparation can still be running after acceptance. If a launch fails or its response is lost, inspect \`t3_thread_list\` before retrying, since a thread may already exist.`,
   `Tool names may include a harness-normalized MCP prefix, such as \`mcp__vekrel__delegate_task\`; the semantics are the same. Some harnesses attach optional MCP servers lazily: if an initial tool-catalog scan does not show Vekrel tools, do not conclude that cross-provider delegation is unavailable. Make one bounded direct attempt using the known Vekrel tool name on the next tool step. In Codex code mode, for example, call \`tools.mcp__vekrel__orchestrator_capabilities({})\` before reporting that the capability is absent. Keep polling/wait loops bounded, do not duplicate active work, and use stable \`clientRequestId\` values when retrying tools that accept them.
 
-ACP fallback: some ACP agents accept the injected MCP server but fail to expose its tools. When the Vekrel tools are absent and \`T3_ACP_MCP_NODE\` is present, call the same tools through the terminal: \`ELECTRON_RUN_AS_NODE=1 "$T3_ACP_MCP_NODE" \${T3_ACP_MCP_ENTRYPOINT:+"$T3_ACP_MCP_ENTRYPOINT"} acp-mcp-call orchestrator_capabilities '{}'\` (\`T3_ACP_MCP_ENTRYPOINT\` is unset when Vekrel runs as a standalone executable). Delegate with \`acp-mcp-call delegate_task '{"task":"...","target":{"providerInstanceId":"...","model":"..."},"mode":"async","clientRequestId":"..."}'\`. This is the supported Vekrel transport fallback, not an ordinary shell-based substitute for delegation.
+ACP fallback: some ACP agents accept the injected MCP server but fail to expose its tools. When the Vekrel tools are absent and \`VEKREL_ACP_MCP_NODE\` is present, call the same tools through the terminal: \`ELECTRON_RUN_AS_NODE=1 "$VEKREL_ACP_MCP_NODE" \${VEKREL_ACP_MCP_ENTRYPOINT:+"$VEKREL_ACP_MCP_ENTRYPOINT"} acp-mcp-call orchestrator_capabilities '{}'\` (\`VEKREL_ACP_MCP_ENTRYPOINT\` is unset when Vekrel runs as a standalone executable). Delegate with \`acp-mcp-call delegate_task '{"task":"...","target":{"providerInstanceId":"...","model":"..."},"mode":"async","clientRequestId":"..."}'\`. This is the supported Vekrel transport fallback, not an ordinary shell-based substitute for delegation.
 
 ### Showing visuals
 
@@ -39,12 +39,12 @@ When a chart, table, diagram, image collage, or mockup would say more than prose
   `- When model options are requested or the child keeps the parent's provider instance and model with nonempty \`inheritedOptions\` from \`orchestrator_capabilities\`, use \`delegate_task\` even for native-supported models. Native subagents cannot reliably apply Vekrel model options. Read the selected model's descriptors from \`orchestrator_capabilities\` and put settings in \`target.options\`, not only in the prompt. Claude commonly uses {"effort":"max","fastMode":true}; Codex uses {"reasoningEffort":"max","serviceTier":"priority"}. Do not translate max to high or ignore unsupported settings: report a capability mismatch. Options inherit only for the same provider instance and model; explicit entries override individual values, and [] or {} clears them. Check the returned providerInstanceId, model, and options against the requested selection.`,
 ];
 
-export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
+export const VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS = `
 
-${T3_CODE_ORCHESTRATION_SECTIONS.join("\n\n")}
+${VEKREL_CODE_ORCHESTRATION_SECTIONS.join("\n\n")}
 `;
 
-export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `
+export const VEKREL_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
 ## Vekrel collaborative browser
 
@@ -60,11 +60,11 @@ Do not switch to global browser skills, Chrome, Node REPL browser automation, st
 - preview calls on an open tab have failed twice on the same step (timeouts, \`chrome-error://\` pages, a different client answering). Quote the raw error and switch without asking the user which browser to use.
 `;
 
-const T3_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS = `## Vekrel interaction mode: Default
+const VEKREL_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS = `## Vekrel interaction mode: Default
 
 Prefer making reasonable assumptions and carrying out the user's request. Ask a concise question only when a missing user decision would materially change the result. Treat this mode as active until Vekrel supplies a different interaction-mode instruction.`;
 
-const T3_CODE_ACP_PLAN_MODE_INSTRUCTIONS = `## Vekrel interaction mode: Plan
+const VEKREL_CODE_ACP_PLAN_MODE_INSTRUCTIONS = `## Vekrel interaction mode: Plan
 
 Investigate with read-only actions and do not edit files or otherwise execute the implementation. Resolve discoverable facts before asking questions. When the requirements are decision complete, return a concrete implementation plan and do not start implementing it. Treat this mode as active until Vekrel supplies a different interaction-mode instruction.`;
 
@@ -92,10 +92,10 @@ export function t3AcpPromptWithInstructions(input: {
   }
   const instructions = [
     input.state.interactionMode === "plan"
-      ? T3_CODE_ACP_PLAN_MODE_INSTRUCTIONS
-      : T3_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
+      ? VEKREL_CODE_ACP_PLAN_MODE_INSTRUCTIONS
+      : VEKREL_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
     ...(input.state.hasT3Mcp
-      ? [T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(), T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim()]
+      ? [VEKREL_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(), VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS.trim()]
       : []),
   ];
   return `<t3_code_instructions>\n${instructions.join("\n\n")}\n</t3_code_instructions>\n\n<user_request>\n${input.prompt}\n</user_request>`;
@@ -105,7 +105,7 @@ export function t3AcpPromptWithInstructions(input: {
  * Keep the wrapper explicit so it cannot be mistaken for text authored by the user.
  */
 function prependT3OrchestrationInstructions(prompt: string): string {
-  return `<t3_code_orchestration_instructions>${T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim()}</t3_code_orchestration_instructions>\n\n<user_request>\n${prompt}\n</user_request>`;
+  return `<t3_code_orchestration_instructions>${VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS.trim()}</t3_code_orchestration_instructions>\n\n<user_request>\n${prompt}\n</user_request>`;
 }
 
 export function t3OrchestrationPromptForFirstRun(input: {
@@ -119,5 +119,5 @@ export function t3OrchestrationPromptForFirstRun(input: {
 }
 
 export function t3OrchestrationSystemPrompt(hasT3Mcp: boolean): string | undefined {
-  return hasT3Mcp ? T3_CODE_ORCHESTRATION_INSTRUCTIONS : undefined;
+  return hasT3Mcp ? VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS : undefined;
 }

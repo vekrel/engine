@@ -82,9 +82,9 @@ function tool(
   return { displayName, labels, icon, summaryAction };
 }
 
-const T3_MCP_SERVER_ALIASES = new Set(["vekrel"]);
+const VEKREL_MCP_SERVER_ALIASES = new Set(["vekrel"]);
 
-const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
+const VEKREL_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   link_pull_request: tool(
     ["Link", "Linking", "Linked", "a pull request"],
     "link-pr",
@@ -333,7 +333,7 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };
 
-export const T3_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(T3_MCP_TOOLS));
+export const VEKREL_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(VEKREL_MCP_TOOLS));
 
 function normalizeT3McpToolLabel(value: string): string {
   return value.replace(/\s+(?:complete|completed)\s*$/i, "").trim();
@@ -353,7 +353,7 @@ function resolveT3McpToolName(value: string): string | null {
     const { server, tool } = mcpMatch.groups;
     return server !== undefined &&
       tool !== undefined &&
-      T3_MCP_SERVER_ALIASES.has(server.toLowerCase())
+      VEKREL_MCP_SERVER_ALIASES.has(server.toLowerCase())
       ? tool
       : null;
   }
@@ -366,16 +366,16 @@ function resolveT3McpToolName(value: string): string | null {
   }
 
   // Tool names such as vekrel_machine_read start with the server name itself.
-  if (Object.hasOwn(T3_MCP_TOOLS, label)) return label;
+  if (Object.hasOwn(VEKREL_MCP_TOOLS, label)) return label;
   const prefixed = /^(?:mcp[-_]{1,2})?vekrel(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
   const candidate = prefixed?.groups?.tool ?? label;
-  if (Object.hasOwn(T3_MCP_TOOLS, candidate)) return candidate;
+  if (Object.hasOwn(VEKREL_MCP_TOOLS, candidate)) return candidate;
   // OpenCode 2 registers one server per thread, `vekrel-<thread>`, and joins
   // it to the tool with `_`. Thread ids can hold `_` too, so take the longest
   // known tool name that ends the label.
   if (!/^vekrel-/i.test(label)) return null;
   let longest: string | null = null;
-  for (const tool of Object.keys(T3_MCP_TOOLS)) {
+  for (const tool of Object.keys(VEKREL_MCP_TOOLS)) {
     if (label.endsWith(`_${tool}`) && tool.length > (longest?.length ?? 0)) longest = tool;
   }
   return longest;
@@ -383,14 +383,14 @@ function resolveT3McpToolName(value: string): string | null {
 
 export function resolveT3McpToolId(toolName: string | null | undefined): string | null {
   const name = toolName == null ? null : resolveT3McpToolName(toolName);
-  return name !== null && Object.hasOwn(T3_MCP_TOOLS, name) ? name : null;
+  return name !== null && Object.hasOwn(VEKREL_MCP_TOOLS, name) ? name : null;
 }
 
 export function resolveT3McpToolDefinition(
   toolName: string | null | undefined,
 ): T3McpToolDefinition | null {
   const name = toolName == null ? null : resolveT3McpToolName(toolName);
-  return name !== null && Object.hasOwn(T3_MCP_TOOLS, name) ? T3_MCP_TOOLS[name]! : null;
+  return name !== null && Object.hasOwn(VEKREL_MCP_TOOLS, name) ? VEKREL_MCP_TOOLS[name]! : null;
 }
 
 export function resolveT3McpToolPresentation(

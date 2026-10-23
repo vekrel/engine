@@ -1428,9 +1428,9 @@ describe("PiAdapterV2", () => {
       );
       assert.isFalse(spawn.args.includes("--no-extensions"));
       assert.isTrue(extensions.some((path) => path?.endsWith("pi-t3-mcp-extension.ts")));
-      assert.equal(spawn.env.T3_MCP_URL, "http://127.0.0.1:43123/mcp");
-      assert.equal(spawn.env.T3_MCP_BEARER_TOKEN, "secret-pi-token");
-      assert.equal(spawn.env.T3_PI_RUNTIME_MODE, "full-access");
+      assert.equal(spawn.env.VEKREL_MCP_URL, "http://127.0.0.1:43123/mcp");
+      assert.equal(spawn.env.VEKREL_MCP_BEARER_TOKEN, "secret-pi-token");
+      assert.equal(spawn.env.VEKREL_PI_RUNTIME_MODE, "full-access");
     }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 

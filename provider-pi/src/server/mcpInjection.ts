@@ -6,10 +6,10 @@ import type { McpProviderSessionConfig } from "@vekrel/provider-core/server/mcpS
 import {
   PI_T3_MCP_EXTENSION_FILENAME,
   PI_T3_MCP_EXTENSION_SOURCE,
-  T3_MCP_BEARER_ENV,
-  T3_MCP_URL_ENV,
-  T3_PI_RUNTIME_MODE_ENV,
-  T3_PI_MCP_EXTENSION_PATH_ENV,
+  VEKREL_MCP_BEARER_ENV,
+  VEKREL_MCP_URL_ENV,
+  VEKREL_PI_RUNTIME_MODE_ENV,
+  VEKREL_PI_MCP_EXTENSION_PATH_ENV,
 } from "./mcpExtensionSource.ts";
 
 const RESERVED_PI_LAUNCH_ARGUMENTS = new Set([
@@ -287,27 +287,27 @@ export function buildPiRpcLaunch(input: {
   const environment = { ...input.environment };
   // These values belong to the current T3 session. Never let a Pi child reuse
   // credentials inherited from the server or a parent provider process.
-  delete environment[T3_MCP_URL_ENV];
-  delete environment[T3_MCP_BEARER_ENV];
-  delete environment[T3_PI_MCP_EXTENSION_PATH_ENV];
+  delete environment[VEKREL_MCP_URL_ENV];
+  delete environment[VEKREL_MCP_BEARER_ENV];
+  delete environment[VEKREL_PI_MCP_EXTENSION_PATH_ENV];
 
   return {
     args,
     env: {
       ...environment,
       ...(hasT3Extension && input.extensionPath !== undefined
-        ? { [T3_PI_MCP_EXTENSION_PATH_ENV]: input.extensionPath }
+        ? { [VEKREL_PI_MCP_EXTENSION_PATH_ENV]: input.extensionPath }
         : {}),
       ...(hasT3Extension && input.runtimeMode !== undefined
         ? {
-            [T3_PI_RUNTIME_MODE_ENV]:
+            [VEKREL_PI_RUNTIME_MODE_ENV]:
               input.runtimeMode === "auto" ? "approval-required" : input.runtimeMode,
           }
         : {}),
       ...(hasT3Mcp && input.mcpSession !== undefined
         ? {
-            [T3_MCP_URL_ENV]: input.mcpSession.endpoint,
-            [T3_MCP_BEARER_ENV]: bearerTokenFromAuthorizationHeader(
+            [VEKREL_MCP_URL_ENV]: input.mcpSession.endpoint,
+            [VEKREL_MCP_BEARER_ENV]: bearerTokenFromAuthorizationHeader(
               input.mcpSession.authorizationHeader,
             ),
           }

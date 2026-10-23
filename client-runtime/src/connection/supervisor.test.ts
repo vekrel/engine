@@ -879,7 +879,7 @@ describe("MachineSupervisor", () => {
                   policy: "loopback-browser",
                   bootstrapMethods: ["one-time-token"],
                   sessionMethods: ["dpop-access-token"],
-                  sessionCookieName: "t3_session_test",
+                  sessionCookieName: "vekrel_session_test",
                 },
                 scopes: AuthStandardClientScopes,
               }),

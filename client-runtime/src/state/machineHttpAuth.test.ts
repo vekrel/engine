@@ -66,7 +66,7 @@ const AUTH = {
   policy: "remote-reachable",
   bootstrapMethods: ["one-time-token"],
   sessionMethods: ["dpop-access-token"],
-  sessionCookieName: "t3_session",
+  sessionCookieName: "vekrel_session",
 } satisfies AuthSessionState["auth"];
 const SESSION = {
   authenticated: true,
