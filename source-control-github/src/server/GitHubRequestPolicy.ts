@@ -17,7 +17,7 @@ const DEFAULT_TIMEOUT = Duration.seconds(30);
 /** Polite to GitHub's secondary limits, which punish bursts of concurrent requests. */
 const CONCURRENCY = 8;
 /** The headers every GitHub request carries besides its token. */
-const REQUEST_HEADERS = { "x-github-api-version": "2022-11-28", "user-agent": "t3code" };
+const REQUEST_HEADERS = { "x-github-api-version": "2022-11-28", "user-agent": "vekrel" };
 
 /**
  * A credential already verified for one host. Every request made under it must target that

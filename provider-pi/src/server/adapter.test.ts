@@ -40,6 +40,7 @@ import { handoffBudget } from "@vekrel/provider-core/server/handoffBudget";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import { toolOutputImages, compactDynamicToolOutput } from "@vekrel/shared/toolOutput";
 import {
+  isInternalPiEvent,
   makePiAdapterV2,
   PiAdapterV2Driver,
   PI_PROVIDER,
@@ -4053,4 +4054,15 @@ describe("PiRpc early process exit", () => {
       assert.isFalse(error.message.includes("super-secret"));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
+});
+
+it("treats every adapter-internal Pi event as internal", () => {
+  for (const type of [
+    "vekrel.settle_probe",
+    "vekrel.ui_request_expired",
+    "vekrel.rollback_barrier",
+    "vekrel.flush_extension_errors",
+  ])
+    assert.isTrue(isInternalPiEvent(type), type);
+  assert.isFalse(isInternalPiEvent("agent_start"));
 });

@@ -174,7 +174,7 @@ export function layer(
         "service.namespace": "vekrel",
         "service.runtime": resource.runtime,
         "service.component": resource.component ?? "relay-client",
-        "t3.client.surface": resource.client,
+        "vekrel.client.surface": resource.client,
       },
     },
   }).pipe(Layer.provide(OtlpSerialization.layerJson));

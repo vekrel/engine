@@ -126,7 +126,7 @@ export const make = Effect.gen(function* () {
       `https://${host}/api${input.path}`,
     ).pipe(
       HttpClientRequest.bearerToken(Redacted.value(credential.token)),
-      HttpClientRequest.setHeaders({ accept: "application/json", "user-agent": "t3code" }),
+      HttpClientRequest.setHeaders({ accept: "application/json", "user-agent": "vekrel" }),
     );
     const { status, text } = yield* Effect.gen(function* () {
       const response = yield* httpClient
