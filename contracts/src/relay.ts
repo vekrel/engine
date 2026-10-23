@@ -8,12 +8,7 @@ import * as HttpApiSchema from "effect/http-api/HttpApiSchema";
 import * as HttpApiSecurity from "effect/http-api/HttpApiSecurity";
 import * as OpenApi from "effect/http-api/OpenApi";
 
-import {
-  DpopFailureReason,
-  MachineId,
-  ThreadId,
-  TrimmedNonEmptyString,
-} from "./baseSchemas.ts";
+import { DpopFailureReason, MachineId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ExecutionMachineDescriptor } from "./machine.ts";
 
 export const RelayAgentAwarenessPlatform = Schema.Literals(["ios", "android"]);
@@ -317,8 +312,7 @@ export const RelayMachineLinkChallengeResponse = Schema.Struct({
   challenge: TrimmedNonEmptyString,
   expiresAt: TrimmedNonEmptyString,
 });
-export type RelayMachineLinkChallengeResponse =
-  typeof RelayMachineLinkChallengeResponse.Type;
+export type RelayMachineLinkChallengeResponse = typeof RelayMachineLinkChallengeResponse.Type;
 
 export const RelayMachineLinkRequest = Schema.Struct({
   deviceId: Schema.optional(
@@ -355,8 +349,7 @@ export const RelayMachineLinkProofInvalidReason = Schema.Literals([
   "origin_not_allowed",
   "endpoint_not_secure",
 ]);
-export type RelayMachineLinkProofInvalidReason =
-  typeof RelayMachineLinkProofInvalidReason.Type;
+export type RelayMachineLinkProofInvalidReason = typeof RelayMachineLinkProofInvalidReason.Type;
 
 export const RelayMachineLinkFailedReason = Schema.Literals([
   "link_persistence_failed",
@@ -370,8 +363,7 @@ export const RelayMachineLinkUnavailableReason = Schema.Literals([
   "managed_endpoint_not_configured",
   "managed_endpoint_provisioning_failed",
 ]);
-export type RelayMachineLinkUnavailableReason =
-  typeof RelayMachineLinkUnavailableReason.Type;
+export type RelayMachineLinkUnavailableReason = typeof RelayMachineLinkUnavailableReason.Type;
 
 export const RelayMachineEndpointUnavailableReason = Schema.Literals([
   "endpoint_request_failed",
@@ -883,12 +875,11 @@ export const RelayCloudMachineHealthProofPayload = Schema.Struct({
   nonce: TrimmedNonEmptyString,
   scope: Schema.Array(Schema.Literal("machine:status")),
 });
-export type RelayCloudMachineHealthProofPayload =
-  typeof RelayCloudMachineHealthProofPayload.Type;
+export type RelayCloudMachineHealthProofPayload = typeof RelayCloudMachineHealthProofPayload.Type;
 
 /**
  * Sent with every webhook the relay forwards, signed with the relay's mint key
- * (`x-t3-relay-delivery`). The machine trusts the relay's delivery id,
+ * (`x-vekrel-relay-delivery`). The machine trusts the relay's delivery id,
  * receive time and trace context only when this verifies, since its webhook
  * URL can also be called directly.
  */
@@ -936,8 +927,7 @@ export const RelayMachineMintResponseProofPayload = Schema.Struct({
   requestNonce: TrimmedNonEmptyString,
   credential: TrimmedNonEmptyString,
 });
-export type RelayMachineMintResponseProofPayload =
-  typeof RelayMachineMintResponseProofPayload.Type;
+export type RelayMachineMintResponseProofPayload = typeof RelayMachineMintResponseProofPayload.Type;
 
 export const RelayMachineMintResponse = Schema.Struct({
   credential: TrimmedNonEmptyString,
@@ -1083,32 +1073,24 @@ const RelayClientGroup = HttpApiGroup.make("client")
       success: RelayMachineLinkResponse,
       error: RelayMachineLinkErrors,
     }).annotate(OpenApi.Summary, "Link a machine"),
-    HttpApiEndpoint.post(
-      "createMachineLinkChallenge",
-      "/v1/client/machine-link-challenges",
-      {
-        headers: RelayBearerRequestHeaders,
-        payload: RelayMachineLinkChallengeRequest,
-        success: RelayMachineLinkChallengeResponse,
-        error: RelayAuthAndInternalErrors,
-      },
-    ).annotate(OpenApi.Summary, "Create a machine-link challenge"),
+    HttpApiEndpoint.post("createMachineLinkChallenge", "/v1/client/machine-link-challenges", {
+      headers: RelayBearerRequestHeaders,
+      payload: RelayMachineLinkChallengeRequest,
+      success: RelayMachineLinkChallengeResponse,
+      error: RelayAuthAndInternalErrors,
+    }).annotate(OpenApi.Summary, "Create a machine-link challenge"),
     HttpApiEndpoint.delete("unlinkMachine", "/v1/client/machine-links/:machineId", {
       headers: RelayBearerRequestHeaders,
       params: RelayMachineUnlinkParams,
       success: RelayOkResponse,
       error: RelayAuthAndInternalErrors,
     }).annotate(OpenApi.Summary, "Unlink a machine"),
-    HttpApiEndpoint.delete(
-      "releaseMachineTunnel",
-      "/v1/client/machine-links/:machineId/tunnel",
-      {
-        headers: RelayBearerRequestHeaders,
-        params: RelayMachineUnlinkParams,
-        success: RelayOkResponse,
-        error: RelayAuthAndInternalErrors,
-      },
-    )
+    HttpApiEndpoint.delete("releaseMachineTunnel", "/v1/client/machine-links/:machineId/tunnel", {
+      headers: RelayBearerRequestHeaders,
+      params: RelayMachineUnlinkParams,
+      success: RelayOkResponse,
+      error: RelayAuthAndInternalErrors,
+    })
       .annotate(OpenApi.Summary, "Release a machine's managed tunnel")
       .annotate(
         OpenApi.Description,
@@ -1173,8 +1155,7 @@ const RelayDpopClientGroup = HttpApiGroup.make("dpopClient")
 export const RelayMachineLinkPreferencesRequest = Schema.Struct({
   holdWebhooksWhileOffline: Schema.Boolean,
 });
-export type RelayMachineLinkPreferencesRequest =
-  typeof RelayMachineLinkPreferencesRequest.Type;
+export type RelayMachineLinkPreferencesRequest = typeof RelayMachineLinkPreferencesRequest.Type;
 
 export const RelayWakeHeldHooksResponse = Schema.Struct({
   pending: Schema.Boolean,
@@ -1216,24 +1197,17 @@ const RelayServerGroup = HttpApiGroup.make("server")
         error: RelayAgentActivityPublishErrors,
       },
     ).annotate(OpenApi.Summary, "Publish agent activity"),
-    HttpApiEndpoint.post(
-      "updateLinkPreferences",
-      "/v1/machines/:machineId/link-preferences",
-      {
-        params: Schema.Struct({ machineId: MachineId }),
-        payload: RelayMachineLinkPreferencesRequest,
-        success: RelayMachineLinkPreferencesRequest,
-        error: RelayAuthAndInternalErrors,
-      },
-    ).annotate(OpenApi.Summary, "Update a machine's link preferences"),
+    HttpApiEndpoint.post("updateLinkPreferences", "/v1/machines/:machineId/link-preferences", {
+      params: Schema.Struct({ machineId: MachineId }),
+      payload: RelayMachineLinkPreferencesRequest,
+      success: RelayMachineLinkPreferencesRequest,
+      error: RelayAuthAndInternalErrors,
+    }).annotate(OpenApi.Summary, "Update a machine's link preferences"),
     HttpApiEndpoint.post("wakeHeldHooks", "/v1/machines/:machineId/hooks/wake", {
       params: Schema.Struct({ machineId: MachineId }),
       success: RelayWakeHeldHooksResponse,
       error: RelayAuthAndInternalErrors,
-    }).annotate(
-      OpenApi.Summary,
-      "Deliver webhook requests held while the machine was offline now",
-    ),
+    }).annotate(OpenApi.Summary, "Deliver webhook requests held while the machine was offline now"),
   )
   .annotate(OpenApi.Description, "Machine-authenticated activity publication.")
   .middleware(RelayMachineAuth);

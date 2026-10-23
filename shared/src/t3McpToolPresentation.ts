@@ -145,24 +145,27 @@ const VEKREL_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   ),
   request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
   create_threads: tool(["Create", "Creating", "Created", "Vekrel threads"], "thread-create"),
-  t3_thread_start: tool(["Start", "Starting", "Started", "a Vekrel thread"], "thread-create"),
-  t3_thread_list: tool(["List", "Listing", "Listed", "Vekrel threads"], "thread-list"),
-  t3_thread_read: tool(["Read", "Reading", "Read", "a Vekrel thread"], "thread-read"),
-  t3_thread_send: tool(["Send", "Sending", "Sent", "to a Vekrel thread"], "thread-send"),
-  t3_thread_wait: tool(["Wait", "Waiting", "Waited", "for a Vekrel thread"], "thread-wait"),
-  t3_workflow_stop: tool(
+  vekrel_thread_start: tool(["Start", "Starting", "Started", "a Vekrel thread"], "thread-create"),
+  vekrel_thread_list: tool(["List", "Listing", "Listed", "Vekrel threads"], "thread-list"),
+  vekrel_thread_read: tool(["Read", "Reading", "Read", "a Vekrel thread"], "thread-read"),
+  vekrel_thread_send: tool(["Send", "Sending", "Sent", "to a Vekrel thread"], "thread-send"),
+  vekrel_thread_wait: tool(["Wait", "Waiting", "Waited", "for a Vekrel thread"], "thread-wait"),
+  vekrel_workflow_stop: tool(
     ["Stop", "Stopping", "Requested a stop for", "a workflow"],
     "workflow-stop",
   ),
-  t3_thread_interrupt: tool(
+  vekrel_thread_interrupt: tool(
     ["Interrupt", "Interrupting", "Requested an interrupt of", "a Vekrel thread"],
     "thread-interrupt",
   ),
-  t3_worktree_handoff: tool(
+  vekrel_worktree_handoff: tool(
     ["Hand off", "Handing off", "Handed off", "thread to a git worktree"],
     "worktree-handoff",
   ),
-  t3_worktree_status: tool(["Get", "Getting", "Got", "thread worktree status"], "worktree-status"),
+  vekrel_worktree_status: tool(
+    ["Get", "Getting", "Got", "thread worktree status"],
+    "worktree-status",
+  ),
   preview_status: tool(["Get", "Getting", "Got", "preview browser status"], "browser", "browser"),
   preview_open: tool(
     ["Open", "Opening", "Opened", "a page in the preview browser"],
@@ -267,68 +270,95 @@ const VEKREL_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Run", "Running", "Requested a run of", "a scheduled task"],
     "schedule-run",
   ),
-  t3_queue_list: tool(["List", "Listing", "Listed", "queued messages"], "queue-list"),
-  t3_queue_read: tool(["Read", "Reading", "Read", "a queued message"], "queue-read"),
-  t3_queue_edit: tool(["Edit", "Editing", "Edited", "a queued message"], "queue-edit"),
-  t3_queue_cancel: tool(
+  vekrel_queue_list: tool(["List", "Listing", "Listed", "queued messages"], "queue-list"),
+  vekrel_queue_read: tool(["Read", "Reading", "Read", "a queued message"], "queue-read"),
+  vekrel_queue_edit: tool(["Edit", "Editing", "Edited", "a queued message"], "queue-edit"),
+  vekrel_queue_cancel: tool(
     ["Cancel", "Canceling", "Requested cancellation of", "a queued run"],
     "queue-cancel",
   ),
-  t3_queue_reorder: tool(["Reorder", "Reordering", "Reordered", "a queued run"], "queue-reorder"),
-  t3_queue_promote_to_steer: tool(
+  vekrel_queue_reorder: tool(
+    ["Reorder", "Reordering", "Reordered", "a queued run"],
+    "queue-reorder",
+  ),
+  vekrel_queue_promote_to_steer: tool(
     ["Steer with", "Steering with", "Requested steering with", "a queued message"],
     "queue-steer",
   ),
-  t3_pending_request_list: tool(
+  vekrel_pending_request_list: tool(
     ["List", "Listing", "Listed", "pending questions"],
     "question-list",
   ),
-  t3_pending_request_read: tool(["Read", "Reading", "Read", "pending questions"], "question-read"),
-  t3_pending_request_respond: tool(
+  vekrel_pending_request_read: tool(
+    ["Read", "Reading", "Read", "pending questions"],
+    "question-read",
+  ),
+  vekrel_pending_request_respond: tool(
     ["Answer", "Answering", "Answered", "pending questions"],
     "question-respond",
   ),
-  t3_thread_configuration: tool(
+  vekrel_thread_configuration: tool(
     ["Read", "Reading", "Read", "thread configuration"],
     "thread-configuration",
   ),
-  t3_thread_configure: tool(["Set", "Setting", "Set", "thread model"], "thread-configure"),
-  t3_thread_fork: tool(["Fork", "Forking", "Requested a fork of", "this thread"], "thread-fork"),
-  t3_thread_merge_back: tool(
+  vekrel_thread_configure: tool(["Set", "Setting", "Set", "thread model"], "thread-configure"),
+  vekrel_thread_fork: tool(
+    ["Fork", "Forking", "Requested a fork of", "this thread"],
+    "thread-fork",
+  ),
+  vekrel_thread_merge_back: tool(
     ["Merge", "Merging", "Requested a merge of", "thread context"],
     "thread-merge",
   ),
-  t3_thread_search: tool(["Search", "Searching", "Searched", "thread content"], "thread-search"),
-  t3_thread_transfers: tool(["Read", "Reading", "Read", "thread transfers"], "thread-transfers"),
-  t3_thread_organize: tool(["Organize", "Organizing", "Organized", "a thread"], "thread-organize"),
-  t3_thread_update: tool(
+  vekrel_thread_search: tool(
+    ["Search", "Searching", "Searched", "thread content"],
+    "thread-search",
+  ),
+  vekrel_thread_transfers: tool(
+    ["Read", "Reading", "Read", "thread transfers"],
+    "thread-transfers",
+  ),
+  vekrel_thread_organize: tool(
+    ["Organize", "Organizing", "Organized", "a thread"],
+    "thread-organize",
+  ),
+  vekrel_thread_update: tool(
     ["Update", "Updating", "Updated", "Vekrel thread metadata"],
     "thread-update",
   ),
-  t3_worktree_list: tool(["List", "Listing", "Listed", "workspace branches"], "worktree-list"),
-  t3_preview_list: tool(["List", "Listing", "Listed", "preview tabs"], "browser", "browser"),
-  t3_preview_close: tool(["Close", "Closing", "Closed", "a preview tab"], "browser", "browser"),
+  vekrel_worktree_list: tool(["List", "Listing", "Listed", "workspace branches"], "worktree-list"),
+  vekrel_preview_list: tool(["List", "Listing", "Listed", "preview tabs"], "browser", "browser"),
+  vekrel_preview_close: tool(["Close", "Closing", "Closed", "a preview tab"], "browser", "browser"),
   vekrel_machine_read: tool(["Read", "Reading", "Read", "machine preferences"], "machine-read"),
   vekrel_machine_preferences_update: tool(
     ["Update", "Updating", "Updated", "machine preferences"],
     "machine-update",
   ),
-  t3_thread_launch: tool(["Launch", "Launching", "Launched", "a project thread"], "thread-create"),
-  t3_project_list: tool(["List", "Listing", "Listed", "projects"], "project-list"),
-  t3_project_read: tool(["Read", "Reading", "Read", "a project"], "project-read"),
-  t3_project_create: tool(["Register", "Registering", "Registered", "a project"], "project-create"),
-  t3_project_update: tool(["Update", "Updating", "Updated", "a project"], "project-update"),
-  t3_project_delete: tool(["Delete", "Deleting", "Deleted", "a project"], "project-delete"),
-  t3_project_clone: tool(["Clone", "Cloning", "Cloned", "a repository"], "project-clone"),
-  t3_attachment_prepare_upload: tool(
+  vekrel_thread_launch: tool(
+    ["Launch", "Launching", "Launched", "a project thread"],
+    "thread-create",
+  ),
+  vekrel_project_list: tool(["List", "Listing", "Listed", "projects"], "project-list"),
+  vekrel_project_read: tool(["Read", "Reading", "Read", "a project"], "project-read"),
+  vekrel_project_create: tool(
+    ["Register", "Registering", "Registered", "a project"],
+    "project-create",
+  ),
+  vekrel_project_update: tool(["Update", "Updating", "Updated", "a project"], "project-update"),
+  vekrel_project_delete: tool(["Delete", "Deleting", "Deleted", "a project"], "project-delete"),
+  vekrel_project_clone: tool(["Clone", "Cloning", "Cloned", "a repository"], "project-clone"),
+  vekrel_attachment_prepare_upload: tool(
     ["Prepare", "Preparing", "Prepared", "an attachment upload"],
     "attachment-prepare",
   ),
-  t3_attachment_discard: tool(
+  vekrel_attachment_discard: tool(
     ["Discard", "Discarding", "Discarded", "a pending attachment"],
     "attachment-discard",
   ),
-  t3_thread_send_attachments: tool(["Send", "Sending", "Sent", "attachments"], "attachment-send"),
+  vekrel_thread_send_attachments: tool(
+    ["Send", "Sending", "Sent", "attachments"],
+    "attachment-send",
+  ),
   html_preview: tool(["Preview", "Previewing", "Previewed", "an HTML page"], "html-preview"),
   html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
 };

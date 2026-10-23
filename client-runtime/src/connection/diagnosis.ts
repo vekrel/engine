@@ -215,29 +215,29 @@ function helpSection(
 ): T3ConnectTroubleshootingSection {
   switch (located.cause) {
     case "offline":
-      return "this-device-cant-reach-t3-connect";
+      return "this-device-cant-reach-vekrel-connect";
     case "outdated":
-      return "the-host-runs-an-older-t3-code";
+      return "the-host-runs-an-older-vekrel";
     case "clock_skew":
       return "the-clock-is-off";
     case "not_linked":
     case "tunnel_not_enabled":
       return "sign-in-account-or-link-problems";
     case "relay_error":
-      return "t3-connect-returned-an-error";
+      return "vekrel-connect-returned-an-error";
     case "released":
     case "tunnel_down":
     case "tunnel_pending":
       return "the-hosts-tunnel-is-offline";
     case "origin_unreachable":
     case "invalid_response":
-      return "the-tunnel-works-but-t3-code-does-not-answer";
+      return "the-tunnel-works-but-vekrel-does-not-answer";
     case "dns":
     case "tls":
     case "refused":
     case "timeout":
     case "unknown":
-      return "the-t3-connect-address-does-not-resolve-or-answer";
+      return "the-vekrel-connect-address-does-not-resolve-or-answer";
     case null:
       break;
   }
@@ -247,17 +247,17 @@ function helpSection(
     failure?.reason === "timeout";
   switch (located.hop) {
     case "device":
-      return "this-device-cant-reach-t3-connect";
+      return "this-device-cant-reach-vekrel-connect";
     case "relay":
       return failure?.reason === "authentication"
         ? "sign-in-account-or-link-problems"
-        : "this-device-cant-reach-t3-connect";
+        : "this-device-cant-reach-vekrel-connect";
     case "tunnel":
-      return onThisDevice ? "this-device-cant-reach-t3-connect" : "the-hosts-tunnel-is-offline";
+      return onThisDevice ? "this-device-cant-reach-vekrel-connect" : "the-hosts-tunnel-is-offline";
     case "server":
       return failure?.reason === "authentication" || failure?.reason === "permission"
         ? "sign-in-account-or-link-problems"
-        : "the-tunnel-works-but-t3-code-does-not-answer";
+        : "the-tunnel-works-but-vekrel-does-not-answer";
   }
 }
 
