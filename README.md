@@ -17,8 +17,8 @@ The Node server that runs agents and serves the clients. Highly inspired by T3 C
 - `scripts` is not a workspace member (its typecheck references app files); kept on disk.
 - Effect service keys `t3/...` renamed to `vekrel-engine/...` (required by the deterministicKeys check after the package rename).
 - `SessionStore.awaitInvalidation` also re-reads the session row every 5 s while a socket is open, so revokes/expiry done outside Node (Rust daemon, CLI) close sockets and publish `clientRemoved`.
-- `VEKREL_ADVERTISED_ORIGIN` (an http(s) origin; set by the Rust daemon to its public origin) replaces the engine's own origin in the startup `Connection string:`, `Pairing URL:`, QR and `pairingUrl:`, and is recorded as `advertisedOrigin` in the runtime state for `t3 pair` to print. `origin` is unchanged. Unset or invalid (one warning): upstream behaviour.
-- Runtime CLI/executable names (`"t3"` in invocation.ts, serviceLauncher.ts, binCli.ts, etc.) are NOT renamed yet.
+- `VEKREL_ADVERTISED_ORIGIN` (an http(s) origin; set by the Rust daemon to its public origin) replaces the engine's own origin in the startup `Connection string:`, `Pairing URL:`, QR and `pairingUrl:`, and is recorded as `advertisedOrigin` in the runtime state for `vekrel pair` to print. `origin` is unchanged. Unset or invalid (one warning): upstream behaviour.
+- Internal T3 identifiers renamed to Vekrel (full mapping: ArchBoss `.superpowers/sdd/2026-10-23-plan-6/rename-identifiers-report.md`): root CLI command and standalone executable `vekrel`, cookies `vekrel_session*` / `vekrel_dev_session_*`, env vars and constants `T3_*` -> `VEKREL_*`, git refs `refs/vekrel/*`, service ids `vekrel.service` / `com.vekrel.vekrel.service` / `vekrel-server`, credential owner `"vekrel"`, provider client name `Vekrel`. The npm launcher package name is one constant, `NPM_LAUNCHER_PACKAGE_NAME` in packages/shared/src/cliRelease.ts (still `t3`, see the report).
 - Removed `patchedDependencies` entries (and patch files) for packages not installed here: 
   - react-native-image-viewing@0.2.2
   - alchemy@2.0.0-beta.80
@@ -43,35 +43,8 @@ The Node server that runs agents and serves the clients. Highly inspired by T3 C
   - "@expo/fingerprint@0.21.5"
   - app-builder-lib@26.16.1
 ## Default home
-The default data directory is `~/.vekrel` (not `~/.t3`), so a machine with T3 Code installed does not share its database or config. Override with `VEKREL_HOME` or `--base-dir`. The dev-worktree `.t3` fallback (packages/shared/src/devHome.ts) and remote-host paths (`~/.t3/device`) are unchanged.
+The default data directory is `~/.vekrel` (not `~/.t3`), so a machine with T3 Code installed does not share its database or config. Override with `VEKREL_HOME` or `--base-dir`. Dev worktrees use their own `.vekrel`, and remote hosts use `~/.vekrel` (device, ssh-launch, runtime). There is no automatic move of `~/.t3`: that directory belongs to T3 Code.
 
-## Known upstream names
-Deferred; these files still use `"t3"` as CLI, executable or npm-launcher name:
-README.md
-apps/server/scripts/acp-mock-agent.ts
-apps/server/src/binCli.ts
-apps/server/src/cli/config.test.ts
-apps/server/src/cli/invocation.test.ts
-apps/server/src/cli/invocation.ts
-apps/server/src/cli/pair.test.ts
-apps/server/src/cli/update.test.ts
-apps/server/src/cloud/pinnedRuntime.test.ts
-apps/server/src/cloud/pinnedRuntime.ts
-apps/server/src/cloud/selfUpdate.test.ts
-apps/server/src/entrypoint.test.ts
-apps/server/src/environment/ServerEnvironment.test.ts
-apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts
-apps/server/src/provider/Drivers/codexUsage.test.ts
-apps/server/src/provider/ProviderCredentialStore.ts
-apps/server/src/serverRuntimeState.test.ts
-apps/server/src/serviceLauncher.test.ts
-apps/server/src/serviceLauncher.ts
-apps/server/vite.config.ts
-scripts/build-cli-archive.ts
-scripts/build-npm-launcher.test.ts
-scripts/build-npm-launcher.ts
-scripts/npm-launcher/t3.mjs
-scripts/smoke-cli-archive.ts
 
 ## Updating packages/ from Vekrel-Shared
 `packages/` is a subtree of Shared's `packages/` directory, so split it first (Shared's root is not the prefix):

@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import * as HostProcess from "@vekrel/shared/HostProcess";
 import * as Effect from "effect/Effect";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 import { resolveCliCommand } from "./invocation.ts";
 
