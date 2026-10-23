@@ -155,6 +155,39 @@ it.layer(NodeServices.layer)("SessionStore.layer", (it) => {
       ),
   );
 
+  it.effect("fails closed after 3 consecutive re-check read errors and tolerates fewer", () =>
+    Effect.gen(function* () {
+      const sessions = yield* SessionStore.SessionStore;
+      const sql = yield* SqlClient.SqlClient;
+      const client = yield* sessions.issue(relaySessionInput);
+      yield* sessions.markConnected(client.sessionId);
+      const invalidated = yield* Deferred.make<void>();
+      yield* sessions
+        .awaitInvalidation(client.sessionId)
+        .pipe(
+          Effect.andThen(Deferred.succeed(invalidated, undefined)),
+          Effect.forkScoped({ startImmediately: true }),
+        );
+      yield* Effect.yieldNow;
+      // Reads fail while the table is renamed away; two failures, then recovery resets the count.
+      yield* sql`ALTER TABLE auth_sessions RENAME TO auth_sessions_off`;
+      yield* TestClock.adjust(Duration.seconds(10));
+      yield* sql`ALTER TABLE auth_sessions_off RENAME TO auth_sessions`;
+      yield* TestClock.adjust(Duration.seconds(5));
+      expect(yield* Deferred.isDone(invalidated)).toBe(false);
+      yield* sql`ALTER TABLE auth_sessions RENAME TO auth_sessions_off`;
+      yield* TestClock.adjust(Duration.seconds(10));
+      expect(yield* Deferred.isDone(invalidated)).toBe(false);
+      yield* TestClock.adjust(Duration.seconds(5));
+      yield* Deferred.await(invalidated);
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(
+        Layer.mergeAll(layerSessionStore(), SqlitePersistence.layerMemory, TestClock.layer()),
+      ),
+    ),
+  );
+
   it.effect("expires a connected session at its credential deadline", () =>
     Effect.gen(function* () {
       const sessions = yield* SessionStore.SessionStore;

@@ -20,6 +20,7 @@ import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 
 import * as ServerConfig from "../config.ts";
 import * as ServerMachine from "../machine/ServerMachine.ts";
@@ -1069,12 +1070,20 @@ const make = Effect.gen(function* () {
           Effect.sleep(Duration.millis(remaining)),
           // Vekrel: re-check row so out-of-process revokes (Rust daemon, CLI) close sockets
           Effect.gen(function* () {
+            let failures = 0;
             while (true) {
               yield* Effect.sleep(Duration.seconds(5));
-              const current = yield* Effect.option(authSessions.getById({ sessionId }));
-              if (Option.isNone(current)) continue; // read failed: retry next tick
+              const current = yield* Effect.result(authSessions.getById({ sessionId }));
+              if (Result.isFailure(current)) {
+                // Read error: warn and retry, then fail closed after 3 in a row.
+                failures += 1;
+                yield* Effect.logWarning("session re-check read failed", { sessionId, failures });
+                if (failures >= 3) return yield* dropSession(sessionId);
+                continue;
+              }
+              failures = 0;
               const at = yield* DateTime.now;
-              const live = current.value;
+              const live = current.success;
               if (
                 Option.isNone(live) ||
                 live.value.revokedAt !== null ||
