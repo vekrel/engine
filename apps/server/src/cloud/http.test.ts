@@ -7,10 +7,7 @@ import {
   MachineHttpApi,
   MachineId,
 } from "@vekrel/contracts";
-import {
-  RelayMachineLinkProofPayload,
-  type RelayLinkProofRequest,
-} from "@vekrel/contracts/relay";
+import { RelayMachineLinkProofPayload, type RelayLinkProofRequest } from "@vekrel/contracts/relay";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -171,16 +168,12 @@ describe("link proof over a non-loopback desktop transport", () => {
       expect(response.status).toBe(200);
       const proof = (await response.json()) as string;
       const payload = decodeLinkProofPayload(decodeJwt(proof));
-      const verified = await jwtVerify(
-        proof,
-        await importSPKI(payload.machinePublicKey, "EdDSA"),
-        {
-          algorithms: ["EdDSA"],
-          typ: RELAY_LINK_PROOF_TYP,
-          issuer: "vekrel-machine:wsl-machine",
-          audience: proofRequest.relayIssuer,
-        },
-      );
+      const verified = await jwtVerify(proof, await importSPKI(payload.machinePublicKey, "EdDSA"), {
+        algorithms: ["EdDSA"],
+        typ: RELAY_LINK_PROOF_TYP,
+        issuer: "vekrel-machine:wsl-machine",
+        audience: proofRequest.relayIssuer,
+      });
       expect(verified.payload).toMatchObject({
         origin: proofRequest.origin,
         endpoint: proofRequest.endpoint,

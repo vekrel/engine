@@ -100,8 +100,7 @@ export const webhookDeliveryDuration = Metric.timer("vekrel_webhook_delivery_dur
 });
 
 export const webhookHeldDelay = Metric.timer("vekrel_webhook_held_delay", {
-  description:
-    "Time between the relay receiving a webhook request and the machine handling it.",
+  description: "Time between the relay receiving a webhook request and the machine handling it.",
 });
 
 export const webhookRunsTotal = Metric.counter("vekrel_webhook_runs_total", {
