@@ -322,9 +322,7 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
         prefix: "vekrel-telemetry-default-",
       });
       const layerTelemetry = AnalyticsService.layer.pipe(Layer.provideMerge(layerServerConfig));
-      const layerConfig = ConfigProvider.layer(
-        ConfigProvider.fromUnknown({}),
-      );
+      const layerConfig = ConfigProvider.layer(ConfigProvider.fromUnknown({}));
       const layerBatchServer = HttpServer.serve(
         Effect.gen(function* () {
           const request = yield* HttpServerRequest.HttpServerRequest;

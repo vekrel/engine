@@ -1025,10 +1025,9 @@ const layerPreviewControlsRegistration = toolkitRegistration(
   PreviewControlsHandlers.layer,
 );
 
-const layerMachineToolkit = toolkitRegistration(
-  MachineToolkit,
-  MachineHandlers.layer,
-).pipe(Layer.provide(ThreadCommandExecutor.layer));
+const layerMachineToolkit = toolkitRegistration(MachineToolkit, MachineHandlers.layer).pipe(
+  Layer.provide(ThreadCommandExecutor.layer),
+);
 
 const layerProjectRegistration = toolkitRegistration(ProjectToolkit, ProjectHandlers.layer);
 

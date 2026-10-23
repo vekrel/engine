@@ -393,7 +393,11 @@ it.effect("a client caller targets any thread within its ceiling and cannot act 
           Effect.provideService(McpSchema.McpServerClient, client),
         );
 
-    const untargeted = yield* call("vekrel_thread_organize", { action: "pin" }, clientScope("auto"));
+    const untargeted = yield* call(
+      "vekrel_thread_organize",
+      { action: "pin" },
+      clientScope("auto"),
+    );
     expect(declaredFailure(untargeted)).toMatchObject({ code: "target_required" });
 
     const pinned = yield* call(

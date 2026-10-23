@@ -394,7 +394,12 @@ it.effect(
         runLimit: 50,
         maxCharsPerItem: 50_000,
       });
-      yield* callTool("vekrel_thread_read", { ...thread, limit: 7, runLimit: 1, maxCharsPerItem: 1 });
+      yield* callTool("vekrel_thread_read", {
+        ...thread,
+        limit: 7,
+        runLimit: 1,
+        maxCharsPerItem: 1,
+      });
 
       expect(calls).toEqual([
         { ...thread, limit: 100, runLimit: 50, maxCharsPerItem: 50_000 },
