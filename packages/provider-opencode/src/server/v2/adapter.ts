@@ -587,7 +587,7 @@ type ModelRef = ReturnType<typeof Model.Ref.make>;
  * ids.
  */
 const turnPromptId = (sessionId: string, attemptId: string) =>
-  SessionMessage.ID.make(`msg_t3_turn_${sessionId}:${attemptId}`);
+  SessionMessage.ID.make(`msg_vekrel_turn_${sessionId}:${attemptId}`);
 const steerPromptId = (sessionId: string, messageId: string) =>
   SessionMessage.ID.make(`msg_t3_steer_${sessionId}:${messageId}`);
 
@@ -2639,8 +2639,7 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
               ? {
                   status: "failed",
                   failure: makeProviderFailure({
-                    message:
-                      "OpenCode ended the turn with an error while Vekrel was reconnecting.",
+                    message: "OpenCode ended the turn with an error while Vekrel was reconnecting.",
                     class: "provider_error",
                   }),
                 }

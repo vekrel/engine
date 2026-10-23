@@ -73,6 +73,9 @@ import {
 } from "./mcpInjection.ts";
 import { PI_FILE_CHANGE_TOOLS } from "./mcpExtensionSource.ts";
 
+/** Events the adapter queues for itself (`vekrel.*`), never a provider wake. */
+export const isInternalPiEvent = (type: unknown): boolean => String(type).startsWith("vekrel.");
+
 export const PI_PROVIDER = ProviderDriverKind.make("pi");
 const PI_DRIVER_KIND = PI_PROVIDER;
 const PI_DEFAULT_INSTANCE_ID = defaultInstanceIdForDriver(PI_DRIVER_KIND);
@@ -1641,7 +1644,7 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
           threadState?.activeTurn === null &&
           pendingWake !== null &&
           !interactiveUiRequest &&
-          !String(event["type"]).startsWith("vekrel.") &&
+          !isInternalPiEvent(event["type"]) &&
           event["type"] !== "response"
         ) {
           pendingWake.events.push(event);

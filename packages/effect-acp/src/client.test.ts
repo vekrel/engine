@@ -1408,13 +1408,13 @@ it.layer(NodeServices.layer)("effect-acp client", (it) => {
         sessionUpdate: "agent_message_chunk",
         messageId: "future-content",
         content: {
-          type: "_t3_unknown",
+          type: "_vekrel_unknown",
           originalType: "chart",
           raw: { type: "chart", points: [] },
         },
       });
       assert.deepEqual(received[1]?.update, {
-        sessionUpdate: "_t3_unknown",
+        sessionUpdate: "_vekrel_unknown",
         originalSessionUpdate: "timeline_update",
         raw: { sessionUpdate: "timeline_update", entries: [] },
       });
