@@ -76,8 +76,8 @@ it.layer(layerGrokTextGenerationTest)("GrokTextGeneration", (it) => {
 
     return withFakeAcpGrok(
       {
-        T3_ACP_REQUEST_LOG_PATH: requestLogPath,
-        T3_ACP_PROMPT_RESPONSE_TEXT: JSON.stringify({
+        VEKREL_ACP_REQUEST_LOG_PATH: requestLogPath,
+        VEKREL_ACP_PROMPT_RESPONSE_TEXT: JSON.stringify({
           subject: "Add Grok provider",
           body: "Wire up the ACP runtime and headless text generation path.",
         }),
@@ -116,7 +116,7 @@ it.layer(layerGrokTextGenerationTest)("GrokTextGeneration", (it) => {
   it.effect("extracts the JSON object when Grok wraps it in conversational text", () =>
     withFakeAcpGrok(
       {
-        T3_ACP_PROMPT_RESPONSE_TEXT:
+        VEKREL_ACP_PROMPT_RESPONSE_TEXT:
           "Sure! Here's a thread title:\n\n" +
           JSON.stringify({ title: "Investigate failing CI" }) +
           "\n\nLet me know if you need anything else.",

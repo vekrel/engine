@@ -1,8 +1,8 @@
 import * as NodeAssert from "node:assert/strict";
 
 import {
-  T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-  T3_CODE_ORCHESTRATION_SECTIONS,
+  VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS,
+  VEKREL_CODE_ORCHESTRATION_SECTIONS,
 } from "@vekrel/provider-core/server/orchestrationInstructions";
 import { describe, it } from "vite-plus/test";
 
@@ -51,11 +51,11 @@ describe("buildCodexAdditionalContext", () => {
 
     NodeAssert.deepEqual(
       sections,
-      T3_CODE_ORCHESTRATION_SECTIONS.map((value) => ({ kind: "application", value })),
+      VEKREL_CODE_ORCHESTRATION_SECTIONS.map((value) => ({ kind: "application", value })),
     );
     NodeAssert.equal(
       sections.map((entry) => entry.value).join("\n\n"),
-      T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+      VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
     );
   });
 });

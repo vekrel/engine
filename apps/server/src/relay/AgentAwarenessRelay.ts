@@ -726,7 +726,7 @@ export const make = Effect.gen(function* () {
   });
 
   // Many machines never link, so while unlinked the retry backs off from 5
-  // s to 60 s. A linked machine keeps the 5 s retry, because `vekrel-engine connect
+  // s to 60 s. A linked machine keeps the 5 s retry, because `vekrel connect
   // publish` can turn publishing on from another process. Keep this untraced:
   // an unlinked machine can retry for the lifetime of the process.
   const publishActiveThreadsOnceWhenConfigured = Effect.fnUntraced(function* (

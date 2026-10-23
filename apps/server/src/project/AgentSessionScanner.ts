@@ -551,6 +551,8 @@ function isT3ManagedWorktree(
   const normalized = normalizeForWorktreeMatch(candidatePath, caseFold);
   return (
     normalized.startsWith(normalizeForWorktreeMatch(worktreesDir, caseFold)) ||
+    normalized.includes("/.vekrel/worktrees/") ||
+    // T3 Code's own worktrees stay excluded, as before the rename.
     normalized.includes("/.t3/worktrees/")
   );
 }

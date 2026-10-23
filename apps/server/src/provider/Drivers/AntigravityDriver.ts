@@ -297,7 +297,7 @@ export const AntigravityDriver: ProviderDriver<
       );
       const runtime = yield* makeRuntime({
         cwd,
-        clientInfo: { name: "t3-code-provider-setup", version: "0.0.0" },
+        clientInfo: { name: "vekrel-provider-setup", version: "0.0.0" },
         mcpServers: [],
         ...(input.onAuthorizationUrl ? { onAuthorizationUrl: input.onAuthorizationUrl } : {}),
       });
@@ -442,7 +442,7 @@ export const AntigravityDriver: ProviderDriver<
       makeRuntime: (cwd) =>
         makeRuntime({
           cwd,
-          clientInfo: { name: "t3-code-text", version: "0.0.0" },
+          clientInfo: { name: "vekrel-text", version: "0.0.0" },
           mcpServers: [],
         }),
     });

@@ -35,7 +35,7 @@ it.effect("authenticates each release page until the requested channel is found"
   }),
 );
 
-it.layer(NodeServices.layer)("vekrel-engine update launcher", (it) => {
+it.layer(NodeServices.layer)("vekrel update launcher", (it) => {
   it.effect("repoints a symlink that lives in a runtime versions tree", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

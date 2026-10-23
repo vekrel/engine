@@ -557,7 +557,7 @@ layer("ProviderEventIngestorV2", (it) => {
                     parentCheckpointId: null,
                     ordinalWithinScope: input.ordinal,
                     appRunOrdinal: input.ordinal,
-                    ref: CheckpointRef.make(`refs/t3/checkpoints/rewound/${input.ordinal}`),
+                    ref: CheckpointRef.make(`refs/vekrel/checkpoints/rewound/${input.ordinal}`),
                     status: "ready" as const,
                     files: [],
                     capturedAt: now,

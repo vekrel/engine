@@ -207,7 +207,7 @@ function wireToEntries(wire: ReadonlyArray<WireMessage>): {
   return { entries, droppedFrames };
 }
 
-const T3_INSTRUCTIONS_BODY = /<t3_code_instructions>\n[\s\S]*?\n<\/t3_code_instructions>/u;
+const VEKREL_INSTRUCTIONS_BODY = /<t3_code_instructions>\n[\s\S]*?\n<\/t3_code_instructions>/u;
 
 function normalizeOutboundFrame(frame: Record<string, unknown>, runtimeInstructions: string) {
   const params = isRecord(frame.params) ? frame.params : undefined;
@@ -243,7 +243,7 @@ function normalizeOutboundFrame(frame: Record<string, unknown>, runtimeInstructi
               ? {
                   ...part,
                   text: part.text.replace(
-                    T3_INSTRUCTIONS_BODY,
+                    VEKREL_INSTRUCTIONS_BODY,
                     "<t3_code_instructions>\n<any>\n</t3_code_instructions>",
                   ),
                 }
@@ -412,7 +412,7 @@ const recordScenario = Effect.fn("recordGrokScenario")(function* (fixtureName: s
   };
 
   const tee = makeWireTee();
-  const settings = { ...DEFAULT_GROK_SETTINGS, binaryPath: process.env.T3_GROK_BIN ?? "grok" };
+  const settings = { ...DEFAULT_GROK_SETTINGS, binaryPath: process.env.VEKREL_GROK_BIN ?? "grok" };
   const layerRegistry = ProviderAdapterRegistry.layerFromAdaptersEffect(
     Effect.gen(function* () {
       const environment = yield* HostProcess.Environment;

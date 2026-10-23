@@ -32,13 +32,13 @@ import {
   type ServiceState,
 } from "./serviceProtocol.ts";
 
-const BOOT_SERVICE_NAME = "t3code";
+const BOOT_SERVICE_NAME = "vekrel";
 export const BOOT_SERVICE_UNIT_FILE = `${BOOT_SERVICE_NAME}.service`;
 // `.service` suffix keeps the label distinct from the desktop app's bundle id
-// (com.t3tools.t3code), so launchd and TCC records never collide.
-export const BOOT_SERVICE_LAUNCHD_LABEL = "com.t3tools.t3code.service";
+// (com.vekrel.vekrel), so launchd and TCC records never collide.
+export const BOOT_SERVICE_LAUNCHD_LABEL = "com.vekrel.vekrel.service";
 export const BOOT_SERVICE_PLIST_FILE = `${BOOT_SERVICE_LAUNCHD_LABEL}.plist`;
-const BOOT_SERVICE_UNIT_ENV = "T3_BOOT_SERVICE_UNIT";
+const BOOT_SERVICE_UNIT_ENV = "VEKREL_BOOT_SERVICE_UNIT";
 export const BOOT_SERVICE_LOG_FILE = "boot-service.log";
 
 /** systemd expands `%` specifiers, including in unquoted append-log paths. */
@@ -106,7 +106,7 @@ export function renderBootServiceUnit(plan: BootServicePlan): string {
     // Let the launcher mark an explicit stop before it signals the server.
     // systemd still SIGKILLs the whole cgroup if graceful shutdown times out.
     "KillMode=mixed",
-    // Agents and terminals run in their own scopes in app-t3code-agents.slice
+    // Agents and terminals run in their own scopes in app-vekrel-agents.slice
     // (see process/agentScope.ts). Short helper commands still share this
     // cgroup, and with the systemd default of OOMPolicy=stop, the kernel
     // killing one of them stops the whole unit.
@@ -452,11 +452,11 @@ export function formatBootServiceProblem(problem: BootServiceProblem): string {
     case "linger-disabled":
       return 'Lingering is disabled. Vekrel will stop when your last login session ends and will not start at boot. Run `sudo loginctl enable-linger "$(id -un)"` on this machine, then retry the service command as your normal user.';
     case "service-disabled":
-      return "The service is not enabled to start automatically. Run `vekrel-engine service install` to repair it.";
+      return "The service is not enabled to start automatically. Run `vekrel service install` to repair it.";
     case "service-stopped":
-      return "The service is not running. Check the service log and `systemctl --user status t3code.service`, then run `vekrel-engine service install`.";
+      return "The service is not running. Check the service log and `systemctl --user status vekrel.service`, then run `vekrel service install`.";
     case "restart-pending":
-      return "A newer version is installed but the service is still running the previous one. Run `vekrel-engine service restart` to switch.";
+      return "A newer version is installed but the service is still running the previous one. Run `vekrel service restart` to switch.";
   }
 }
 
@@ -486,7 +486,7 @@ export class BootServiceDowngradeRefusedError extends Schema.TaggedError<BootSer
   },
 ) {
   override get message(): string {
-    return `Refusing to replace t3@${this.installedVersion} with older t3@${this.targetVersion}. Run the command again with --allow-downgrade to continue.`;
+    return `Refusing to replace vekrel@${this.installedVersion} with older vekrel@${this.targetVersion}. Run the command again with --allow-downgrade to continue.`;
   }
 }
 
@@ -769,7 +769,7 @@ export const make = Effect.fn("cloud.boot_service.make")(function* (input: {
             Effect.mapError(
               (cause) =>
                 new PinnedRuntimeInstallError({
-                  step: "verifying the pinned t3 runtime",
+                  step: "verifying the pinned vekrel runtime",
                   cause,
                 }),
             ),
@@ -779,7 +779,7 @@ export const make = Effect.fn("cloud.boot_service.make")(function* (input: {
                 ? Effect.void
                 : Effect.fail(
                     new PinnedRuntimeInstallError({
-                      step: "verifying the pinned t3 runtime",
+                      step: "verifying the pinned vekrel runtime",
                       exitCode: Number(result.code),
                       stdoutLength: result.stdout.length,
                       stderrLength: result.stderr.length,

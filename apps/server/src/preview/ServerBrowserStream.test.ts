@@ -379,13 +379,13 @@ const decodeHostSetup = Schema.decodeUnknownEffect(Schema.fromJsonString(Preview
 it.effect.each([
   {
     error: new PreviewBrowserHost.PreviewBrowserSandboxError({
-      setupCommand: "sudo vekrel-engine browser setup",
+      setupCommand: "sudo vekrel browser setup",
     }),
     need: "sandbox",
   },
   {
     error: new PreviewBrowserHost.PreviewBrowserLibrariesError({
-      setupCommand: "sudo vekrel-engine browser setup",
+      setupCommand: "sudo vekrel browser setup",
       libraries: ["libnss3.so"],
     }),
     need: "libraries",
@@ -430,7 +430,7 @@ it.effect.each([
     expect(code).toBe(PREVIEW_STREAM_HOST_SETUP_CLOSE_CODE);
     expect(yield* decodeHostSetup(reason)).toEqual({
       need,
-      command: "sudo vekrel-engine browser setup",
+      command: "sudo vekrel browser setup",
     });
   }).pipe(Effect.scoped),
 );

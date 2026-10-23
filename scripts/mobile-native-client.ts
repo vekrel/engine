@@ -204,12 +204,12 @@ const command = Effect.fn("nativeClient.command")(function* (
 const fingerprint = Effect.fn("nativeClient.fingerprint")(function* (platform: NativePlatform) {
   const output = yield* command(yield* HostProcess.ExecutablePath, [
     "--eval",
-    `require('expo/fingerprint').createFingerprintAsync(process.cwd(), { platforms: [process.argv[1]], silent: true }).then(fp => console.log('T3_NATIVE_FINGERPRINT=' + fp.hash)).catch(e => { console.error(e); process.exitCode = 1; });`,
+    `require('expo/fingerprint').createFingerprintAsync(process.cwd(), { platforms: [process.argv[1]], silent: true }).then(fp => console.log('VEKREL_NATIVE_FINGERPRINT=' + fp.hash)).catch(e => { console.error(e); process.exitCode = 1; });`,
     platform,
   ]);
   const hash = output
     .split("\n")
-    .find((line) => line.startsWith("T3_NATIVE_FINGERPRINT="))
+    .find((line) => line.startsWith("VEKREL_NATIVE_FINGERPRINT="))
     ?.split("=")[1];
   if (!hash || !/^[a-f0-9]{40,64}$/.test(hash))
     return yield* new NativeClientError({ message: "Expo did not return a native fingerprint." });

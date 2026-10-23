@@ -191,11 +191,11 @@ function formatCloudStatus(status: CloudCliStatus, options?: { readonly json?: b
         ? "pending server startup"
         : "not provisioned";
   const nextStep = !status.authenticated
-    ? "Run `vekrel-engine connect link` to authorize and enable Vekrel Connect."
+    ? "Run `vekrel connect link` to authorize and enable Vekrel Connect."
     : status.revoked
-      ? "Run `vekrel-engine connect link` to link this machine again."
+      ? "Run `vekrel connect link` to link this machine again."
       : !status.desired
-        ? "Run `vekrel-engine connect link` to enable Vekrel Connect."
+        ? "Run `vekrel connect link` to enable Vekrel Connect."
         : !status.linked
           ? "Start Vekrel to provision the machine link and launch its managed tunnel."
           : undefined;
@@ -213,7 +213,7 @@ function formatCloudStatus(status: CloudCliStatus, options?: { readonly json?: b
       : status.reachability === null
         ? [
             "",
-            "No running server answered, so reachability was not checked. Check the background service with `vekrel-engine service status`.",
+            "No running server answered, so reachability was not checked. Check the background service with `vekrel service status`.",
           ]
         : status.reachability.status === "reachable"
           ? [
@@ -288,7 +288,7 @@ const withCloudCliSessionToken = <A, E, R>(
     machineAuth.issueSession({
       scopes: [scope],
       subject: "cloud-cli",
-      label: "vekrel-engine connect cli",
+      label: "vekrel connect cli",
     }),
     (issued) => run(issued.token),
     (issued) => machineAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
@@ -360,7 +360,7 @@ function formatAlertBox(text: string): string {
 }
 
 /**
- * Waits for the server that `vekrel-engine connect` just started to prove other devices
+ * Waits for the server that `vekrel connect` just started to prove other devices
  * can reach it, so a broken tunnel fails setup instead of looking green.
  */
 const waitForReachability = Effect.fn("cloud.cli.wait_for_reachability")(function* () {
@@ -382,7 +382,7 @@ const waitForReachability = Effect.fn("cloud.cli.wait_for_reachability")(functio
   yield* Console.error(
     formatAlertBox(
       last === null
-        ? "✕ Could not check Vekrel Connect\n  The Vekrel server on this machine did not answer.\n  Fix: run `vekrel-engine service status`, then `vekrel-engine connect status`."
+        ? "✕ Could not check Vekrel Connect\n  The Vekrel server on this machine did not answer.\n  Fix: run `vekrel service status`, then `vekrel connect status`."
         : formatReachabilityFailure(last),
     ),
   );
@@ -469,11 +469,11 @@ const reportCloudDisconnectResults = Effect.fn("cloud.cli.report_disconnect_resu
       yield* Console.warn(
         input.clearAuthorization
           ? "Could not revoke the relay-side machine record before signing out.\nThe stored CLI authorization was still removed locally."
-          : "Could not revoke the relay-side machine record yet.\nRun `vekrel-engine connect unlink` again when the relay is reachable, or deregister it from the Vekrel Connect page of your Vekrel Account.",
+          : "Could not revoke the relay-side machine record yet.\nRun `vekrel connect unlink` again when the relay is reachable, or deregister it from the Vekrel Connect page of your Vekrel Account.",
       );
     } else if (input.relayResult.value.status === "not-authenticated") {
       yield* Console.warn(
-        "The relay-side machine record was not revoked.\nDeregister it from the Vekrel Connect page of your Vekrel Account, or run `vekrel-engine connect login` and retry.",
+        "The relay-side machine record was not revoked.\nDeregister it from the Vekrel Connect page of your Vekrel Account, or run `vekrel connect login` and retry.",
       );
     } else if (input.relayResult.value.status === "revoked") {
       yield* Console.log("Revoked the relay-side machine record.");
@@ -502,7 +502,7 @@ const disconnectCloud = Effect.fn("cloud.cli.disconnect")(function* (options: {
 
   if (options.clearAuthorization) {
     yield* Console.log(
-      "Signed out of Vekrel Connect locally.\nThe background service is managed separately with `vekrel-engine service`.",
+      "Signed out of Vekrel Connect locally.\nThe background service is managed separately with `vekrel service`.",
     );
   }
 });
@@ -740,11 +740,11 @@ const connectPublishCommand = Command.make("publish", {
 
         if (!(yield* tokens.hasCredential)) {
           yield* Console.log(
-            "Run `vekrel-engine connect login` first so this machine can be authorized to publish.",
+            "Run `vekrel connect login` first so this machine can be authorized to publish.",
           );
           return;
         }
-        // A link may already be desired (e.g. `vekrel-engine connect link` before the
+        // A link may already be desired (e.g. `vekrel connect link` before the
         // server's first start). Never downgrade it: a desired managed link
         // also covers publishing, so only request a publish-only link when no
         // link is pending at all.

@@ -119,7 +119,7 @@ const withDescriptorServer = <A, E, R>(
     (server) => Effect.sync(() => server.close()),
   );
 
-describe("vekrel-engine pair", () => {
+describe("vekrel pair", () => {
   it.effect("publishes an IPv6-only server through Tailscale Serve when pairing", () =>
     withDescriptorServer(
       (origin) =>
@@ -220,7 +220,7 @@ describe("vekrel-engine pair", () => {
           readonly scopes: ReadonlyArray<string>;
         }>;
         assert.equal(credentials.length, 1);
-        assert.equal(credentials[0]?.label, "vekrel-engine pair");
+        assert.equal(credentials[0]?.label, "vekrel pair");
         assert.deepEqual(credentials[0]?.scopes, AuthStandardClientScopes);
       }),
     ).pipe(

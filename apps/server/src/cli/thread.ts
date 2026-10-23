@@ -175,7 +175,7 @@ const makeThreadTools = (session: McpToolSession, origin: string) => {
   const unexpected = (tool: string) =>
     new ThreadToolFailedError({
       tool,
-      detail: `The server sent an unexpected ${tool} result. Update the t3 CLI to match the server.`,
+      detail: `The server sent an unexpected ${tool} result. Update the vekrel CLI to match the server.`,
     });
   return {
     call: Effect.fn("cli.thread.callTool")(function* <S extends Schema.Decoder<unknown>>(
@@ -217,7 +217,7 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
     const machineAuth = yield* MachineAuth.MachineAuth;
     const issued = yield* Effect.acquireRelease(
       machineAuth.issueMcpClientSession({
-        label: "vekrel-engine thread cli",
+        label: "vekrel thread cli",
         // The CLI runs as the machine's owner. New threads still start at
         // the project's default mode, never at this ceiling by default.
         access: "full-access",
@@ -228,7 +228,7 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
     const session = yield* mcpToolSession({
       endpoint: new URL("/mcp", origin).href,
       authorization: `Bearer ${issued.token}`,
-      clientName: "t3-thread-cli",
+      clientName: "vekrel-thread-cli",
     }).pipe(Effect.mapError((cause) => new ThreadServerUnreachableError({ origin, cause })));
     return yield* run(makeThreadTools(session, origin));
   }).pipe(

@@ -59,7 +59,7 @@ export function pinnedRuntimePaths(
   const versionDir = path.join(pinnedRuntimeVersionsDir(path, baseDir), version);
   return {
     versionDir,
-    entryPath: path.join(versionDir, platform === "win32" ? "t3.exe" : "t3"),
+    entryPath: path.join(versionDir, platform === "win32" ? "vekrel.exe" : "vekrel"),
     sentinelPath: path.join(versionDir, ".install-complete"),
   };
 }
@@ -179,7 +179,7 @@ const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(fun
   const platformKey = cliArchivePlatformKey(input.platform, input.arch);
   if (platformKey === undefined) {
     return yield* new PinnedRuntimeInstallError({
-      step: `selecting a t3 release archive for ${input.platform}-${input.arch}`,
+      step: `selecting a vekrel release archive for ${input.platform}-${input.arch}`,
     });
   }
   const httpClient = input.httpClient;
@@ -192,31 +192,31 @@ const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(fun
       yield* fetchReleaseAsset(
         httpClient,
         `${baseUrl}/${CLI_RELEASE_CHECKSUMS_FILE}`,
-        "downloading the t3 release checksums",
+        "downloading the vekrel release checksums",
       ),
     ),
   );
   const expected = checksums.get(fileName);
   if (expected === undefined) {
     return yield* new PinnedRuntimeInstallError({
-      step: `finding ${fileName} in the t3 release checksums`,
+      step: `finding ${fileName} in the vekrel release checksums`,
     });
   }
   const archive = yield* fetchReleaseAsset(
     httpClient,
     `${baseUrl}/${fileName}`,
-    "downloading the t3 release archive",
+    "downloading the vekrel release archive",
     input.onProgress,
   );
   input.onProgress?.({ stage: "verify" });
   const digest = yield* Effect.tryPromise({
     try: () => crypto.subtle.digest("SHA-256", archive),
     catch: (cause) =>
-      new PinnedRuntimeInstallError({ step: "verifying the t3 release archive", cause }),
+      new PinnedRuntimeInstallError({ step: "verifying the vekrel release archive", cause }),
   });
   if (Hex.encode(new Uint8Array(digest)) !== expected) {
     return yield* new PinnedRuntimeInstallError({
-      step: "verifying the t3 release archive checksum",
+      step: "verifying the vekrel release archive checksum",
     });
   }
 
@@ -225,13 +225,13 @@ const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(fun
     .writeFile(archivePath, archive)
     .pipe(
       Effect.mapError(
-        (cause) => new PinnedRuntimeInstallError({ step: "writing the t3 release archive", cause }),
+        (cause) => new PinnedRuntimeInstallError({ step: "writing the vekrel release archive", cause }),
       ),
     );
   input.onProgress?.({ stage: "extract" });
-  const extractStep = "extracting the t3 release archive";
+  const extractStep = "extracting the vekrel release archive";
   // The archive wraps everything in one directory named after its stem;
-  // strip it so the executable lands at <versionDir>/t3.
+  // strip it so the executable lands at <versionDir>/vekrel.
   yield* input.runner
     .run({
       command: cliArchiveTarCommand(input.platform, process.env),
@@ -377,7 +377,7 @@ const PINNED_RUNTIME_PRUNED_PREFIX = ".pruned-";
  */
 const PINNED_RUNTIME_PRUNE_GRACE = Duration.hours(1);
 /**
- * One `t3` launcher path per line, appended by the install scripts and by any prune that finds a
+ * One `vekrel` launcher path per line, appended by the install scripts and by any prune that finds a
  * launcher on PATH. A service does not see the installer's `VEKREL_INSTALL_BIN_DIR` or the
  * interactive PATH, so this is how it finds a custom one, including installs that predate the file.
  */
@@ -392,10 +392,10 @@ export function launcherOwnsVersionsDir(
   return relative.length > 0 && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
-/** The executable a `t3.cmd` shim written by the install script or `t3 update` runs. */
+/** The executable a `vekrel.cmd` shim written by the install script or `vekrel update` runs. */
 export const windowsShimTarget = (contents: string) => /^"([^"]+)"/m.exec(contents)?.[1];
 
-/** Where the `t3` launchers written by the install scripts and `t3 update` point. */
+/** Where the `vekrel` launchers written by the install scripts and `vekrel update` point. */
 const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targets")(function* (
   baseDir: string,
 ) {
@@ -404,7 +404,7 @@ const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targ
   const platform = yield* HostProcess.Platform;
   const environment = yield* HostProcess.Environment;
   const home = yield* HostProcess.HomeDirectory;
-  const launcherName = platform === "win32" ? "t3.cmd" : "t3";
+  const launcherName = platform === "win32" ? "vekrel.cmd" : "vekrel";
   const launchersFile = path.join(baseDir, PINNED_RUNTIME_DIR, PINNED_RUNTIME_LAUNCHERS_FILE);
   const recorded = (yield* fs.readFileString(launchersFile).pipe(Effect.orElseSucceed(() => "")))
     .split(/\r?\n/)
@@ -452,9 +452,9 @@ const shellLauncherTargets = Effect.fn("cloud.pinned_runtime.shell_launcher_targ
 });
 
 /**
- * Resolved executables rather than command lines: a server started through the `t3` symlink
- * shows up as `t3 serve`, possibly from another T3 home that runs this home's runtimes. Windows
- * has no symlink launcher, and its `t3.cmd` shim runs the absolute path, so command lines do there.
+ * Resolved executables rather than command lines: a server started through the `vekrel` symlink
+ * shows up as `vekrel serve`, possibly from another Vekrel home that runs this home's runtimes. Windows
+ * has no symlink launcher, and its `vekrel.cmd` shim runs the absolute path, so command lines do there.
  */
 const runningExecutables = Effect.fn("cloud.pinned_runtime.running_executables")(function* () {
   const fs = yield* FileSystem.FileSystem;
@@ -467,7 +467,7 @@ const runningExecutables = Effect.fn("cloud.pinned_runtime.running_executables")
     for (const pid of pids.value) {
       if (!/^\d+$/.test(pid)) continue;
       // Unreadable ones belong to other users or are this user's non-dumpable daemons (systemd
-      // --user, ssh-agent). Neither runs a t3 runtime, and bailing on them would never prune.
+      // --user, ssh-agent). Neither runs a vekrel runtime, and bailing on them would never prune.
       const executable = yield* fs.readLink(`/proc/${pid}/exe`).pipe(Effect.option);
       if (Option.isSome(executable)) executables.push(executable.value);
     }
@@ -567,7 +567,7 @@ const selectUnusedRuntimes = Effect.fn("cloud.pinned_runtime.select_unused")(fun
     ...(yield* shellLauncherTargets(input.baseDir)),
     ...input.references,
   ].map(foldCase);
-  // Process executables are resolved, so they name the real path of a symlinked T3 home.
+  // Process executables are resolved, so they name the real path of a symlinked Vekrel home.
   const realVersionsDir = yield* fs
     .realPath(versionsDir)
     .pipe(Effect.orElseSucceed(() => versionsDir));
@@ -590,7 +590,7 @@ const selectUnusedRuntimes = Effect.fn("cloud.pinned_runtime.select_unused")(fun
       Effect.andThen(fs.rename(versionDir, target)),
       Effect.andThen(Effect.sync(() => pruned.add(target))),
       Effect.catch((cause) =>
-        Effect.logWarning("Could not remove an unused t3 runtime.", { version, cause }),
+        Effect.logWarning("Could not remove an unused vekrel runtime.", { version, cause }),
       ),
     );
   }
@@ -601,7 +601,7 @@ const selectUnusedRuntimes = Effect.fn("cloud.pinned_runtime.select_unused")(fun
  * Every update publishes a new immutable runtime, so without pruning they pile up. Removes
  * completed runtimes nothing can start again and keeps: the caller's versions, everything the
  * service state references (active, rollback, pending), and runtimes that a running process
- * executes, a `t3` launcher points at, or `references` (such as the service unit) name, plus
+ * executes, a `vekrel` launcher points at, or `references` (such as the service unit) name, plus
  * anything published within the last hour. Staging directories, symlinks, and unexpected entries
  * are never touched. Returns the versions removed.
  */
@@ -625,7 +625,7 @@ export const prunePinnedRuntimes = Effect.fn("cloud.pinned_runtime.prune")(funct
         ),
       ),
       Effect.catch((cause) =>
-        Effect.logWarning("Could not remove an unused t3 runtime.", { target, cause }),
+        Effect.logWarning("Could not remove an unused vekrel runtime.", { target, cause }),
       ),
     );
   }

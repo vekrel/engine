@@ -219,7 +219,7 @@ export class CloudCliCredentialRefreshError extends Schema.TaggedError<CloudCliC
     return this.requiresLogin
       ? `Could not refresh the Vekrel Connect CLI credential${
           this.oauthErrorCode === undefined ? "" : ` (OAuth error: ${this.oauthErrorCode})`
-        }. Run \`vekrel-engine connect login\` to authorize again.`
+        }. Run \`vekrel connect login\` to authorize again.`
       : "Could not refresh the Vekrel Connect CLI credential.";
   }
 }

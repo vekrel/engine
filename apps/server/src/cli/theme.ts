@@ -148,7 +148,7 @@ export class ThemeTargetMissingError extends Schema.TaggedError<ThemeTargetMissi
   {},
 ) {
   override get message(): string {
-    return "Provide a theme id or file, or run `vekrel-engine theme clear` to remove the theme.";
+    return "Provide a theme id or file, or run `vekrel theme clear` to remove the theme.";
   }
 }
 
@@ -417,7 +417,7 @@ const themeSetCommand = Command.make("set", {
       const paths = yield* resolveThemePaths(flags.baseDir);
 
       // Path-shaped first, existence second. Deciding on existence alone would
-      // make `vekrel-engine theme set ocean` publish ./ocean whenever the cwd happens to
+      // make `vekrel theme set ocean` publish ./ocean whenever the cwd happens to
       // hold a file by that name, instead of selecting the built-in.
       const looksLikePath =
         target.endsWith(".json") ||

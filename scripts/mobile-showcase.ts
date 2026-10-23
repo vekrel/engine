@@ -67,7 +67,7 @@ const MOBILE_BUILD_ENV = {
   EXPO_NO_GIT_STATUS: "1",
   // Lets the capture build require full screen on iPad so the app can rotate
   // itself to landscape (see app.config.ts).
-  T3_SHOWCASE_CAPTURE_BUILD: "1",
+  VEKREL_SHOWCASE_CAPTURE_BUILD: "1",
   JAVA_HOME:
     NodeProcess.env.JAVA_HOME ??
     (NodeProcess.platform === "darwin"

@@ -1467,7 +1467,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
           parentCheckpointId: null,
           ordinalWithinScope: 0,
           appRunOrdinal: null,
-          ref: CheckpointRef.make("refs/t3/bounded-sql-history/0"),
+          ref: CheckpointRef.make("refs/vekrel/bounded-sql-history/0"),
           status: "ready",
           files: [],
           capturedAt: now,

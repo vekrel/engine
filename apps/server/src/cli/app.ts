@@ -32,7 +32,7 @@ export class DesktopAppSshUnsupportedError extends Schema.TaggedError<DesktopApp
   {},
 ) {
   override get message(): string {
-    return "`vekrel-engine app` only controls a desktop app on the same machine. It cannot run over SSH.";
+    return "`vekrel app` only controls a desktop app on the same machine. It cannot run over SSH.";
   }
 }
 
@@ -41,7 +41,7 @@ export class DesktopAppPlatformUnsupportedError extends Schema.TaggedError<Deskt
   { platform: Schema.String },
 ) {
   override get message(): string {
-    return `\`vekrel-engine app\` is not supported on ${this.platform}.`;
+    return `\`vekrel app\` is not supported on ${this.platform}.`;
   }
 }
 
@@ -55,7 +55,7 @@ export class DesktopAppUnreachableError extends Schema.TaggedError<DesktopAppUnr
   },
 ) {
   override get message(): string {
-    return "Could not reach the Vekrel desktop app. Start or update the desktop app on this machine, then run `vekrel-engine app` again. A running Vekrel server is not enough.";
+    return "Could not reach the Vekrel desktop app. Start or update the desktop app on this machine, then run `vekrel app` again. A running Vekrel server is not enough.";
   }
 }
 

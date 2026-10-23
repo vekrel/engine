@@ -207,7 +207,7 @@ function makeMockRuntime(input: {
             args: [input.mockAgentPath],
             cwd: runtimeInput.cwd,
             env: {
-              T3_ACP_SESSION_LIFECYCLE: "1",
+              VEKREL_ACP_SESSION_LIFECYCLE: "1",
               ...(typeof input.environment === "function"
                 ? input.environment(runtimeOrdinal)
                 : input.environment),
@@ -669,7 +669,7 @@ describe("AcpAdapterV2", () => {
               mockAgentPath: yield* path.fromFileUrl(
                 new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
               ),
-              environment: { T3_ACP_VIBE_RETRY_OUTCOME: outcome },
+              environment: { VEKREL_ACP_VIBE_RETRY_OUTCOME: outcome },
             }),
           },
         });
@@ -869,7 +869,7 @@ describe("AcpAdapterV2", () => {
     () =>
       Effect.gen(function* () {
         const runTurn = yield* makeInstructionCompactionHarness({
-          T3_ACP_COMPACTION_PROMPT_ORDINALS: "2,4",
+          VEKREL_ACP_COMPACTION_PROMPT_ORDINALS: "2,4",
         });
         yield* runTurn("Start work.");
         yield* runTurn("Continue until context compacts.");
@@ -893,7 +893,7 @@ describe("AcpAdapterV2", () => {
     () =>
       Effect.gen(function* () {
         const runTurn = yield* makeInstructionCompactionHarness({
-          T3_ACP_FAIL_PROMPT_ORDINAL: "2",
+          VEKREL_ACP_FAIL_PROMPT_ORDINAL: "2",
         });
         yield* runTurn("Start work.");
         assert.deepEqual(yield* runTurn("/compact", "failed"), [
@@ -929,7 +929,7 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             protocolEvents,
-            environment: { T3_ACP_FAIL_SET_MODE_CONFIG_OPTION: "1" },
+            environment: { VEKREL_ACP_FAIL_SET_MODE_CONFIG_OPTION: "1" },
           }),
         },
         selfInvocation: yield* resolveSelfInvocation(),
@@ -1930,7 +1930,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_V2_FIDELITY: "1" },
+            environment: { VEKREL_ACP_EMIT_V2_FIDELITY: "1" },
             wrapRuntime: (runtime) => ({
               ...runtime,
               handleSessionUpdate: (handler) =>
@@ -2198,7 +2198,7 @@ describe("AcpAdapterV2", () => {
             mockAgentPath,
             protocolEvents,
             environment: (runtimeOrdinal) =>
-              runtimeOrdinal === 1 ? { T3_ACP_FAIL_LOAD_SESSION: "1" } : {},
+              runtimeOrdinal === 1 ? { VEKREL_ACP_FAIL_LOAD_SESSION: "1" } : {},
           }),
         },
         selfInvocation,
@@ -2480,8 +2480,8 @@ describe("AcpAdapterV2", () => {
             ],
             env: [
               { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-              { name: "T3_ACP_MCP_ENDPOINT", value: "http://127.0.0.1:43123/mcp" },
-              { name: "T3_ACP_MCP_AUTHORIZATION", value: "Bearer target-thread-token" },
+              { name: "VEKREL_ACP_MCP_ENDPOINT", value: "http://127.0.0.1:43123/mcp" },
+              { name: "VEKREL_ACP_MCP_AUTHORIZATION", value: "Bearer target-thread-token" },
             ],
           },
         ],
@@ -2502,7 +2502,7 @@ describe("AcpAdapterV2", () => {
         {
           sessionId: "mock-child-session-without-credential-scope",
           command: process.execPath,
-          args: ["-e", "process.stdout.write(process.env.T3_ACP_MCP_AUTHORIZATION ?? '')"],
+          args: ["-e", "process.stdout.write(process.env.VEKREL_ACP_MCP_AUTHORIZATION ?? '')"],
         },
         { requestId: "test-unknown-terminal-create", method: "terminal/create" },
       );
@@ -2526,7 +2526,7 @@ describe("AcpAdapterV2", () => {
         {
           sessionId: "mock-session-1-fork",
           command: process.execPath,
-          args: ["-e", "process.stdout.write(process.env.T3_ACP_MCP_AUTHORIZATION ?? '')"],
+          args: ["-e", "process.stdout.write(process.env.VEKREL_ACP_MCP_AUTHORIZATION ?? '')"],
         },
         { requestId: "test-terminal-create", method: "terminal/create" },
       );
@@ -2576,8 +2576,8 @@ describe("AcpAdapterV2", () => {
               mockAgentPath,
               protocolEvents,
               environment: {
-                T3_ACP_CLIENT_FS_PROBE_PATH: probePath,
-                T3_ACP_CLIENT_FS_PROBE_LOG_PATH: probeLogPath,
+                VEKREL_ACP_CLIENT_FS_PROBE_PATH: probePath,
+                VEKREL_ACP_CLIENT_FS_PROBE_LOG_PATH: probeLogPath,
               },
             }),
           },
@@ -2656,7 +2656,7 @@ describe("AcpAdapterV2", () => {
       const makeRuntime = makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
-        environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+        environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
         wrapRuntime: (runtime) => ({
           ...runtime,
           handleRequestPermission: (handler) =>
@@ -2795,7 +2795,7 @@ describe("AcpAdapterV2", () => {
       const makeRuntime = makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
-        environment: { T3_ACP_PROMPT_DELAY_MS: "100" },
+        environment: { VEKREL_ACP_PROMPT_DELAY_MS: "100" },
       });
       const adapter = yield* makeAcpAdapterV2({
         instanceId,
@@ -2880,7 +2880,7 @@ describe("AcpAdapterV2", () => {
       assert.isString(rolledBack.providerThread.nativeThreadRef?.nativeId);
       assert.deepEqual(rolledBack.providerTurns, []);
       assert.equal(
-        runtimeInputs[1]?.processEnvironment?.T3_ACP_MCP_AUTHORIZATION,
+        runtimeInputs[1]?.processEnvironment?.VEKREL_ACP_MCP_AUTHORIZATION,
         "Bearer rollback-target-token",
       );
       const replacementMcpServer = runtimeInputs[1]?.mcpServers[0];
@@ -2891,7 +2891,7 @@ describe("AcpAdapterV2", () => {
           ? replacementMcpServer.env
           : undefined;
       assert.equal(
-        replacementMcpEnvironment?.find((variable) => variable.name === "T3_ACP_MCP_AUTHORIZATION")
+        replacementMcpEnvironment?.find((variable) => variable.name === "VEKREL_ACP_MCP_AUTHORIZATION")
           ?.value,
         "Bearer rollback-target-token",
       );
@@ -3103,7 +3103,7 @@ describe("AcpAdapterV2", () => {
             makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_GROK_BACKGROUND_TASK_COMPLETION: "poll" },
+              environment: { VEKREL_ACP_GROK_BACKGROUND_TASK_COMPLETION: "poll" },
             })(input).pipe(Effect.flatMap(makeXAiPromptCompletionRuntime)),
         });
         const threadId = ThreadId.make("grok-background-completion");
@@ -3203,7 +3203,7 @@ describe("AcpAdapterV2", () => {
             makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_GROK_KILL_TASK_SHAPE: shape },
+              environment: { VEKREL_ACP_GROK_KILL_TASK_SHAPE: shape },
             })(input).pipe(Effect.flatMap(makeXAiPromptCompletionRuntime)),
         });
         const threadId = ThreadId.make("grok-kill-completion");
@@ -3287,7 +3287,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_EMPTY_DEFAULT_AGENT_OPTION: "1" },
+            environment: { VEKREL_ACP_EMIT_EMPTY_DEFAULT_AGENT_OPTION: "1" },
             protocolEvents,
           }),
           onSessionConfigurationUpdate: (configOptions, modeState) =>
@@ -3387,7 +3387,7 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             environment: (runtimeOrdinal) =>
-              runtimeOrdinal === 1 ? { T3_ACP_EMIT_EMPTY_SUCCESSFUL_BASH_THEN_HANG: "1" } : {},
+              runtimeOrdinal === 1 ? { VEKREL_ACP_EMIT_EMPTY_SUCCESSFUL_BASH_THEN_HANG: "1" } : {},
             ownDetachedProcessGroup: true,
             protocolEvents,
           }),
@@ -3526,7 +3526,7 @@ describe("AcpAdapterV2", () => {
             mockAgentPath: yield* path.fromFileUrl(
               new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
             ),
-            environment: { T3_ACP_COMPLETE_FIRST_PROMPT_ON_CANCEL: "1" },
+            environment: { VEKREL_ACP_COMPLETE_FIRST_PROMPT_ON_CANCEL: "1" },
             protocolEvents,
             cancelBehavior: "wait-for-prompt",
             wrapRuntime: (runtime) => {
@@ -3633,7 +3633,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { VEKREL_ACP_EMIT_TOOL_CALLS: "1" },
             wrapCancel: (cancel) => Deferred.await(releaseCancel).pipe(Effect.andThen(cancel)),
           }),
         },
@@ -3728,7 +3728,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { VEKREL_ACP_EMIT_TOOL_CALLS: "1" },
             wrapOutgoingResponse: (onOutgoingResponse) => (requestId) =>
               Deferred.succeed(responseEnqueued, undefined).pipe(
                 Effect.andThen(Deferred.await(releaseResponseAcknowledgement)),
@@ -3818,7 +3818,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_MCP_TOOL_APPROVAL_ELICITATION: "1" },
+            environment: { VEKREL_ACP_EMIT_MCP_TOOL_APPROVAL_ELICITATION: "1" },
           }),
         },
         selfInvocation,
@@ -3882,7 +3882,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { VEKREL_ACP_EMIT_TOOL_CALLS: "1" },
             wrapOutgoingResponse: (onOutgoingResponse) => (requestId) =>
               Deferred.succeed(responseWritten, undefined).pipe(
                 Effect.andThen(Deferred.await(releaseResponseAcknowledgement)),
@@ -3986,7 +3986,7 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             ownDetachedProcessGroup: true,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -4090,7 +4090,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
           }),
         },
         selfInvocation,
@@ -4190,7 +4190,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             }),
           },
           selfInvocation,
@@ -4358,7 +4358,7 @@ describe("AcpAdapterV2", () => {
               makeRuntime: makeMockRuntime({
                 childProcessSpawner,
                 mockAgentPath,
-                environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+                environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
                 wrapRuntime: (runtime) => ({
                   ...runtime,
                   handleSessionUpdate: (handler) =>
@@ -4543,7 +4543,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -4790,7 +4790,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               wrapRuntime: (runtime) => ({
                 ...runtime,
                 handleSessionUpdate: (handler) =>
@@ -5073,7 +5073,7 @@ describe("AcpAdapterV2", () => {
               mockAgentPath,
               environment: (runtimeOrdinal) => {
                 runtimeOrdinalSeen = Math.max(runtimeOrdinalSeen, runtimeOrdinal);
-                return { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
+                return { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
               },
               wrapCancel: (cancel) =>
                 Effect.sync(() => {
@@ -5200,7 +5200,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -5289,7 +5289,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
             ownDetachedProcessGroup: true,
             protocolEvents,
           }),
@@ -5425,7 +5425,7 @@ describe("AcpAdapterV2", () => {
               childProcessSpawner,
               mockAgentPath,
               environment: {
-                T3_ACP_EMIT_IN_TURN_TASKOUTPUT_THEN_LATE_DUPLICATE: "1",
+                VEKREL_ACP_EMIT_IN_TURN_TASKOUTPUT_THEN_LATE_DUPLICATE: "1",
               },
               protocolEvents,
             }),
@@ -5769,7 +5769,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -5997,7 +5997,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -6318,7 +6318,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
             wrapRuntime: (runtime) => ({
               ...runtime,
               handleSessionUpdate: (handler) =>
@@ -6677,7 +6677,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -6772,7 +6772,7 @@ describe("AcpAdapterV2", () => {
               ),
             environment: (runtimeOrdinal) => {
               runtimeOrdinalSeen = runtimeOrdinal;
-              return runtimeOrdinal === 1 ? { T3_ACP_HANG_PROMPT_FOREVER: "1" } : {};
+              return runtimeOrdinal === 1 ? { VEKREL_ACP_HANG_PROMPT_FOREVER: "1" } : {};
             },
             protocolEvents,
           }),
@@ -6896,7 +6896,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { VEKREL_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             }),
           },
           selfInvocation,

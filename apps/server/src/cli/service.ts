@@ -62,9 +62,9 @@ function formatServiceChange(
   result: Extract<ServiceReconcileResult, { readonly changed: true }>,
 ): string {
   if (result.plan.handedOff === true) {
-    return `Handed the Vekrel service switch to t3@${packageJson.version} to a separate systemd unit, since this session runs inside the service and disconnects when it restarts.\nResult: ${result.plan.logPath}`;
+    return `Handed the Vekrel service switch to vekrel@${packageJson.version} to a separate systemd unit, since this session runs inside the service and disconnects when it restarts.\nResult: ${result.plan.logPath}`;
   }
-  return `${result.previouslyInstalled ? "Updated" : "Installed"} Vekrel service with t3@${packageJson.version}.\nLogs: ${result.plan.logPath}`;
+  return `${result.previouslyInstalled ? "Updated" : "Installed"} Vekrel service with vekrel@${packageJson.version}.\nLogs: ${result.plan.logPath}`;
 }
 
 function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: string): string {
@@ -72,7 +72,7 @@ function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: 
     return "Vekrel service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd, macOS with launchd";
   }
   if (!status.installed) {
-    return "Vekrel service\n  Status: not installed\n  Next: Run `vekrel-engine service install`.";
+    return "Vekrel service\n  Status: not installed\n  Next: Run `vekrel service install`.";
   }
   const installedVersion = status.installedVersion ?? cliVersion;
   const problems = (status.problems ?? []).map(
@@ -85,20 +85,20 @@ function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: 
   ) {
     return [
       "Vekrel service",
-      `  Status: installed · t3@${installedVersion} (newer than this t3@${cliVersion} CLI)`,
+      `  Status: installed · vekrel@${installedVersion} (newer than this vekrel@${cliVersion} CLI)`,
       `  Unit: ${status.unitPath}`,
       `  Logs: ${status.logPath}`,
       ...problems,
-      `  Next: Run \`vekrel-engine update ${installedVersion}\` to match it, or pass \`--allow-downgrade\` to \`vekrel-engine service install\` explicitly.`,
+      `  Next: Run \`vekrel update ${installedVersion}\` to match it, or pass \`--allow-downgrade\` to \`vekrel service install\` explicitly.`,
     ].join("\n");
   }
   return [
     "Vekrel service",
-    `  Status: ${status.current ? `installed · t3@${installedVersion}` : "needs an update or repair"}`,
+    `  Status: ${status.current ? `installed · vekrel@${installedVersion}` : "needs an update or repair"}`,
     `  Unit: ${status.unitPath}`,
     `  Logs: ${status.logPath}`,
     ...problems,
-    ...(status.current ? [] : ["  Next: Run `vekrel-engine service install` to repair it."]),
+    ...(status.current ? [] : ["  Next: Run `vekrel service install` to repair it."]),
   ].join("\n");
 }
 
@@ -127,7 +127,7 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
       Effect.gen(function* () {
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
-          yield* Console.log(`Vekrel service is already installed with t3@${packageJson.version}.`);
+          yield* Console.log(`Vekrel service is already installed with vekrel@${packageJson.version}.`);
           return;
         }
         yield* Console.log(formatServiceChange(result));
@@ -137,18 +137,18 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
 );
 
 const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
-  Command.withDescription("Deprecated. Run `vekrel-engine update` to move to a newer release."),
+  Command.withDescription("Deprecated. Run `vekrel update` to move to a newer release."),
   Command.unlisted,
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
       Effect.gen(function* () {
         yield* Console.log(
-          "`vekrel-engine service update` is deprecated: run `vekrel-engine update` to move to a newer release, or `vekrel-engine service install` to repair the service. Repairing now.",
+          "`vekrel service update` is deprecated: run `vekrel update` to move to a newer release, or `vekrel service install` to repair the service. Repairing now.",
         );
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
-          yield* Console.log(`Vekrel service is already using t3@${packageJson.version}.`);
+          yield* Console.log(`Vekrel service is already using vekrel@${packageJson.version}.`);
           return;
         }
         yield* Console.log(formatServiceChange(result));
@@ -159,7 +159,7 @@ const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
 
 const serviceRestartCommand = Command.make("restart", projectLocationFlags).pipe(
   Command.withDescription(
-    "Restart the background service. Picks up a version installed by `vekrel-engine update` that was not restarted at the time.",
+    "Restart the background service. Picks up a version installed by `vekrel update` that was not restarted at the time.",
   ),
   Command.withHandler((flags) =>
     runServiceCommand(
@@ -169,7 +169,7 @@ const serviceRestartCommand = Command.make("restart", projectLocationFlags).pipe
         const status = yield* service.status;
         const outcome = yield* service.restart;
         const onVersion =
-          status.installedVersion === undefined ? "" : ` on t3@${status.installedVersion}`;
+          status.installedVersion === undefined ? "" : ` on vekrel@${status.installedVersion}`;
         yield* Console.log(
           outcome === "restarted"
             ? `Restarted the Vekrel service${onVersion}.`
@@ -233,7 +233,7 @@ export const offerServiceDuringOnboarding = Effect.gen(function* () {
     compareExactServiceVersions(status.installedVersion, packageJson.version) > 0
   ) {
     yield* Console.log(
-      `A newer t3@${status.installedVersion} background service is installed. Leaving it unchanged.`,
+      `A newer vekrel@${status.installedVersion} background service is installed. Leaving it unchanged.`,
     );
     return "skipped" as const;
   }

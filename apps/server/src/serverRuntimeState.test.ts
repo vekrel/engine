@@ -67,11 +67,11 @@ const startBesideBootService = Effect.fn("test.startBesideBootService")(function
   const [unitPath, unit] =
     input.platform === "darwin"
       ? [
-          path.join(root, "Library", "LaunchAgents", "com.t3tools.t3code.service.plist"),
+          path.join(root, "Library", "LaunchAgents", "com.vekrel.vekrel.service.plist"),
           renderBootServicePlist(plan, { homeDir: root, environmentPath: "" }),
         ]
       : [
-          path.join(root, ".config", "systemd", "user", "t3code.service"),
+          path.join(root, ".config", "systemd", "user", "vekrel.service"),
           renderBootServiceUnit(plan),
         ];
   yield* fs.makeDirectory(path.dirname(unitPath), { recursive: true });
@@ -247,7 +247,7 @@ describe("server ownership", () => {
               "launchctl print": { code: 113 },
               "launchctl print-disabled": {
                 code: 0,
-                stdout: '"com.t3tools.t3code.service" => false',
+                stdout: '"com.vekrel.vekrel.service" => false',
               },
             },
           },
@@ -278,8 +278,8 @@ describe("server ownership", () => {
           assert.equal(result.failure._tag, "OlderBootServiceError");
           assert.equal(Runtime.getErrorExitCode(result.failure), 78);
           assert.include(result.failure.message, t3Home);
-          assert.include(result.failure.message, "vekrel-engine update");
-          assert.include(result.failure.message, "vekrel-engine service restart");
+          assert.include(result.failure.message, "vekrel update");
+          assert.include(result.failure.message, "vekrel service restart");
           assert.include(result.failure.message, "No server was stopped");
         }
       }).pipe(Effect.provide(NodeServices.layer)),
@@ -360,7 +360,7 @@ describe("server ownership", () => {
               "launchctl print": { code: 113 },
               "launchctl print-disabled": {
                 code: 0,
-                stdout: '"com.t3tools.t3code.service" => disabled',
+                stdout: '"com.vekrel.vekrel.service" => disabled',
               },
             },
           },

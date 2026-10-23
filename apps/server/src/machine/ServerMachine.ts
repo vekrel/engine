@@ -269,7 +269,7 @@ export const make = Effect.gen(function* () {
 
   return ServerMachine.of({
     getMachineId: Effect.succeed(machineId),
-    // The publish opt-in and relay link change at runtime (`vekrel-engine connect
+    // The publish opt-in and relay link change at runtime (`vekrel connect
     // publish`, the client settings toggle), so the capability is read per
     // descriptor request rather than baked in at startup.
     getDescriptor: readAgentActivityPublishingActive(secrets).pipe(

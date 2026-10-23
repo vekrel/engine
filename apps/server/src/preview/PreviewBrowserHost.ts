@@ -20,7 +20,7 @@ export const APPARMOR_PROFILE_PATH = "/etc/apparmor.d/t3-chrome-headless-shell";
  * Modelled on the profile Ubuntu ships for Google Chrome; `unconfined` adds
  * nothing beyond `userns`.
  */
-export const APPARMOR_PROFILE = `# Written by \`vekrel-engine browser setup\`: lets Vekrel's headless browser use Chrome's sandbox.
+export const APPARMOR_PROFILE = `# Written by \`vekrel browser setup\`: lets Vekrel's headless browser use Chrome's sandbox.
 abi <abi/4.0>,
 include <tunables/global>
 

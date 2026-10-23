@@ -67,7 +67,7 @@ export function isProxiableBindHost(host: string): boolean {
 }
 
 export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
-  path.join(NodeOS.homedir(), ".t3"),
+  path.join(NodeOS.homedir(), ".vekrel"),
 );
 
 const MODE_ARGS = {
@@ -341,8 +341,8 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
   // agent working inside T3 Code), these leak through and the child server
   // fails startup with "The service launcher started a different t3 version"
   // (serviceLauncherClient.ts resolveStartup).
-  delete output.T3_SERVICE_LAUNCHER_CONTEXT;
-  delete output.T3_BOOT_SERVICE_UNIT;
+  delete output.VEKREL_SERVICE_LAUNCHER_CONTEXT;
+  delete output.VEKREL_BOOT_SERVICE_UNIT;
 
   if (!isDesktopMode) {
     output.VEKREL_PORT = String(serverPort);
@@ -639,7 +639,7 @@ const prepareFirstStart = Effect.fn("dev-runner.prepareFirstStart")(function* (i
         );
       }
     }
-    const source = path.join(yield* HostProcess.HomeDirectory, ".t3", "userdata", "statev2.sqlite");
+    const source = path.join(yield* HostProcess.HomeDirectory, ".vekrel", "userdata", "statev2.sqlite");
     // A V1 state.sqlite counts as data too: the server imports it only while
     // statev2.sqlite is missing, so seeding would hide it.
     if (
@@ -727,7 +727,7 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
 
   const hostEnvironment = yield* HostProcess.Environment;
   // A dev server started inside a worktree defaults to that worktree's own
-  // (gitignored) `.t3` — see @vekrel/shared/devHome for why this must
+  // (gitignored) `.vekrel` — see @vekrel/shared/devHome for why this must
   // outrank an ambient VEKREL_HOME. `--home-dir` still wins.
   const worktreeHome = yield* resolveWorktreeT3Home(yield* HostProcess.WorkingDirectory);
   // Trim before choosing: `--home-dir ""` is not a selection, and treating it
@@ -915,7 +915,7 @@ const devRunnerCli = Command.make("dev-runner", {
   ),
   t3Home: Flag.String("home-dir").pipe(
     Flag.withDescription(
-      "Explicit T3 Code data directory; runtime state is stored under userdata (equivalent to VEKREL_HOME). Inside a git worktree this defaults to that worktree's own .t3 so dev state stays off the shared home.",
+      "Explicit Vekrel data directory; runtime state is stored under userdata (equivalent to VEKREL_HOME). Inside a git worktree this defaults to that worktree's own .vekrel so dev state stays off the shared home.",
     ),
     Flag.optional,
     Flag.map(Option.getOrUndefined),
@@ -964,7 +964,7 @@ const devRunnerCli = Command.make("dev-runner", {
   ),
   seed: Flag.Boolean("seed").pipe(
     Flag.withDescription(
-      "Seed an empty worktree database from ~/.t3 on first start (read-only, via migrate-dev-db). On by default; --no-seed or VEKREL_DEV_SEED=0 skips it.",
+      "Seed an empty worktree database from ~/.vekrel on first start (read-only, via migrate-dev-db). On by default; --no-seed or VEKREL_DEV_SEED=0 skips it.",
     ),
     Flag.withFallbackConfig(optionalBooleanConfig("VEKREL_DEV_SEED")),
   ),

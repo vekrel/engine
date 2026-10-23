@@ -805,7 +805,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
   });
 
   // Git renames loose objects and refs into place without fsync by default, so
-  // an unclean restart can leave 0-byte files under refs/t3/** that break every
+  // an unclean restart can leave 0-byte files under refs/vekrel/** that break every
   // later fetch and push. Checkpoint writes flush before they are published;
   // macOS defaults to writeout-only, which does not reach the disk either.
   // Set fsync first: Git 2.36 ignores unknown batch without resetting the method.
@@ -1132,7 +1132,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           });
         }
 
-        const message = `t3 checkpoint ref=${input.checkpointRef}`;
+        const message = `vekrel checkpoint ref=${input.checkpointRef}`;
         // HEAD is the parent so listAuthoredPaths can see how HEAD moved between checkpoints.
         const commitTreeResult = yield* execute({
           operation,

@@ -137,8 +137,8 @@ it.layer(NodeServices.layer)("service state persistence", (it) => {
         const inherited = Object.freeze({
           PATH: "inherited-path",
           VEKREL_HOME: root,
-          T3_BOOT_SERVICE_UNIT: "managed-unit",
-          T3_SERVICE_LAUNCHER_CONTEXT: "managed-context",
+          VEKREL_BOOT_SERVICE_UNIT: "managed-unit",
+          VEKREL_SERVICE_LAUNCHER_CONTEXT: "managed-context",
           VEKREL_PORT: "ambient",
         });
         assert.deepEqual(
@@ -157,9 +157,9 @@ it.layer(NodeServices.layer)("service state persistence", (it) => {
             "Path=/bad",
             "VEKREL_HOME=/bad",
             "t3code_home=/bad",
-            "T3_BOOT_SERVICE_UNIT=bad",
+            "VEKREL_BOOT_SERVICE_UNIT=bad",
             "t3_boot_service_unit=bad",
-            "T3_SERVICE_LAUNCHER_CONTEXT=bad",
+            "VEKREL_SERVICE_LAUNCHER_CONTEXT=bad",
             "t3_service_launcher_context=bad",
           ].join("\n"),
         );
@@ -264,7 +264,7 @@ it.layer(NodeServices.layer)("service state persistence", (it) => {
       yield* fs.writeFileString(databasePath, "before trial");
       const encodedDatabasePath = JSON.stringify(databasePath);
       const childSource = `
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.VEKREL_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   process.send({ type: "prepared", updateId: context.update.id });
   process.on("message", (message) => {
@@ -324,7 +324,7 @@ if (context.update?.status === "pending") {
       const encodedDatabasePath = JSON.stringify(databasePath);
       const childSource = `
 import { appendFileSync, writeFileSync } from "node:fs";
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.VEKREL_SERVICE_LAUNCHER_CONTEXT);
 appendFileSync(${JSON.stringify(observationsPath)}, JSON.stringify({
   token: process.env.VEKREL_TEST_SERVICE_TOKEN,
   update: context.update?.status ?? "active",
@@ -407,7 +407,7 @@ if (context.update?.status === "pending") {
         const encodedDatabasePath = JSON.stringify(databasePath);
         const childSource = `
 import { realpathSync, unlinkSync, writeFileSync } from "node:fs";
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.VEKREL_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   writeFileSync(context.update.dbPath, "database after migration");
   writeFileSync(context.update.dbPath + "-wal", "trial wal");
@@ -476,7 +476,7 @@ if (context.update?.status === "pending") {
       const childSource = `
 import { writeFileSync } from "node:fs";
 const paths = ${encoded};
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.VEKREL_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   writeFileSync(paths.trialMarker, "started");
   process.exit(1);

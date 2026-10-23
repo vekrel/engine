@@ -32,7 +32,7 @@ it.layer(NodeServices.layer)("MachineAuthPolicy.layer", (it) => {
       const policy = yield* MachineAuthPolicy.MachineAuthPolicy;
       const descriptor = yield* policy.getDescriptor();
 
-      expect(descriptor.sessionCookieName).toBe("t3_session_3774");
+      expect(descriptor.sessionCookieName).toBe("vekrel_session_3774");
     }).pipe(
       Effect.provide(
         layerMachineAuthPolicy({
@@ -68,7 +68,7 @@ it.layer(NodeServices.layer)("MachineAuthPolicy.layer", (it) => {
       expect(descriptor.policy).toBe("loopback-browser");
       expect(descriptor.bootstrapMethods).toEqual(["one-time-token"]);
       expect(descriptor.serverUpdateScope).toBe("machine:maintain");
-      expect(descriptor.sessionCookieName).toMatch(/^t3_session_3773_[a-f0-9]{12}$/);
+      expect(descriptor.sessionCookieName).toMatch(/^vekrel_session_3773_[a-f0-9]{12}$/);
     }).pipe(
       Effect.provide(
         layerMachineAuthPolicy({

@@ -350,7 +350,7 @@ export const resolveStartupBrowserTarget = Effect.fn("resolveStartupBrowserTarge
 });
 
 /**
- * Prints the startup pairing URL to stdout, where `t3` users and the dev runner
+ * Prints the startup pairing URL to stdout, where `vekrel` users and the dev runner
  * read it. The URL carries a one-time admin token, so it skips the logger: log
  * records also land in the trace file and any configured OTLP collector.
  */

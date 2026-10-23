@@ -18,7 +18,7 @@ const layerSetup = Layer.effectDiscard(
     yield* sql`PRAGMA busy_timeout = 5000;`;
     yield* sql`PRAGMA foreign_keys = ON;`;
     // Only an empty file can switch modes here; an existing database needs the
-    // offline VACUUM that `vekrel-engine doctor` runs, which rebuilds it with pointer maps.
+    // offline VACUUM that `vekrel doctor` runs, which rebuilds it with pointer maps.
     const tables = yield* sql<{
       readonly count: number;
     }>`SELECT COUNT(*) AS count FROM sqlite_schema WHERE type = 'table'`;
@@ -66,7 +66,7 @@ export const layerFromPath = Effect.fn("makeSqlitePersistenceLive")(function* (d
       checkpointWorker: true,
       spanAttributes: {
         "db.name": path.basename(dbPath),
-        "service.name": "t3code-server",
+        "service.name": "vekrel-server",
       },
     }),
   );

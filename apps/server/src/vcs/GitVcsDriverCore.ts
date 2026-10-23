@@ -24,7 +24,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import {
   GitCommandError,
   type GitCommandFailureReason,
-  T3_PROJECT_FILE_NAME,
+  VEKREL_PROJECT_FILE_NAME,
   type ReviewDiffFileContentsInput,
   type ReviewDiffPreviewInput,
   type ReviewDiffFileStat,
@@ -3782,7 +3782,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           options?.submodules ?? null,
           options?.submodules != null
             ? null
-            : yield* fileSystem.readFileString(path.join(worktreePath, T3_PROJECT_FILE_NAME)).pipe(
+            : yield* fileSystem.readFileString(path.join(worktreePath, VEKREL_PROJECT_FILE_NAME)).pipe(
                 Effect.flatMap((contents) => {
                   const file = parseT3ProjectFile(contents);
                   return file === null

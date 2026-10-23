@@ -183,7 +183,7 @@ function namedProjectReadme(name: string): string {
     "",
     `# ${name}`,
     "",
-    "Created in [T3 Code](https://t3.codes).",
+    "Created in [Vekrel](https://vekrel.com).",
     "",
   ].join("\n");
 }
@@ -240,7 +240,7 @@ const make = Effect.gen(function* () {
     }
   });
 
-  // Inside a checkout (a dev worktree's .t3, a dotfiles home) the folder would
+  // Inside a checkout (a dev worktree's .vekrel, a dotfiles home) the folder would
   // inherit the repo's git status and checkpoints, so Scratch is offered only
   // when the data dir is outside any work tree.
   const [probe, invalidate] = yield* Effect.cachedInvalidateWithTTL(
