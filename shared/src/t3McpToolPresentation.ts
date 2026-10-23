@@ -301,14 +301,14 @@ const VEKREL_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_thread_search: tool(["Search", "Searching", "Searched", "thread content"], "thread-search"),
   t3_thread_transfers: tool(["Read", "Reading", "Read", "thread transfers"], "thread-transfers"),
   t3_thread_organize: tool(["Organize", "Organizing", "Organized", "a thread"], "thread-organize"),
-  t3_thread_update: tool(["Update", "Updating", "Updated", "Vekrel thread metadata"], "thread-update"),
+  t3_thread_update: tool(
+    ["Update", "Updating", "Updated", "Vekrel thread metadata"],
+    "thread-update",
+  ),
   t3_worktree_list: tool(["List", "Listing", "Listed", "workspace branches"], "worktree-list"),
   t3_preview_list: tool(["List", "Listing", "Listed", "preview tabs"], "browser", "browser"),
   t3_preview_close: tool(["Close", "Closing", "Closed", "a preview tab"], "browser", "browser"),
-  vekrel_machine_read: tool(
-    ["Read", "Reading", "Read", "machine preferences"],
-    "machine-read",
-  ),
+  vekrel_machine_read: tool(["Read", "Reading", "Read", "machine preferences"], "machine-read"),
   vekrel_machine_preferences_update: tool(
     ["Update", "Updating", "Updated", "machine preferences"],
     "machine-update",
@@ -358,9 +358,7 @@ function resolveT3McpToolName(value: string): string | null {
       : null;
   }
 
-  const namespaceMatch = /^(?<server>vekrel)(?:[.:/]|\s*·\s*)(?<tool>.+)$/i.exec(
-    label,
-  );
+  const namespaceMatch = /^(?<server>vekrel)(?:[.:/]|\s*·\s*)(?<tool>.+)$/i.exec(label);
   if (namespaceMatch?.groups) {
     return namespaceMatch.groups.tool ?? null;
   }

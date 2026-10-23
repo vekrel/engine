@@ -423,80 +423,79 @@ describe("RpcSessionFactory", () => {
     ),
   );
 
-  it.effect.each([
-    { usageLimitSources: true },
-    { machineThemes: true, usageLimitSources: true },
-  ])("replays usage sources, removal, and capability downgrade with %j", (options) =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const { factory, sockets } = yield* makeFactory(options);
-        const session = yield* factory.connect(PREPARED);
-        const ready = yield* Effect.forkChild(session.ready);
-        const socket = yield* awaitSocket(sockets);
-        socket.open();
-        yield* completeInitialConfig(socket, encodeServerConfig(SOURCE_SERVER_CONFIG), options);
-        yield* Fiber.join(ready);
-        const observed = yield* Queue.unbounded<ServerConfigStreamEventType>();
-        yield* session.subscribeServerConfig(options).pipe(
-          Stream.runForEach((event) => Queue.offer(observed, event)),
-          Effect.forkChild,
-        );
-        expect((yield* Queue.take(observed)).type).toBe("snapshot");
-        const themes: ServerConfigStreamEventType[] = options.machineThemes
-          ? [{ version: 1, type: "machineThemesUpdated", payload: { themes: [] } }]
-          : [];
-        for (const event of themes) {
-          yield* publishConfigEvents(socket, [event]);
-          expect(yield* Queue.take(observed)).toEqual(event);
-        }
-        const events: ServerConfigStreamEventType[] = [
-          SOURCE_EVENT,
-          { version: 1, type: "usageLimitSourcesUpdated", payload: { sources: [] } },
-          SOURCE_EVENT,
-          { version: 1, type: "snapshot", config: THEME_SERVER_CONFIG },
-        ];
-        for (const event of events) {
-          yield* publishConfigEvents(socket, [event]);
-          expect(yield* Queue.take(observed)).toEqual(event);
-          const started = yield* Deferred.make<void>();
-          const replay = yield* session.subscribeServerConfig(options).pipe(
-            Stream.tap(() => Deferred.succeed(started, undefined)),
-            Stream.takeUntil((item) => item.type === "keybindingsUpdated"),
-            Stream.runCollect,
+  it.effect.each([{ usageLimitSources: true }, { machineThemes: true, usageLimitSources: true }])(
+    "replays usage sources, removal, and capability downgrade with %j",
+    (options) =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const { factory, sockets } = yield* makeFactory(options);
+          const session = yield* factory.connect(PREPARED);
+          const ready = yield* Effect.forkChild(session.ready);
+          const socket = yield* awaitSocket(sockets);
+          socket.open();
+          yield* completeInitialConfig(socket, encodeServerConfig(SOURCE_SERVER_CONFIG), options);
+          yield* Fiber.join(ready);
+          const observed = yield* Queue.unbounded<ServerConfigStreamEventType>();
+          yield* session.subscribeServerConfig(options).pipe(
+            Stream.runForEach((event) => Queue.offer(observed, event)),
             Effect.forkChild,
           );
-          yield* Deferred.await(started);
-          const marker: ServerConfigStreamEventType = {
-            version: 1,
-            type: "keybindingsUpdated",
-            payload: { keybindings: [], issues: [] },
-          };
-          yield* publishConfigEvents(socket, [marker]);
-          expect(yield* Queue.take(observed)).toEqual(marker);
-          const replayed = Array.from(yield* Fiber.join(replay));
-          expect(replayed.slice(1)).toEqual([
-            ...themes,
-            ...(event.type === "snapshot" ? [] : [event]),
-            marker,
-          ]);
-          let projection = applyServerConfigProjection(Option.none(), {
-            version: 1,
-            type: "snapshot",
-            config: SOURCE_SERVER_CONFIG,
-          });
-          projection = applyServerConfigProjection(projection, SOURCE_EVENT);
-          for (const item of replayed) projection = applyServerConfigProjection(projection, item);
-          expect(Option.getOrThrow(projection).config.usageLimitSources).toEqual(
-            event.type === "usageLimitSourcesUpdated" && event.payload.sources.length > 0
-              ? event.payload.sources
-              : undefined,
-          );
-        }
-        expect(socket.sent.map((message) => decodeJson(message)).filter(isRpcRequest)).toHaveLength(
-          1,
-        );
-      }),
-    ),
+          expect((yield* Queue.take(observed)).type).toBe("snapshot");
+          const themes: ServerConfigStreamEventType[] = options.machineThemes
+            ? [{ version: 1, type: "machineThemesUpdated", payload: { themes: [] } }]
+            : [];
+          for (const event of themes) {
+            yield* publishConfigEvents(socket, [event]);
+            expect(yield* Queue.take(observed)).toEqual(event);
+          }
+          const events: ServerConfigStreamEventType[] = [
+            SOURCE_EVENT,
+            { version: 1, type: "usageLimitSourcesUpdated", payload: { sources: [] } },
+            SOURCE_EVENT,
+            { version: 1, type: "snapshot", config: THEME_SERVER_CONFIG },
+          ];
+          for (const event of events) {
+            yield* publishConfigEvents(socket, [event]);
+            expect(yield* Queue.take(observed)).toEqual(event);
+            const started = yield* Deferred.make<void>();
+            const replay = yield* session.subscribeServerConfig(options).pipe(
+              Stream.tap(() => Deferred.succeed(started, undefined)),
+              Stream.takeUntil((item) => item.type === "keybindingsUpdated"),
+              Stream.runCollect,
+              Effect.forkChild,
+            );
+            yield* Deferred.await(started);
+            const marker: ServerConfigStreamEventType = {
+              version: 1,
+              type: "keybindingsUpdated",
+              payload: { keybindings: [], issues: [] },
+            };
+            yield* publishConfigEvents(socket, [marker]);
+            expect(yield* Queue.take(observed)).toEqual(marker);
+            const replayed = Array.from(yield* Fiber.join(replay));
+            expect(replayed.slice(1)).toEqual([
+              ...themes,
+              ...(event.type === "snapshot" ? [] : [event]),
+              marker,
+            ]);
+            let projection = applyServerConfigProjection(Option.none(), {
+              version: 1,
+              type: "snapshot",
+              config: SOURCE_SERVER_CONFIG,
+            });
+            projection = applyServerConfigProjection(projection, SOURCE_EVENT);
+            for (const item of replayed) projection = applyServerConfigProjection(projection, item);
+            expect(Option.getOrThrow(projection).config.usageLimitSources).toEqual(
+              event.type === "usageLimitSourcesUpdated" && event.payload.sources.length > 0
+                ? event.payload.sources
+                : undefined,
+            );
+          }
+          expect(
+            socket.sent.map((message) => decodeJson(message)).filter(isRpcRequest),
+          ).toHaveLength(1);
+        }),
+      ),
   );
 
   it.effect("replays theme updates and deletion as authoritative events", () =>
@@ -669,12 +668,10 @@ describe("RpcSessionFactory", () => {
         ];
         const allEvents = [...themeEvents, ...sourceEvents, ...settingsEvents];
         const observedByFastSubscriber = yield* Queue.unbounded<ServerConfigStreamEventType>();
-        yield* session
-          .subscribeServerConfig({ machineThemes: true, usageLimitSources: true })
-          .pipe(
-            Stream.runForEach((event) => Queue.offer(observedByFastSubscriber, event)),
-            Effect.forkChild,
-          );
+        yield* session.subscribeServerConfig({ machineThemes: true, usageLimitSources: true }).pipe(
+          Stream.runForEach((event) => Queue.offer(observedByFastSubscriber, event)),
+          Effect.forkChild,
+        );
         expect((yield* Queue.take(observedByFastSubscriber)).type).toBe("snapshot");
         for (const event of allEvents) {
           yield* publishConfigEvents(socket, [event]);
@@ -886,9 +883,7 @@ describe("RpcSessionFactory", () => {
               payload: { themes: recoveredThemes },
             },
           ]);
-          expect((yield* Fiber.join(liveRecoveredState)).machineThemes).toEqual(
-            recoveredThemes,
-          );
+          expect((yield* Fiber.join(liveRecoveredState)).machineThemes).toEqual(recoveredThemes);
         }),
       ),
   );

@@ -44,7 +44,10 @@ describe("ssh auth", () => {
       assert.equal(env.VEKREL_SSH_AUTH_SECRET, "super-secret");
       assert.equal(env.DISPLAY, "t3code");
       assert.equal(yield* fs.exists(askpassPath), true);
-      assert.include(yield* fs.readFileString(askpassPath), 'printf "%s\\n" "$VEKREL_SSH_AUTH_SECRET"');
+      assert.include(
+        yield* fs.readFileString(askpassPath),
+        'printf "%s\\n" "$VEKREL_SSH_AUTH_SECRET"',
+      );
     }).pipe(
       Effect.provide(Layer.merge(NodeServices.layer, Layer.succeed(HostProcess.Platform, "linux"))),
       Effect.scoped,

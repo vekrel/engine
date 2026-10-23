@@ -95,7 +95,10 @@ export function t3AcpPromptWithInstructions(input: {
       ? VEKREL_CODE_ACP_PLAN_MODE_INSTRUCTIONS
       : VEKREL_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
     ...(input.state.hasT3Mcp
-      ? [VEKREL_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(), VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS.trim()]
+      ? [
+          VEKREL_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
+          VEKREL_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+        ]
       : []),
   ];
   return `<t3_code_instructions>\n${instructions.join("\n\n")}\n</t3_code_instructions>\n\n<user_request>\n${input.prompt}\n</user_request>`;

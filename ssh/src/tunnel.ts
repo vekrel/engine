@@ -1,7 +1,4 @@
-import type {
-  DesktopSshMachineBootstrap,
-  DesktopSshMachineTarget,
-} from "@vekrel/contracts";
+import type { DesktopSshMachineBootstrap, DesktopSshMachineTarget } from "@vekrel/contracts";
 import { waitForHttpReady as waitForHttpReadyShared } from "@vekrel/shared/httpReadiness";
 import { cliReleaseDownloadBaseUrl } from "@vekrel/shared/cliRelease";
 import * as KeyedLock from "@vekrel/shared/KeyedLock";
