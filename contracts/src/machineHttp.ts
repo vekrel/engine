@@ -786,7 +786,7 @@ class MachineConnectHttpApi extends HttpApiGroup.make("connect")
     }).middleware(MachineAuthenticatedAuth),
   )
   .add(
-    HttpApiEndpoint.post("health", "/api/t3-connect/health", {
+    HttpApiEndpoint.post("health", "/api/vekrel-connect/health", {
       payload: RelayCloudMachineHealthRequest,
       success: RelayMachineHealthResponse,
       error: MachineHttpCloudErrors,
@@ -800,7 +800,7 @@ class MachineConnectHttpApi extends HttpApiGroup.make("connect")
     }),
   )
   .add(
-    HttpApiEndpoint.post("t3MintCredential", "/api/t3-connect/mint-credential", {
+    HttpApiEndpoint.post("t3MintCredential", "/api/vekrel-connect/mint-credential", {
       payload: RelayCloudMintCredentialRequest,
       success: RelayMachineMintResponse,
       error: MachineHttpCloudErrors,

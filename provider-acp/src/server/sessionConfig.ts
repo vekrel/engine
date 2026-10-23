@@ -3,14 +3,14 @@ import type * as EffectAcpSchema from "effect-acp/compat";
 
 import type { AcpSessionModeState } from "./runtimeModel.ts";
 
-export const ACP_SESSION_MODE_OPTION_ID = "_t3/session-mode";
+export const ACP_SESSION_MODE_OPTION_ID = "_vekrel/session-mode";
 
 /**
  * Agents use it for a real choice (GitHub Copilot's default agent), but T3
  * option IDs must be non-empty. The ACP adapter maps it back to `""` before
  * applying a selection.
  */
-export const ACP_EMPTY_OPTION_VALUE = "_t3/empty";
+export const ACP_EMPTY_OPTION_VALUE = "_vekrel/empty";
 
 const MAX_OPTION_DESCRIPTORS = 16;
 const MAX_OPTION_CHOICES = 64;
