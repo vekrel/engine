@@ -3,10 +3,7 @@ export const CLI_RELEASES_PAGE_URL = `https://github.com/${CLI_RELEASE_REPOSITOR
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 export const CLI_RELEASE_BASE_URL_ENV = "VEKREL_RELEASE_BASE_URL";
 
-// The npm launcher package (scripts/build-npm-launcher.ts) and every install check and
-// suggested `npx`/`bunx` command name it through this one constant.
-// Not yet published: claim it on npm before the first release.
-export const NPM_LAUNCHER_PACKAGE_NAME = "vekrel";
+export { NPM_LAUNCHER_PACKAGE_NAME } from "./cliPackage.ts";
 
 /**
  * Kept in step with the build_linux_cli matrix, build_windows_arm64_cli, and

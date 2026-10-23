@@ -419,6 +419,10 @@
       "types": "./src/cliRelease.ts",
       "import": "./src/cliRelease.ts"
     },
+    "./cliPackage": {
+      "types": "./src/cliPackage.ts",
+      "import": "./src/cliPackage.ts"
+    },
     "./gitPatchPath": {
       "types": "./src/gitPatchPath.ts",
       "import": "./src/gitPatchPath.ts"

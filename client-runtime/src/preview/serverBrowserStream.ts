@@ -1,4 +1,5 @@
 // @effect-diagnostics globalTimers:off globalFetch:off - This browser and WebView transport runs without an Effect runtime.
+import { NPM_LAUNCHER_PACKAGE_NAME } from "@vekrel/shared/cliPackage";
 import { type DeviceHubAccess, withDeviceHubQuery } from "../device/hubAccess.ts";
 import {
   PREVIEW_STREAM_HOST_SETUP_CLOSE_CODE,
@@ -451,7 +452,7 @@ const decodeHostSetup = (reason: string): PreviewStreamHostSetup => {
       return { need: value.need, command: value.command };
     }
   } catch {}
-  return { need: "sandbox", command: "sudo npx t3 browser setup" };
+  return { need: "sandbox", command: `sudo npx ${NPM_LAUNCHER_PACKAGE_NAME} browser setup` };
 };
 
 export const previewStreamHostSetupMessage = (setup: PreviewStreamHostSetup) =>

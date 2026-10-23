@@ -616,7 +616,7 @@ function acpMcpContext(
   }
   // Agents that advertise optional http support still routinely fail to wire
   // injected http servers through to their backend (codex-acp 1.2.0 and pi-acp
-  // both drop them), so every ACP session gets the `t3 acp-mcp-bridge` stdio
+  // both drop them), so every ACP session gets the `vekrel acp-mcp-bridge` stdio
   // server, which forwards JSON-RPC to T3's authenticated MCP endpoint.
   return {
     servers: [
