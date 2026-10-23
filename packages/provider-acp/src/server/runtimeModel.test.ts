@@ -1311,12 +1311,12 @@ describe("extractMcpToolCallIdentity", () => {
       kind: "other",
       title: "unrelated display title",
       status: "pending",
-      _meta: { toolName: "mcp::vekrel::t3_thread_send", serverId: "vekrel", provenance: "mcp" },
+      _meta: { toolName: "mcp::vekrel::vekrel_thread_send", serverId: "vekrel", provenance: "mcp" },
     });
 
     expect(extractMcpToolCallIdentity(toolCall)).toEqual({
       server: "vekrel",
-      tool: "t3_thread_send",
+      tool: "vekrel_thread_send",
     });
   });
 

@@ -94,7 +94,7 @@ export const WorktreeMcpStatusResult = Schema.Struct({
     description: "Root of the project's main workspace checkout.",
   }),
   defaultStartFromOrigin: Schema.Boolean.annotate({
-    description: "Server default used by t3_worktree_handoff when startFromOrigin is omitted.",
+    description: "Server default used by vekrel_worktree_handoff when startFromOrigin is omitted.",
   }),
 });
 export type WorktreeMcpStatusResult = typeof WorktreeMcpStatusResult.Type;

@@ -25,7 +25,7 @@ it("excludes structured context chips without joining text across them", () => {
     searchableMessageSegments({
       role: "user",
       streaming: false,
-      text: "before[hidden label](t3-context://v1/terminal/terminal_1)after",
+      text: "before[hidden label](vekrel-context://v1/terminal/terminal_1)after",
       context: { version: 1, records: [] },
     }),
   ).toEqual(["before", "after"]);

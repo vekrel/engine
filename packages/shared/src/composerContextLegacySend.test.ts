@@ -68,7 +68,7 @@ describe("serializeLegacyContextMessage", () => {
     const text = `Look at ${formatComposerContextReference(terminal)} please`;
     const legacy = serializeLegacyContextMessage({ text, records: [terminal] });
 
-    expect(legacy).not.toContain("t3-context://");
+    expect(legacy).not.toContain("vekrel-context://");
     expect(legacy).toContain("boom");
 
     const upgraded = upgradeLegacyContextMessage(legacy);
@@ -85,7 +85,7 @@ describe("serializeLegacyContextMessage", () => {
   it("inlines a review comment with its diff intact", () => {
     const text = `See ${formatComposerContextReference(review)} here`;
     const legacy = serializeLegacyContextMessage({ text, records: [review] });
-    expect(legacy).not.toContain("t3-context://");
+    expect(legacy).not.toContain("vekrel-context://");
 
     const upgraded = upgradeLegacyContextMessage(legacy);
     expect(upgraded.records[0]).toMatchObject({

@@ -1,13 +1,12 @@
-const CLI_RELEASE_REPOSITORY = "pingdotgg/t3code";
+const CLI_RELEASE_REPOSITORY = "vekrel/engine";
 export const CLI_RELEASES_PAGE_URL = `https://github.com/${CLI_RELEASE_REPOSITORY}/releases`;
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 export const CLI_RELEASE_BASE_URL_ENV = "VEKREL_RELEASE_BASE_URL";
 
 // The npm launcher package (scripts/build-npm-launcher.ts) and every install check and
 // suggested `npx`/`bunx` command name it through this one constant.
-// shortcut: still the upstream name "t3", which T3 Code owns on npm; claim a Vekrel name before
-// any release and change only this line.
-export const NPM_LAUNCHER_PACKAGE_NAME = "t3";
+// Not yet published: claim it on npm before the first release.
+export const NPM_LAUNCHER_PACKAGE_NAME = "vekrel";
 
 /**
  * Kept in step with the build_linux_cli matrix, build_windows_arm64_cli, and

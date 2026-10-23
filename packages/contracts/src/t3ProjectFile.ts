@@ -5,9 +5,9 @@ import { ThreadEnvMode, WorktreeSubmodules } from "./machine.ts";
 import { ProjectScriptIcon } from "./project.ts";
 import type { ProjectScopedServerSettingKey, ServerSettings } from "./settings.ts";
 
-export const VEKREL_PROJECT_FILE_NAME = "t3.json";
+export const VEKREL_PROJECT_FILE_NAME = "vekrel.json";
 
-export const VEKREL_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/t3.json";
+export const VEKREL_PROJECT_FILE_SCHEMA_URL = "https://vekrel.com/schema/vekrel.json";
 
 const VEKREL_PROJECT_FILE_PATH_MAX_LENGTH = 512;
 const VEKREL_PROJECT_FILE_MAX_SCRIPTS = 50;
@@ -107,14 +107,14 @@ export const T3ProjectFile = Schema.Struct({
 }).annotate({
   title: "Vekrel project file",
   description:
-    "Checked-in project configuration for Vekrel (t3.json at the repository root). See https://t3.codes for documentation.",
+    "Checked-in project configuration for Vekrel (vekrel.json at the repository root). See https://t3.codes for documentation.",
 });
 export type T3ProjectFile = typeof T3ProjectFile.Type;
 
 /**
  * A key here must be nullable on `ServerSettings` (null means inherit) so both
  * the project override and the machine value can defer to the file; `field`
- * names the t3.json field carrying the same value and `builtIn` is what applies
+ * names the vekrel.json field carrying the same value and `builtIn` is what applies
  * when every tier is unset.
  */
 export const PROJECT_FILE_BACKED_SETTINGS = {
