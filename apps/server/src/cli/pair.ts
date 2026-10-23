@@ -1,3 +1,4 @@
+import { NPM_LAUNCHER_PACKAGE_NAME } from "@vekrel/shared/cliRelease";
 import {
   type AuthMachineScope,
   AuthStandardClientScopes,
@@ -72,7 +73,7 @@ export class NoRunningServerError extends Schema.TaggedError<NoRunningServerErro
       ...(this.inLinkedWorktree
         ? ["In a linked worktree, pass --base-dir to pair with a server outside it."]
         : []),
-      "Start one with `npx vekrel serve`, or connect this machine with Vekrel Connect: `npx vekrel connect`.",
+      `Start one with \`npx ${NPM_LAUNCHER_PACKAGE_NAME} serve\`, or connect this machine with Vekrel Connect: \`npx ${NPM_LAUNCHER_PACKAGE_NAME} connect\`.`,
     ].join("\n");
   }
 }

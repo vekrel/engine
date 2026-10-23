@@ -336,7 +336,9 @@ export async function runAcpMcpCliFastPath(
   const endpoint = process.env.VEKREL_ACP_MCP_ENDPOINT;
   const authorization = process.env.VEKREL_ACP_MCP_AUTHORIZATION;
   if (endpoint === undefined || authorization === undefined) {
-    process.stderr.write(`${command} requires VEKREL_ACP_MCP_ENDPOINT and VEKREL_ACP_MCP_AUTHORIZATION.\n`);
+    process.stderr.write(
+      `${command} requires VEKREL_ACP_MCP_ENDPOINT and VEKREL_ACP_MCP_AUTHORIZATION.\n`,
+    );
     process.exitCode = 2;
     return;
   }

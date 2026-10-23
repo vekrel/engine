@@ -9,11 +9,11 @@
 #                            (default: stable; preview is a maintainers' test train)
 #   VEKREL_VERSION           exact version to install (overrides VEKREL_CHANNEL)
 #   VEKREL_HOME              T3 home directory (default: ~/.t3)
-#   VEKREL_INSTALL_BIN_DIR   where the `t3` symlink goes (default: ~/.local/bin)
+#   VEKREL_INSTALL_BIN_DIR   where the `vekrel` symlink goes (default: ~/.local/bin)
 #   VEKREL_RELEASE_BASE_URL  mirror for releases/download (default: GitHub)
 #
 # The archive is unpacked into $VEKREL_HOME/runtime/versions/<version>, the
-# same layout `t3 service install` uses, so the service reuses this download
+# same layout `vekrel service install` uses, so the service reuses this download
 # instead of fetching the release again.
 set -eu
 
@@ -162,7 +162,7 @@ fi
 case "$version" in
   *-preview.*)
     printf '%s\n' \
-      "t3 ${version} is a preview build." \
+      "vekrel ${version} is a preview build." \
       "  Preview builds are cut by maintainers from unreleased branches to exercise the release" \
       "  pipeline. They can be broken, receive no fixes, and are never offered as updates." \
       "  Set VEKREL_CHANNEL=stable (the default) for a supported build." >&2
@@ -172,7 +172,7 @@ case "$version" in
     ;;
 esac
 
-stem="t3-${version}-${platform}-${arch}"
+stem="vekrel-${version}-${platform}-${arch}"
 archive="${stem}.tar.gz"
 versions_dir="${t3_home}/runtime/versions"
 target_dir="${versions_dir}/${version}"
@@ -193,7 +193,7 @@ else
   fetch_status=0
   fetch "${base_url}/v${version}/SHA256SUMS" "${staging}/SHA256SUMS" || fetch_status=$?
   if [ "$fetch_status" -eq 44 ]; then
-    fail "t3 ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g t3@${version}\`"
+    fail "vekrel ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g t3@${version}\`"
   elif [ "$fetch_status" -ne 0 ]; then
     fail "could not download the release checksums"
   fi
@@ -216,7 +216,7 @@ else
   trap - EXIT
 fi
 
-step "Setting up the t3 command..."
+step "Setting up the vekrel command..."
 mkdir -p "$bin_dir"
 ln -sfn "${target_dir}/t3" "${bin_dir}/t3"
 # Pruning keeps what this launcher points at; a background service cannot see bin_dir otherwise.

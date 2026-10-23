@@ -430,9 +430,7 @@ export class CloudLink extends Context.Service<
       httpRequest: HttpServerRequest.HttpServerRequest,
     ) => Effect.Effect<
       RelayMachineLinkProof,
-      | CloudLinkOriginInvalidError
-      | CloudLinkInternalError
-      | MachineAuth.ServerAuthInternalError,
+      CloudLinkOriginInvalidError | CloudLinkInternalError | MachineAuth.ServerAuthInternalError,
       MachineAuthenticatedPrincipal
     >;
     readonly applyRelayConfig: (
@@ -448,10 +446,7 @@ export class CloudLink extends Context.Service<
       | MachineAuth.ServerAuthInternalError
       | RelayRequestError
     >;
-    readonly linkState: () => Effect.Effect<
-      MachineCloudLinkStateResult,
-      CloudLinkInternalError
-    >;
+    readonly linkState: () => Effect.Effect<MachineCloudLinkStateResult, CloudLinkInternalError>;
     readonly unlink: () => Effect.Effect<MachineCloudRelayConfigResult, CloudLinkInternalError>;
     readonly updatePreferences: (
       input: MachineCloudPreferencesRequest,
@@ -654,38 +649,36 @@ const make = Effect.gen(function* () {
     Effect.catchTags({ PlatformError: internalError("generate-link-proof") }),
   );
 
-  const activateManagedTunnel = Effect.fn("machine.cloud.activateManagedTunnel")(
-    function* (input: {
-      readonly config: RelayManagedEndpointRuntimeConfig;
-      readonly configJson: string;
-      readonly origin: RelayManagedEndpointOrigin;
-    }) {
-      return yield* endpointRuntime.withLinkStateLock(
-        Effect.gen(function* () {
-          const currentConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
-          if (
-            Option.isNone(currentConfig) ||
-            bytesToString(currentConfig.value) !== input.configJson
-          ) {
-            return null;
-          }
-          const status = yield* endpointRuntime.applyConfig(input.config);
-          if (status.status !== "running") {
-            return yield* new CloudLinkEndpointUnavailableError({
-              reason: "runtime-not-started",
-              endpointRuntimeStatus: status,
-            });
-          }
-          const marker = yield* encodeConfirmedOriginJson({
-            config: input.config,
-            origin: input.origin,
+  const activateManagedTunnel = Effect.fn("machine.cloud.activateManagedTunnel")(function* (input: {
+    readonly config: RelayManagedEndpointRuntimeConfig;
+    readonly configJson: string;
+    readonly origin: RelayManagedEndpointOrigin;
+  }) {
+    return yield* endpointRuntime.withLinkStateLock(
+      Effect.gen(function* () {
+        const currentConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
+        if (
+          Option.isNone(currentConfig) ||
+          bytesToString(currentConfig.value) !== input.configJson
+        ) {
+          return null;
+        }
+        const status = yield* endpointRuntime.applyConfig(input.config);
+        if (status.status !== "running") {
+          return yield* new CloudLinkEndpointUnavailableError({
+            reason: "runtime-not-started",
+            endpointRuntimeStatus: status,
           });
-          yield* secrets.set(CLOUD_ENDPOINT_CONFIRMED_ORIGIN, stringToBytes(marker));
-          return status;
-        }),
-      );
-    },
-  );
+        }
+        const marker = yield* encodeConfirmedOriginJson({
+          config: input.config,
+          origin: input.origin,
+        });
+        yield* secrets.set(CLOUD_ENDPOINT_CONFIRMED_ORIGIN, stringToBytes(marker));
+        return status;
+      }),
+    );
+  });
 
   const activateManagedTunnelWithRetry = (
     input: {
@@ -802,10 +795,7 @@ const make = Effect.gen(function* () {
         stringToBytes(payload.relayIssuer ?? payload.relayUrl),
       );
       yield* secrets.set(CLOUD_LINKED_USER_ID, stringToBytes(payload.cloudUserId));
-      yield* secrets.set(
-        RELAY_MACHINE_CREDENTIAL_SECRET,
-        stringToBytes(payload.machineCredential),
-      );
+      yield* secrets.set(RELAY_MACHINE_CREDENTIAL_SECRET, stringToBytes(payload.machineCredential));
       yield* secrets.remove(CLOUD_LINK_REVOKED);
       yield* secrets.set(CLOUD_MINT_PUBLIC_KEY, stringToBytes(payload.cloudMintPublicKey));
       yield* awarenessRelay.requestCatchUp();
@@ -944,45 +934,45 @@ const make = Effect.gen(function* () {
     );
   });
 
-  const makeManagedTunnelRecoveryProof = Effect.fn(
-    "machine.cloud.makeManagedTunnelRecoveryProof",
-  )(function* (input: ManagedTunnelRecoveryProofInput) {
-    const keyPair = yield* getOrCreateMachineKeyPairFromSecretStore(secrets);
-    const configuredIssuer = yield* secrets.get(RELAY_ISSUER_SECRET);
-    const now = yield* DateTime.now;
-    const issuedAt = Math.floor(now.epochMilliseconds / 1_000);
-    const claims = {
-      iss: `t3-env:${input.machineId}`,
-      aud: normalizeRelayIssuer(
-        Option.isSome(configuredIssuer) ? bytesToString(configuredIssuer.value) : input.relayUrl,
-      ),
-      sub: input.machineId,
-      jti: yield* crypto.randomUUIDv4(),
-      iat: issuedAt,
-      exp: issuedAt + 60,
-      machineId: input.machineId,
-      cloudUserId: input.cloudUserId,
-    };
-    const payload =
-      input.action === "register"
-        ? {
-            ...claims,
-            action: "register" as const,
-            tunnelId: input.tunnelId,
-            origin: input.origin,
-          }
-        : { ...claims, action: "recover" as const, origin: input.origin };
+  const makeManagedTunnelRecoveryProof = Effect.fn("machine.cloud.makeManagedTunnelRecoveryProof")(
+    function* (input: ManagedTunnelRecoveryProofInput) {
+      const keyPair = yield* getOrCreateMachineKeyPairFromSecretStore(secrets);
+      const configuredIssuer = yield* secrets.get(RELAY_ISSUER_SECRET);
+      const now = yield* DateTime.now;
+      const issuedAt = Math.floor(now.epochMilliseconds / 1_000);
+      const claims = {
+        iss: `t3-env:${input.machineId}`,
+        aud: normalizeRelayIssuer(
+          Option.isSome(configuredIssuer) ? bytesToString(configuredIssuer.value) : input.relayUrl,
+        ),
+        sub: input.machineId,
+        jti: yield* crypto.randomUUIDv4(),
+        iat: issuedAt,
+        exp: issuedAt + 60,
+        machineId: input.machineId,
+        cloudUserId: input.cloudUserId,
+      };
+      const payload =
+        input.action === "register"
+          ? {
+              ...claims,
+              action: "register" as const,
+              tunnelId: input.tunnelId,
+              origin: input.origin,
+            }
+          : { ...claims, action: "recover" as const, origin: input.origin };
 
-    return yield* signRelayJwt({
-      privateKey: keyPair.privateKey,
-      typ: RELAY_MANAGED_TUNNEL_RECOVERY_TYP,
-      payload,
-    }).pipe(
-      Effect.mapError(
-        (cause) => new CloudLinkInternalError({ operation: "sign-recovery-proof", cause }),
-      ),
-    );
-  });
+      return yield* signRelayJwt({
+        privateKey: keyPair.privateKey,
+        typ: RELAY_MANAGED_TUNNEL_RECOVERY_TYP,
+        payload,
+      }).pipe(
+        Effect.mapError(
+          (cause) => new CloudLinkInternalError({ operation: "sign-recovery-proof", cause }),
+        ),
+      );
+    },
+  );
 
   /**
    * Nothing stored is removed: the relay also answers 401 for a skewed clock,
@@ -1234,78 +1224,78 @@ const make = Effect.gen(function* () {
 
   // Cloudflare bills per provisioned tunnel, so a machine that goes offline
   // must not leave its tunnel behind.
-  const releaseManagedTunnelOnShutdown = Effect.fn(
-    "machine.cloud.releaseManagedTunnelOnShutdown",
-  )(function* () {
-    const runtimeConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
-    if (Option.isNone(runtimeConfig)) {
-      return false;
-    }
-    // Only CLI-desired managed links release eagerly because this request uses
-    // CLI authorization. Web/mobile links register startup recovery with their
-    // machine credential, and the relay reaper removes them after they are
-    // down for the configured grace period. Unlink still deletes either kind.
-    if (
-      !(yield* readCliDesiredCloudLink.pipe(withSecrets)) ||
-      (yield* readCliDesiredLinkMode.pipe(withSecrets)) !== "managed"
-    ) {
-      return false;
-    }
-    // A shutdown that hands off to a pending update is not the machine going
-    // offline: the service launcher or the desktop app immediately brings a
-    // server back (the new version, or the old one after a rollback). Deleting
-    // the tunnel here forces that server to provision a replacement UUID, and the
-    // public hostname's route to the new tunnel takes 1-2 minutes to propagate —
-    // the dominant cost of an update restart.
-    if (
-      (yield* withRuntimeFiles(desktopUpdateRestartPending)) ||
-      (yield* withRuntimeFiles(pendingUpdateHandoffExists))
-    ) {
-      yield* Effect.logInfo("Keeping the managed tunnel across the update restart");
-      return false;
-    }
-    const token = yield* cliTokenManager.getExisting;
-    if (Option.isNone(token)) {
-      return false;
-    }
-    // The link belongs to the relay it was installed against, so target the
-    // persisted URL: VEKREL_RELAY_URL may have changed since the link was made.
-    const relayUrl = yield* secrets.get(RELAY_URL_SECRET);
-    if (Option.isNone(relayUrl)) {
-      return false;
-    }
-    const machineId = yield* machine.getMachineId;
-    yield* endpointRuntime.applyConfig(null);
-    const response = yield* HttpClientRequest.delete(
-      `${bytesToString(relayUrl.value)}/v1/client/machine-links/${encodeURIComponent(machineId)}/tunnel`,
-    ).pipe(
-      HttpClientRequest.bearerToken(token.value.accessToken),
-      httpClient.execute,
-      Effect.flatMap(filterRelayResponse),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(RelayOkResponse)),
-      withRelayClientTracing,
-    );
-    // ok:false means the relay skipped deletion because a concurrent provision
-    // owns the recorded tunnel now — leave the stored config alone.
-    if (!response.ok) {
-      return false;
-    }
-    // The connector token died with the tunnel. Drop the stored config so the
-    // next start waits for the link reconcile instead of respawning the relay
-    // client with a dead token. Only dropped while it is still the config this
-    // shutdown released — a fast restart may already have reconciled and stored
-    // a fresh config for its replacement tunnel, and that one must survive this
-    // finalizer.
-    const storedConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
-    if (
-      Option.isSome(storedConfig) &&
-      bytesToString(storedConfig.value) === bytesToString(runtimeConfig.value)
-    ) {
-      yield* secrets.remove(CLOUD_ENDPOINT_RUNTIME_CONFIG);
-      yield* secrets.remove(CLOUD_ENDPOINT_CONFIRMED_ORIGIN);
-    }
-    return true;
-  });
+  const releaseManagedTunnelOnShutdown = Effect.fn("machine.cloud.releaseManagedTunnelOnShutdown")(
+    function* () {
+      const runtimeConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
+      if (Option.isNone(runtimeConfig)) {
+        return false;
+      }
+      // Only CLI-desired managed links release eagerly because this request uses
+      // CLI authorization. Web/mobile links register startup recovery with their
+      // machine credential, and the relay reaper removes them after they are
+      // down for the configured grace period. Unlink still deletes either kind.
+      if (
+        !(yield* readCliDesiredCloudLink.pipe(withSecrets)) ||
+        (yield* readCliDesiredLinkMode.pipe(withSecrets)) !== "managed"
+      ) {
+        return false;
+      }
+      // A shutdown that hands off to a pending update is not the machine going
+      // offline: the service launcher or the desktop app immediately brings a
+      // server back (the new version, or the old one after a rollback). Deleting
+      // the tunnel here forces that server to provision a replacement UUID, and the
+      // public hostname's route to the new tunnel takes 1-2 minutes to propagate —
+      // the dominant cost of an update restart.
+      if (
+        (yield* withRuntimeFiles(desktopUpdateRestartPending)) ||
+        (yield* withRuntimeFiles(pendingUpdateHandoffExists))
+      ) {
+        yield* Effect.logInfo("Keeping the managed tunnel across the update restart");
+        return false;
+      }
+      const token = yield* cliTokenManager.getExisting;
+      if (Option.isNone(token)) {
+        return false;
+      }
+      // The link belongs to the relay it was installed against, so target the
+      // persisted URL: VEKREL_RELAY_URL may have changed since the link was made.
+      const relayUrl = yield* secrets.get(RELAY_URL_SECRET);
+      if (Option.isNone(relayUrl)) {
+        return false;
+      }
+      const machineId = yield* machine.getMachineId;
+      yield* endpointRuntime.applyConfig(null);
+      const response = yield* HttpClientRequest.delete(
+        `${bytesToString(relayUrl.value)}/v1/client/machine-links/${encodeURIComponent(machineId)}/tunnel`,
+      ).pipe(
+        HttpClientRequest.bearerToken(token.value.accessToken),
+        httpClient.execute,
+        Effect.flatMap(filterRelayResponse),
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(RelayOkResponse)),
+        withRelayClientTracing,
+      );
+      // ok:false means the relay skipped deletion because a concurrent provision
+      // owns the recorded tunnel now — leave the stored config alone.
+      if (!response.ok) {
+        return false;
+      }
+      // The connector token died with the tunnel. Drop the stored config so the
+      // next start waits for the link reconcile instead of respawning the relay
+      // client with a dead token. Only dropped while it is still the config this
+      // shutdown released — a fast restart may already have reconciled and stored
+      // a fresh config for its replacement tunnel, and that one must survive this
+      // finalizer.
+      const storedConfig = yield* secrets.get(CLOUD_ENDPOINT_RUNTIME_CONFIG);
+      if (
+        Option.isSome(storedConfig) &&
+        bytesToString(storedConfig.value) === bytesToString(runtimeConfig.value)
+      ) {
+        yield* secrets.remove(CLOUD_ENDPOINT_RUNTIME_CONFIG);
+        yield* secrets.remove(CLOUD_ENDPOINT_CONFIRMED_ORIGIN);
+      }
+      return true;
+    },
+  );
 
   const readCloudLinkState = Effect.fn("machine.cloud.readLinkState")(function* () {
     const [
@@ -1477,9 +1467,7 @@ const make = Effect.gen(function* () {
                     Effect.flatMap((fallbackBytes) =>
                       Option.isSome(fallbackBytes)
                         ? Effect.succeed(bytesToString(fallbackBytes.value))
-                        : Effect.fail(
-                            new MachineAuth.ServerAuthCloudRelayIssuerMissingError({}),
-                          ),
+                        : Effect.fail(new MachineAuth.ServerAuthCloudRelayIssuerMissingError({})),
                     ),
                   ),
           ),
@@ -1581,9 +1569,7 @@ const make = Effect.gen(function* () {
                     Effect.flatMap((fallbackBytes) =>
                       Option.isSome(fallbackBytes)
                         ? Effect.succeed(bytesToString(fallbackBytes.value))
-                        : Effect.fail(
-                            new MachineAuth.ServerAuthCloudRelayIssuerMissingError({}),
-                          ),
+                        : Effect.fail(new MachineAuth.ServerAuthCloudRelayIssuerMissingError({})),
                     ),
                   ),
           ),

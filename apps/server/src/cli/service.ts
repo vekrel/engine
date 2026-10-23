@@ -127,7 +127,9 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
       Effect.gen(function* () {
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
-          yield* Console.log(`Vekrel service is already installed with vekrel@${packageJson.version}.`);
+          yield* Console.log(
+            `Vekrel service is already installed with vekrel@${packageJson.version}.`,
+          );
           return;
         }
         yield* Console.log(formatServiceChange(result));

@@ -163,9 +163,7 @@ describe("ProviderInstanceRegistry — multi-instance codex slice", () => {
     Layer.provideMerge(Layer.mock(ServerSecretStore.ServerSecretStore)({})),
     Layer.provideMerge(
       Layer.succeed(ServerMachine.ServerMachineIdentity, {
-        getMachineId: Effect.succeed(
-          MachineId.make("00000000-0000-4000-8000-000000000001"),
-        ),
+        getMachineId: Effect.succeed(MachineId.make("00000000-0000-4000-8000-000000000001")),
       }),
     ),
     Layer.provideMerge(layerBackgroundPolicyAlwaysRun),
@@ -281,7 +279,9 @@ describe("ProviderInstanceRegistry — multi-instance codex slice", () => {
             enabled: true,
             // Packaged desktop builds start the server in $HOME, where some
             // `claude` wrappers refuse to run.
-            environment: [{ name: "VEKREL_CLAUDE_REQUIRED_CWD", value: stateDir, sensitive: false }],
+            environment: [
+              { name: "VEKREL_CLAUDE_REQUIRED_CWD", value: stateDir, sensitive: false },
+            ],
             config: makeClaudeConfig({
               enabled: true,
               binaryPath: fixtures.claudeBinaryPath,

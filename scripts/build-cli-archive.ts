@@ -88,7 +88,7 @@ export function cliArchivePlatformKey(platform: BuildPlatform, arch: BuildArch):
 }
 
 export function cliArchiveStem(version: string, platform: BuildPlatform, arch: BuildArch): string {
-  return `t3-${version}-${cliArchivePlatformKey(platform, arch)}`;
+  return `vekrel-${version}-${cliArchivePlatformKey(platform, arch)}`;
 }
 
 export function cliArchiveFileName(version: string, platform: BuildPlatform, arch: BuildArch) {
@@ -344,7 +344,7 @@ const signMacArchiveContents = Effect.fn("signMacArchiveContents")(function* (in
     ]),
     "notarytool submit",
   ).pipe(Effect.ensuring(fs.remove(notarizeZip, { force: true }).pipe(Effect.ignore)));
-  yield* Effect.log("[cli-archive] Notarized t3.");
+  yield* Effect.log("[cli-archive] Notarized vekrel.");
 });
 
 const WindowsSigningConfig = Config.all({
@@ -410,7 +410,7 @@ const signWindowsExecutable = Effect.fn("signWindowsExecutable")(function* (
   yield* stripStaleAuthenticodeEntry(executablePath);
   if ((yield* HostProcess.Platform) !== "win32") {
     yield* signWithJsign(executablePath);
-    yield* Effect.log("[cli-archive] Signed t3.exe (Azure Trusted Signing via jsign).");
+    yield* Effect.log("[cli-archive] Signed vekrel.exe (Azure Trusted Signing via jsign).");
     return;
   }
   const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -427,9 +427,9 @@ const signWindowsExecutable = Effect.fn("signWindowsExecutable")(function* (
   ].join(" ");
   yield* runCommand(
     ChildProcess.make("pwsh", ["-NoProfile", "-NonInteractive", "-Command", script]),
-    "Invoke-TrustedSigning t3.exe",
+    "Invoke-TrustedSigning vekrel.exe",
   );
-  yield* Effect.log("[cli-archive] Signed t3.exe (Azure Trusted Signing).");
+  yield* Effect.log("[cli-archive] Signed vekrel.exe (Azure Trusted Signing).");
 });
 
 const buildCliArchive = Effect.fn("buildCliArchive")(function* (input: {
@@ -443,14 +443,14 @@ const buildCliArchive = Effect.fn("buildCliArchive")(function* (input: {
   const path = yield* Path.Path;
   const repoRoot = yield* RepoRoot;
   const serverDir = path.join(repoRoot, "apps/server");
-  const executableName = input.platform === "win" ? "t3.exe" : "t3";
-  // tsdown suffixes cross-built executables with their target (t3-darwin-x64);
-  // a host build is plain t3. Prefer the exact target when both exist.
+  const executableName = input.platform === "win" ? "vekrel.exe" : "vekrel";
+  // tsdown suffixes cross-built executables with their target (vekrel-darwin-x64);
+  // a host build is plain vekrel. Prefer the exact target when both exist.
   const targetKey = `${input.platform === "mac" ? "darwin" : input.platform}-${input.arch}`;
   const targetExecutable = path.join(
     serverDir,
     "dist-exe",
-    `t3-${targetKey}${input.platform === "win" ? ".exe" : ""}`,
+    `vekrel-${targetKey}${input.platform === "win" ? ".exe" : ""}`,
   );
   // The unsuffixed host build is only a valid stand-in when it was built for
   // this platform and architecture; otherwise a missing target must fail.
@@ -564,7 +564,9 @@ const command = Command.make(
     ),
   },
   (input) => buildCliArchive(input).pipe(Effect.scoped),
-).pipe(Command.withDescription("Package the t3 single-executable into a per-platform archive."));
+).pipe(
+  Command.withDescription("Package the vekrel single-executable into a per-platform archive."),
+);
 
 if (import.meta.main) {
   Command.run(command, { version: "0.0.0" }).pipe(

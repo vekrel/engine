@@ -2,6 +2,7 @@
 // The Windows cleanup shell must outlive this process (it deletes the
 // directory this executable runs from), which Effect's scoped ChildProcess
 // cannot express: it kills the child when the scope closes.
+import { NPM_LAUNCHER_PACKAGE_NAME } from "@vekrel/shared/cliRelease";
 import * as NodeChildProcess from "node:child_process";
 
 import * as HostProcess from "@vekrel/shared/HostProcess";
@@ -128,7 +129,7 @@ const runUninstall = Effect.fn("cli.uninstall.run")(function* (input: {
     yield* Console.log(`Nothing to remove: vekrel is not installed for ${input.baseDir}.`);
     if (!(yield* HostProcess.IsExecutable)) {
       yield* Console.log(
-        "  This vekrel runs from a Node script, so it was installed by npm or built from source. Remove it the same way (`npm uninstall -g vekrel`, or delete the checkout).",
+        `  This vekrel runs from a Node script, so it was installed by npm or built from source. Remove it the same way (\`npm uninstall -g ${NPM_LAUNCHER_PACKAGE_NAME}\`, or delete the checkout).`,
       );
     }
     return;

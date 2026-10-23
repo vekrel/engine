@@ -40,7 +40,8 @@ const emitUrlElicitation = process.env.VEKREL_ACP_EMIT_URL_ELICITATION === "1";
 const emitXAiAskUserQuestion = process.env.VEKREL_ACP_EMIT_XAI_ASK_USER_QUESTION === "1";
 const emitXAiExitPlanMode = process.env.VEKREL_ACP_EMIT_XAI_EXIT_PLAN_MODE === "1";
 const emitXAiPlanMdWrite = process.env.VEKREL_ACP_EMIT_XAI_PLAN_MD_WRITE === "1";
-const emitXAiPromptCompleteThenHang = process.env.VEKREL_ACP_EMIT_XAI_PROMPT_COMPLETE_THEN_HANG === "1";
+const emitXAiPromptCompleteThenHang =
+  process.env.VEKREL_ACP_EMIT_XAI_PROMPT_COMPLETE_THEN_HANG === "1";
 const emitXAiRateLimitThenHang = process.env.VEKREL_ACP_EMIT_XAI_RATE_LIMIT_THEN_HANG === "1";
 const emitXAiAskUserQuestionThenHang =
   process.env.VEKREL_ACP_EMIT_XAI_ASK_USER_QUESTION_THEN_HANG === "1";
@@ -49,8 +50,10 @@ const emitPlanThenHang = process.env.VEKREL_ACP_EMIT_PLAN_THEN_HANG === "1";
 const grokKillTaskShape = process.env.VEKREL_ACP_GROK_KILL_TASK_SHAPE;
 const emitActiveToolThenHang = process.env.VEKREL_ACP_EMIT_ACTIVE_TOOL_THEN_HANG === "1";
 const emitGrokMonitorPostTurnPoll = process.env.VEKREL_ACP_EMIT_GROK_MONITOR_POST_TURN_POLL === "1";
-const emitGrokBackgroundTaskStarted = process.env.VEKREL_ACP_EMIT_GROK_BACKGROUND_TASK_STARTED === "1";
-const emitGrokBackgroundTaskPoll = process.env.VEKREL_ACP_GROK_BACKGROUND_TASK_COMPLETION === "poll";
+const emitGrokBackgroundTaskStarted =
+  process.env.VEKREL_ACP_EMIT_GROK_BACKGROUND_TASK_STARTED === "1";
+const emitGrokBackgroundTaskPoll =
+  process.env.VEKREL_ACP_GROK_BACKGROUND_TASK_COMPLETION === "poll";
 const emitForeignSessionUpdates = process.env.VEKREL_ACP_EMIT_FOREIGN_SESSION_UPDATES === "1";
 const waitForResumeRelease = process.env.VEKREL_ACP_WAIT_FOR_RESUME_RELEASE === "1";
 const completeFirstPromptOnCancel = process.env.VEKREL_ACP_COMPLETE_FIRST_PROMPT_ON_CANCEL === "1";
@@ -76,8 +79,10 @@ const emitEmptySuccessfulBashThenHang =
 const exitOnCancel = process.env.VEKREL_ACP_EXIT_ON_CANCEL === "1";
 const runningCommandIgnoresTerm = process.env.VEKREL_ACP_RUNNING_COMMAND_IGNORE_TERM === "1";
 const runningCommandPidPath = process.env.VEKREL_ACP_RUNNING_COMMAND_PID_PATH;
-const runningCommandSeparateSession = process.env.VEKREL_ACP_RUNNING_COMMAND_SEPARATE_SESSION === "1";
-const exitAfterRunningCommandLaunch = process.env.VEKREL_ACP_EXIT_AFTER_RUNNING_COMMAND_LAUNCH === "1";
+const runningCommandSeparateSession =
+  process.env.VEKREL_ACP_RUNNING_COMMAND_SEPARATE_SESSION === "1";
+const exitAfterRunningCommandLaunch =
+  process.env.VEKREL_ACP_EXIT_AFTER_RUNNING_COMMAND_LAUNCH === "1";
 const omitXAiPromptCompleteStopReason =
   process.env.VEKREL_ACP_OMIT_XAI_PROMPT_COMPLETE_STOP_REASON === "1";
 const failLoadSession = process.env.VEKREL_ACP_FAIL_LOAD_SESSION === "1";

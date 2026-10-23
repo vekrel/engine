@@ -31,9 +31,7 @@ export function resolveSessionCookieName(input: {
 
   const instanceHash = NodeCrypto.createHash("sha256")
     .update(
-      !input.development && isRemoteReachableHost(input.host)
-        ? input.machineId
-        : input.instanceKey,
+      !input.development && isRemoteReachableHost(input.host) ? input.machineId : input.instanceKey,
     )
     .digest("hex")
     .slice(0, 12);

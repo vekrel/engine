@@ -110,7 +110,9 @@ export const resolveServerInstallation = Effect.gen(function* () {
  */
 function suggestedPackageSpec(version: string): string {
   const channel = /^[^-+]+-(nightly|preview)\./.exec(version)?.[1];
-  return channel === undefined ? NPM_LAUNCHER_PACKAGE_NAME : `${NPM_LAUNCHER_PACKAGE_NAME}@${channel}`;
+  return channel === undefined
+    ? NPM_LAUNCHER_PACKAGE_NAME
+    : `${NPM_LAUNCHER_PACKAGE_NAME}@${channel}`;
 }
 
 function formatCliCommand(input: {

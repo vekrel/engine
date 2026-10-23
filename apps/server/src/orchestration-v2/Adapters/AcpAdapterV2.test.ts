@@ -2891,8 +2891,9 @@ describe("AcpAdapterV2", () => {
           ? replacementMcpServer.env
           : undefined;
       assert.equal(
-        replacementMcpEnvironment?.find((variable) => variable.name === "VEKREL_ACP_MCP_AUTHORIZATION")
-          ?.value,
+        replacementMcpEnvironment?.find(
+          (variable) => variable.name === "VEKREL_ACP_MCP_AUTHORIZATION",
+        )?.value,
         "Bearer rollback-target-token",
       );
       const snapshotAfterRollback = yield* runtime.readThreadSnapshot({

@@ -547,10 +547,7 @@ it.effect(
           'content="1;url=http://localhost:7001/welcome"',
         );
         const first = h.authorizationRequests[0]!;
-        assert.strictEqual(
-          first.searchParams.get("ext_agent_host_id"),
-          `urn:uuid:${h.machineId}`,
-        );
+        assert.strictEqual(first.searchParams.get("ext_agent_host_id"), `urn:uuid:${h.machineId}`);
         assert.strictEqual(first.origin, h.origin);
         assert.strictEqual(first.pathname, "/authorize");
         assert.deepEqual(Array.from(first.searchParams.keys()).sort(), [
@@ -1345,24 +1342,22 @@ it.effect("identity-only sign-in requests consent on an explicit retry, then rec
   ),
 );
 
-it.effect(
-  "controller replacement shares refresh serialization for the same machine session",
-  () =>
-    provision(
-      Effect.gen(function* () {
-        const h = yield* makeHarness;
-        yield* h.signIn;
-        yield* h.phase("succeeded");
-        const replacement = yield* h.recreateAuth;
-        yield* h.seedExpired;
-        const records = yield* Effect.all([h.auth.access, replacement.access], {
-          concurrency: "unbounded",
-        });
-        assert.strictEqual(h.refreshes(), 1);
-        assert.strictEqual(records[0].refreshToken, "refresh-1");
-        assert.deepEqual(records[0], records[1]);
-      }),
-    ),
+it.effect("controller replacement shares refresh serialization for the same machine session", () =>
+  provision(
+    Effect.gen(function* () {
+      const h = yield* makeHarness;
+      yield* h.signIn;
+      yield* h.phase("succeeded");
+      const replacement = yield* h.recreateAuth;
+      yield* h.seedExpired;
+      const records = yield* Effect.all([h.auth.access, replacement.access], {
+        concurrency: "unbounded",
+      });
+      assert.strictEqual(h.refreshes(), 1);
+      assert.strictEqual(records[0].refreshToken, "refresh-1");
+      assert.deepEqual(records[0], records[1]);
+    }),
+  ),
 );
 
 it.effect(
