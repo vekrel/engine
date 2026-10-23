@@ -332,7 +332,7 @@ it.layer(layerTest, { excludeTestServices: true })("WorkspaceFileSystemLive", (i
           const missingChildError = yield* workspaceFileSystem
             .readFile(
               Object.assign(
-                { cwd, relativePath: "linked-dir/missing/t3.json" },
+                { cwd, relativePath: "linked-dir/missing/vekrel.json" },
                 { allowMissing: true },
               ),
             )

@@ -129,7 +129,7 @@ describe("webhook route", () => {
       const receivedAt = "2026-10-04T10:00:00.000Z";
       const relayHeaders = {
         "x-vekrel-relay-delivery-id": "relay-1",
-        "x-t3-relay-received-at": receivedAt,
+        "x-vekrel-relay-received-at": receivedAt,
       };
       const forged = NodeCrypto.generateKeyPairSync("ed25519", {
         privateKeyEncoding: { format: "pem", type: "pkcs8" },
@@ -177,7 +177,7 @@ describe("webhook route", () => {
         handler(
           post("/api/hooks/id/tok", "{}", {
             "x-vekrel-relay-delivery-id": "relay-1",
-            "x-t3-relay-received-at": receivedAt,
+            "x-vekrel-relay-received-at": receivedAt,
             "x-vekrel-relay-delivery": proof,
           }),
         ),

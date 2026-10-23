@@ -18,7 +18,7 @@ it.effect("authenticates each release page until the requested channel is found"
     const httpClient = HttpClient.make((request) => {
       const url = new URL(request.url);
       assert.equal(url.origin, "https://api.github.com");
-      assert.equal(url.pathname, "/repos/pingdotgg/t3code/releases");
+      assert.equal(url.pathname, "/repos/vekrel/engine/releases");
       assert.equal(request.headers.accept, "application/vnd.github+json");
       assert.equal(request.headers.authorization, "Bearer gh-token");
       const page = url.searchParams.get("page") ?? "";
@@ -32,6 +32,25 @@ it.effect("authenticates each release page until the requested channel is found"
     );
     assert.equal(version, "1.2.3");
     assert.deepStrictEqual(pages, ["1", "2"]);
+  }),
+);
+
+it.effect("reports no release when the repository has none or is not found", () =>
+  Effect.gen(function* () {
+    for (const response of [Response.json([]), new Response("Not Found", { status: 404 })]) {
+      const httpClient = HttpClient.make((request) =>
+        Effect.succeed(HttpClientResponse.fromWeb(request, response.clone())),
+      );
+      const error = yield* resolveNewestVersion("stable").pipe(
+        Effect.provideService(HostProcess.Environment, {}),
+        Effect.provideService(HttpClient.HttpClient, httpClient),
+        Effect.flip,
+      );
+      assert.equal(
+        error.reason,
+        "No published stable release was found at https://github.com/vekrel/engine/releases.",
+      );
+    }
   }),
 );
 

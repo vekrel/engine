@@ -2,6 +2,7 @@ import * as HostProcess from "@vekrel/shared/HostProcess";
 import {
   CLI_RELEASE_BASE_URL_ENV,
   CLI_RELEASE_CHANNELS,
+  CLI_RELEASES_PAGE_URL,
   cliReleaseIndexPageUrl,
   cliReleaseChannelOf,
   newestCliReleaseVersion,
@@ -70,8 +71,12 @@ export const resolveNewestVersion = Effect.fn("cli.update.resolve_newest")(funct
         ? request
         : HttpClientRequest.setHeader(request, "Authorization", `Bearer ${githubToken}`);
     const body = yield* httpClient.execute(authenticatedRequest).pipe(
-      Effect.flatMap(HttpClientResponse.filterStatusOk),
-      Effect.flatMap((response) => response.text),
+      // A repository with no releases (or not visible) is "no release", not a transport error.
+      Effect.flatMap((response) =>
+        response.status === 404
+          ? Effect.succeed("[]")
+          : HttpClientResponse.filterStatusOk(response).pipe(Effect.flatMap((ok) => ok.text)),
+      ),
       Effect.mapError(() => new CliUpdateError({ reason: "Could not list vekrel releases." })),
       Effect.timeoutOrElse({
         duration: RELEASE_INDEX_TIMEOUT,
@@ -88,7 +93,9 @@ export const resolveNewestVersion = Effect.fn("cli.update.resolve_newest")(funct
     if (version !== undefined) return version;
     if (releases.length === 0) break;
   }
-  return yield* new CliUpdateError({ reason: `No published ${channel} release was found.` });
+  return yield* new CliUpdateError({
+    reason: `No published ${channel} release was found at ${CLI_RELEASES_PAGE_URL}.`,
+  });
 });
 
 /**

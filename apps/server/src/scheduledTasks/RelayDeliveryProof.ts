@@ -48,7 +48,7 @@ const make = Effect.gen(function* () {
     function* (input) {
       const proof = input.headers[RELAY_HOOK_DELIVERY_HEADER];
       const deliveryId = input.headers["x-vekrel-relay-delivery-id"];
-      const receivedAt = input.headers["x-t3-relay-received-at"];
+      const receivedAt = input.headers["x-vekrel-relay-received-at"];
       if (proof === undefined || deliveryId === undefined || receivedAt === undefined) {
         return Option.none();
       }
