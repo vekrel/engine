@@ -1,7 +1,4 @@
-import type {
-  AuthClientPresentationMetadata,
-  ExecutionMachineDescriptor,
-} from "@vekrel/contracts";
+import type { AuthClientPresentationMetadata, ExecutionMachineDescriptor } from "@vekrel/contracts";
 import { withRelayClientTracing } from "@vekrel/shared/relayTracing";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -145,7 +142,7 @@ const makeBearerBroker = Effect.fn("clientRuntime.connection.broker.makeBearer")
         actual: profile.machineId,
       });
     }
-    if (profile.authorization === "t3-connect") {
+    if (profile.authorization === "vekrel-connect") {
       const authorized = yield* remote.authorizeDpop({
         expectedMachineId: target.machineId,
         directEndpoint: { httpBaseUrl: profile.httpBaseUrl, wsBaseUrl: profile.wsBaseUrl },

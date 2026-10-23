@@ -1,8 +1,5 @@
 import { MachineId } from "@vekrel/contracts";
-import {
-  RelayMachineConnectScope,
-  RelayMachineStatusScope,
-} from "@vekrel/contracts/relay";
+import { RelayMachineConnectScope, RelayMachineStatusScope } from "@vekrel/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -28,7 +25,7 @@ function layerManagedRelayTest(
   );
   return ManagedRelay.layer({
     relayUrl,
-    clientId: "t3-mobile",
+    clientId: "vekrel-mobile",
     ...(accessTokenStore ? { accessTokenStore } : {}),
   }).pipe(Layer.provide(layerSigner), Layer.provide(layerHttpClient));
 }
@@ -70,7 +67,7 @@ describe("ManagedRelayClient", () => {
     let persistedTokens: ReadonlyArray<ManagedRelay.ManagedRelayAccessTokenCacheEntry> = [
       {
         accountId: "user-1",
-        clientId: "t3-mobile",
+        clientId: "vekrel-mobile",
         relayUrl: "https://relay.example.test",
         thumbprint: "client-thumbprint",
         scopes: [RelayMachineStatusScope],
@@ -236,7 +233,7 @@ describe("ManagedRelayClient", () => {
     let persistedTokens: ReadonlyArray<ManagedRelay.ManagedRelayAccessTokenCacheEntry> = [
       {
         accountId: "user-1",
-        clientId: "t3-mobile",
+        clientId: "vekrel-mobile",
         relayUrl: "https://relay.example.test",
         thumbprint: "client-thumbprint",
         scopes: [RelayMachineStatusScope],

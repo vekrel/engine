@@ -12,7 +12,7 @@ import {
 export const ORCHESTRATION_PROTOCOL_VERSION = 2;
 export const ORCHESTRATION_PROTOCOL_VERSION_TEXT = "2";
 export const ORCHESTRATION_PROTOCOL_QUERY_PARAM = "orchestrationProtocol";
-export const ORCHESTRATION_PROTOCOL_HEADER = "x-t3-orchestration-protocol";
+export const ORCHESTRATION_PROTOCOL_HEADER = "x-vekrel-orchestration-protocol";
 
 export const ExecutionMachinePlatformOs = Schema.Literals([
   "darwin",

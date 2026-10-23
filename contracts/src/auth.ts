@@ -124,10 +124,7 @@ export interface SessionGrantInput {
   readonly auth?: { readonly serverUpdateScope?: string | undefined } | undefined;
 }
 
-export function sessionGrantsScope(
-  session: SessionGrantInput,
-  scope: AuthMachineScope,
-): boolean {
+export function sessionGrantsScope(session: SessionGrantInput, scope: AuthMachineScope): boolean {
   if (!session.authenticated) return false;
   if (session.permissions !== undefined) return session.permissions.includes(scope);
   if (session.scopes?.includes(scope)) return true;
@@ -172,7 +169,7 @@ export const AuthTokenExchangeGrantType =
   "urn:ietf:params:oauth:grant-type:token-exchange" as const;
 export const AuthAccessTokenType = "urn:ietf:params:oauth:token-type:access_token" as const;
 export const AuthMachineBootstrapTokenType =
-  "urn:t3:params:oauth:token-type:machine-bootstrap" as const;
+  "urn:vekrel:params:oauth:token-type:machine-bootstrap" as const;
 
 export const ServerAuthDescriptor = Schema.Struct({
   policy: ServerAuthPolicy,

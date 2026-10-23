@@ -274,9 +274,7 @@ const makeHarness = Effect.fn("TestMachineRegistry.makeHarness")(function* (
   });
   const cacheStore = Persistence.MachineCacheStore.of({
     loadShell: (machineId) =>
-      Ref.get(shellCache).pipe(
-        Effect.map((cache) => Option.fromUndefinedOr(cache.get(machineId))),
-      ),
+      Ref.get(shellCache).pipe(Effect.map((cache) => Option.fromUndefinedOr(cache.get(machineId)))),
     saveShell: (machineId, snapshot) =>
       Ref.update(shellCache, (current) => {
         const next = new Map(current);
@@ -297,15 +295,10 @@ const makeHarness = Effect.fn("TestMachineRegistry.makeHarness")(function* (
         const next = new Map(current);
         next.delete(machineId);
         return next;
-      }).pipe(
-        Effect.andThen(
-          Ref.update(cacheClears, (machineIds) => [...machineIds, machineId]),
-        ),
-      ),
+      }).pipe(Effect.andThen(Ref.update(cacheClears, (machineIds) => [...machineIds, machineId]))),
   });
   const ownedDataCleanup = Persistence.MachineOwnedDataCleanup.of({
-    clear: (machineId) =>
-      Ref.update(ownedDataClears, (machineIds) => [...machineIds, machineId]),
+    clear: (machineId) => Ref.update(ownedDataClears, (machineIds) => [...machineIds, machineId]),
   });
   const networkStatus = yield* SubscriptionRef.make<"unknown" | "offline" | "online">("online");
   const connectivity = Connectivity.Connectivity.of({
@@ -493,8 +486,7 @@ function replaceRoutes(
   const insertAt =
     firstIndex === -1
       ? others.length
-      : current.slice(0, firstIndex).filter((target) => target.machineId !== machineId)
-          .length;
+      : current.slice(0, firstIndex).filter((target) => target.machineId !== machineId).length;
   return [...others.slice(0, insertAt), ...routes, ...others.slice(insertAt)];
 }
 
@@ -629,16 +621,10 @@ describe("MachineRegistry", () => {
         expect(controls).toHaveLength(1);
         const active = controls[0];
         expect(active).toBeDefined();
-        expect((yield* Ref.get(harness.shellCache)).get(TARGET.machineId)).toEqual(
-          CACHED_SNAPSHOT,
-        );
+        expect((yield* Ref.get(harness.shellCache)).get(TARGET.machineId)).toEqual(CACHED_SNAPSHOT);
 
         const retryFiber = yield* Effect.forkChild(
-          awaitConnectionState(
-            registry,
-            TARGET.machineId,
-            (state) => state.phase === "backoff",
-          ),
+          awaitConnectionState(registry, TARGET.machineId, (state) => state.phase === "backoff"),
         );
         yield* Effect.yieldNow;
         yield* Deferred.fail(
@@ -649,17 +635,13 @@ describe("MachineRegistry", () => {
           }),
         );
         yield* Fiber.join(retryFiber);
-        expect((yield* Ref.get(harness.shellCache)).get(TARGET.machineId)).toEqual(
-          CACHED_SNAPSHOT,
-        );
+        expect((yield* Ref.get(harness.shellCache)).get(TARGET.machineId)).toEqual(CACHED_SNAPSHOT);
 
         yield* registry.remove(TARGET.machineId);
         expect(hasRoutes(yield* Ref.get(harness.storedTargets), TARGET.machineId)).toBe(false);
         expect((yield* Ref.get(harness.shellCache)).has(TARGET.machineId)).toBe(false);
         expect(yield* Ref.get(harness.cacheClears)).toEqual([TARGET.machineId]);
-        expect((yield* SubscriptionRef.get(registry.entries)).has(TARGET.machineId)).toBe(
-          false,
-        );
+        expect((yield* SubscriptionRef.get(registry.entries)).has(TARGET.machineId)).toBe(false);
       }).pipe(Effect.provide(harness.layer));
     }),
   );
@@ -870,16 +852,13 @@ describe("MachineRegistry", () => {
           Effect.provideService(
             RelayMachineDiscovery.RelayMachineDiscovery,
             RelayMachineDiscovery.RelayMachineDiscovery.of({
-              state:
-                yield* SubscriptionRef.make<RelayMachineDiscovery.RelayMachineDiscoveryState>(
-                  {
-                    ...RelayMachineDiscovery.EMPTY_RELAY_MACHINE_DISCOVERY_STATE,
-                    machines: new Map([
-                      [TARGET.machineId, discovered(TARGET.machineId)],
-                      [RELAY_TARGET.machineId, discovered(RELAY_TARGET.machineId)],
-                    ]),
-                  },
-                ),
+              state: yield* SubscriptionRef.make<RelayMachineDiscovery.RelayMachineDiscoveryState>({
+                ...RelayMachineDiscovery.EMPTY_RELAY_MACHINE_DISCOVERY_STATE,
+                machines: new Map([
+                  [TARGET.machineId, discovered(TARGET.machineId)],
+                  [RELAY_TARGET.machineId, discovered(RELAY_TARGET.machineId)],
+                ]),
+              }),
               refresh: Effect.void,
             }),
           ),
@@ -905,7 +884,7 @@ describe("MachineRegistry", () => {
         const profile = new BearerConnectionProfile({
           ...BEARER_PROFILE,
           learned: true,
-          authorization: "t3-connect",
+          authorization: "vekrel-connect",
         });
         const harness = yield* makeHarness(
           learned ? [relay, BEARER_TARGET] : [relay],
@@ -935,11 +914,7 @@ describe("MachineRegistry", () => {
           expect(yield* Ref.get(harness.storedDisabled)).toEqual(new Set([machineId]));
           expect(yield* Ref.get(harness.sessions)).toHaveLength(0);
           yield* registry.setEnabled(machineId, true);
-          yield* awaitConnectionState(
-            registry,
-            machineId,
-            (state) => state.phase === "connected",
-          );
+          yield* awaitConnectionState(registry, machineId, (state) => state.phase === "connected");
         }).pipe(Effect.provide(harness.layer));
       }),
   );
@@ -994,9 +969,7 @@ describe("MachineRegistry", () => {
 
       yield* Effect.gen(function* () {
         const registry = yield* MachineRegistry.MachineRegistry;
-        const entry = (yield* SubscriptionRef.get(registry.entries)).get(
-          RELAY_TARGET.machineId,
-        );
+        const entry = (yield* SubscriptionRef.get(registry.entries)).get(RELAY_TARGET.machineId);
         expect(entry?.enabled).toBe(true);
         expect(entry?.unsupportedReason).toBeUndefined();
         yield* registry.start;
@@ -1069,11 +1042,7 @@ describe("MachineRegistry", () => {
 
         yield* Deferred.succeed(retryResult, compatible ? undefined : error);
         if (compatible) {
-          yield* awaitConnectionState(
-            registry,
-            machineId,
-            (state) => state.phase === "connected",
-          );
+          yield* awaitConnectionState(registry, machineId, (state) => state.phase === "connected");
           expect(yield* Ref.get(harness.sessions)).toHaveLength(1);
         } else {
           yield* awaitUnsupported;
@@ -1110,14 +1079,10 @@ describe("MachineRegistry", () => {
           (state) => state.phase === "available",
         );
 
-        const entry = (yield* SubscriptionRef.get(registry.entries)).get(
-          RELAY_TARGET.machineId,
-        );
+        const entry = (yield* SubscriptionRef.get(registry.entries)).get(RELAY_TARGET.machineId);
         expect(entry?.enabled).toBe(false);
         expect((yield* Ref.get(harness.storedDisabled)).has(RELAY_TARGET.machineId)).toBe(true);
-        expect(hasRoutes(yield* Ref.get(harness.storedTargets), RELAY_TARGET.machineId)).toBe(
-          true,
-        );
+        expect(hasRoutes(yield* Ref.get(harness.storedTargets), RELAY_TARGET.machineId)).toBe(true);
         expect(yield* Ref.get(harness.releasedSessions)).toBe(1);
 
         yield* registry.setEnabled(RELAY_TARGET.machineId, true);
@@ -1126,9 +1091,7 @@ describe("MachineRegistry", () => {
           RELAY_TARGET.machineId,
           (state) => state.phase === "connected",
         );
-        expect((yield* Ref.get(harness.storedDisabled)).has(RELAY_TARGET.machineId)).toBe(
-          false,
-        );
+        expect((yield* Ref.get(harness.storedDisabled)).has(RELAY_TARGET.machineId)).toBe(false);
       }).pipe(Effect.provide(harness.layer));
     }),
   );
@@ -1149,9 +1112,7 @@ describe("MachineRegistry", () => {
         );
         yield* Effect.yieldNow;
 
-        const entry = (yield* SubscriptionRef.get(registry.entries)).get(
-          RELAY_TARGET.machineId,
-        );
+        const entry = (yield* SubscriptionRef.get(registry.entries)).get(RELAY_TARGET.machineId);
         expect(entry?.target.label).toBe("Renamed");
         expect(entry?.enabled).toBe(false);
         expect(yield* Ref.get(harness.sessions)).toHaveLength(0);
@@ -1339,9 +1300,9 @@ describe("MachineRegistry", () => {
         expect(yield* Ref.get(harness.ownedDataClears)).toEqual(
           expect.arrayContaining([RELAY_TARGET.machineId, SECOND_RELAY_TARGET.machineId]),
         );
-        expect(
-          (yield* SubscriptionRef.get(registry.entries)).has(BEARER_TARGET.machineId),
-        ).toBe(true);
+        expect((yield* SubscriptionRef.get(registry.entries)).has(BEARER_TARGET.machineId)).toBe(
+          true,
+        );
       }).pipe(Effect.provide(harness.layer), Effect.scoped);
     }),
   );
@@ -1374,9 +1335,7 @@ describe("MachineRegistry", () => {
         expect((yield* SubscriptionRef.get(registry.entries)).has(RELAY_TARGET.machineId)).toBe(
           true,
         );
-        expect(hasRoutes(yield* Ref.get(harness.storedTargets), RELAY_TARGET.machineId)).toBe(
-          true,
-        );
+        expect(hasRoutes(yield* Ref.get(harness.storedTargets), RELAY_TARGET.machineId)).toBe(true);
         expect(yield* Ref.get(harness.cacheClears)).toEqual([]);
         expect(yield* Ref.get(harness.ownedDataClears)).toEqual([]);
       }).pipe(Effect.provide(harness.layer), Effect.scoped);
@@ -1650,9 +1609,7 @@ describe("MachineRegistry", () => {
         const removal = yield* Effect.forkChild(registry.remove(TARGET.machineId));
         yield* Deferred.await(removalStarted);
 
-        const stateLookup = yield* Effect.forkChild(
-          Effect.flip(registry.state(TARGET.machineId)),
-        );
+        const stateLookup = yield* Effect.forkChild(Effect.flip(registry.state(TARGET.machineId)));
         yield* Effect.yieldNow;
         expect(yield* Ref.get(harness.sessions)).toHaveLength(1);
 
@@ -1688,9 +1645,10 @@ describe("MachineRegistry", () => {
         );
         yield* registry.registerPlatform(registration);
         yield* registry.reconcilePlatform([registration]);
-        expect(
-          (yield* SubscriptionRef.get(registry.entries)).get(TARGET.machineId),
-        ).toMatchObject({ enabled: true, unsupportedReason: error.message });
+        expect((yield* SubscriptionRef.get(registry.entries)).get(TARGET.machineId)).toMatchObject({
+          enabled: true,
+          unsupportedReason: error.message,
+        });
         yield* registry.registerPlatform(
           new PrimaryConnectionRegistration({
             target: new PrimaryConnectionTarget({ ...TARGET, label: "Renamed" }),
@@ -1715,8 +1673,7 @@ describe("MachineRegistry", () => {
           (state) => state.phase === "connected",
         );
         expect(
-          (yield* SubscriptionRef.get(registry.entries)).get(TARGET.machineId)
-            ?.unsupportedReason,
+          (yield* SubscriptionRef.get(registry.entries)).get(TARGET.machineId)?.unsupportedReason,
         ).toBeUndefined();
       }).pipe(Effect.provide(harness.layer));
     }),
@@ -1945,9 +1902,9 @@ describe("MachineRegistry routes", () => {
             }),
           );
 
-          expect(
-            routesOf(yield* Ref.get(harness.storedTargets), SSH_CONNECTION.machineId),
-          ).toEqual([again]);
+          expect(routesOf(yield* Ref.get(harness.storedTargets), SSH_CONNECTION.machineId)).toEqual(
+            [again],
+          );
         }).pipe(Effect.provide(harness.layer), Effect.scoped);
       }),
   );
@@ -2013,9 +1970,7 @@ describe("MachineRegistry routes", () => {
         expect(yield* Ref.get(harness.cacheClears)).toEqual([]);
 
         yield* registry.removeRoute(LAN_TARGET.machineId, "relay");
-        expect(hasRoutes(yield* Ref.get(harness.storedTargets), LAN_TARGET.machineId)).toBe(
-          false,
-        );
+        expect(hasRoutes(yield* Ref.get(harness.storedTargets), LAN_TARGET.machineId)).toBe(false);
         expect(yield* Ref.get(harness.cacheClears)).toEqual([LAN_TARGET.machineId]);
       }).pipe(Effect.provide(harness.layer), Effect.scoped);
     }),
@@ -2063,10 +2018,7 @@ describe("MachineRegistry routes", () => {
       yield* Effect.gen(function* () {
         const registry = yield* MachineRegistry.MachineRegistry;
         const entries = yield* SubscriptionRef.get(registry.entries);
-        expect([...entries.keys()]).toEqual([
-          LAN_TARGET.machineId,
-          BEARER_TARGET.machineId,
-        ]);
+        expect([...entries.keys()]).toEqual([LAN_TARGET.machineId, BEARER_TARGET.machineId]);
         expect(entries.get(LAN_TARGET.machineId)?.alternateRoutes?.[0]?.target).toEqual(
           RELAY_TARGET,
         );
