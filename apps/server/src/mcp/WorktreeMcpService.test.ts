@@ -374,7 +374,7 @@ const runStatus = (harness: ReturnType<typeof makeHarness>) =>
 // Decodes tool arguments the way the MCP tool does before calling the service.
 const decodeHandoffInput = Schema.decodeUnknownEffect(WorktreeMcpHandoffInput);
 
-describe("t3_worktree_handoff", () => {
+describe("vekrel_worktree_handoff", () => {
   it.effect("reports a continuation failure without failing the handoff", () => {
     const harness = makeHarness({ continuation: "fails" });
     return Effect.gen(function* () {
@@ -675,7 +675,7 @@ describe("t3_worktree_handoff", () => {
   });
 });
 
-describe("t3_worktree_status", () => {
+describe("vekrel_worktree_status", () => {
   it.effect("reports an attached thread's worktree and branch", () => {
     const harness = makeHarness({
       thread: {

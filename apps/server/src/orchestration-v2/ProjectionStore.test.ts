@@ -246,7 +246,7 @@ it.effect.each([
       id: TurnItemId.make("item:thread-wait:active"),
       runId: run.id,
       type: "dynamic_tool" as const,
-      toolName: "mcp__vekrel__t3_thread_wait",
+      toolName: "mcp__vekrel__vekrel_thread_wait",
       input: { threadId: "child-thread" },
       status: "running" as const,
     };
@@ -260,7 +260,7 @@ it.effect.each([
     const foreign = {
       ...wait,
       id: TurnItemId.make("item:thread-wait:foreign"),
-      toolName: "weather.t3_thread_wait",
+      toolName: "weather.vekrel_thread_wait",
     };
     yield* updateItem(foreign);
     yield* assertBlocked(false);

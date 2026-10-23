@@ -1454,27 +1454,27 @@ export const CLAUDE_T3_MCP_TOOL_WILDCARD = "mcp__vekrel__*";
 export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__vekrel__orchestrator_capabilities",
   "mcp__vekrel__list_scheduled_tasks",
-  "mcp__vekrel__t3_thread_list",
-  "mcp__vekrel__t3_thread_wait",
-  "mcp__vekrel__t3_pending_request_list",
-  "mcp__vekrel__t3_pending_request_read",
-  "mcp__vekrel__t3_thread_configuration",
-  "mcp__vekrel__t3_thread_transfers",
-  "mcp__vekrel__t3_worktree_status",
-  "mcp__vekrel__t3_worktree_list",
-  "mcp__vekrel__t3_project_list",
-  "mcp__vekrel__t3_project_read",
-  "mcp__vekrel__t3_thread_search",
-  "mcp__vekrel__t3_preview_list",
+  "mcp__vekrel__vekrel_thread_list",
+  "mcp__vekrel__vekrel_thread_wait",
+  "mcp__vekrel__vekrel_pending_request_list",
+  "mcp__vekrel__vekrel_pending_request_read",
+  "mcp__vekrel__vekrel_thread_configuration",
+  "mcp__vekrel__vekrel_thread_transfers",
+  "mcp__vekrel__vekrel_worktree_status",
+  "mcp__vekrel__vekrel_worktree_list",
+  "mcp__vekrel__vekrel_project_list",
+  "mcp__vekrel__vekrel_project_read",
+  "mcp__vekrel__vekrel_thread_search",
+  "mcp__vekrel__vekrel_preview_list",
   "mcp__vekrel__vekrel_machine_read",
-  "mcp__vekrel__t3_queue_list",
-  "mcp__vekrel__t3_queue_read",
+  "mcp__vekrel__vekrel_queue_list",
+  "mcp__vekrel__vekrel_queue_read",
   "mcp__vekrel__html_preview",
   "mcp__vekrel__html_render",
 ];
 
 // Claude Code aborts an HTTP MCP call after 60 s ("The operation timed out.")
-// unless the server config sets `timeout`. T3's wait tools (t3_thread_wait,
+// unless the server config sets `timeout`. T3's wait tools (vekrel_thread_wait,
 // delegate_task mode=wait) legitimately block for up to an hour
 // (MAX_WAIT_TIMEOUT_MS in OrchestratorMcpService), so the budget sits just
 // above that and the server's own wait timeout is what ends a long call.

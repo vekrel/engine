@@ -34,7 +34,7 @@ import { projectLocationFlags, resolveCliAuthConfig } from "./config.ts";
 
 /**
  * Short enough that a run which stops to ask the user something is noticed
- * soon, since `t3_thread_wait` only returns on a terminal run.
+ * soon, since `vekrel_thread_wait` only returns on a terminal run.
  */
 const WAIT_SLICE_MS = 15_000;
 const READ_PAGE_LIMIT = 100;
@@ -260,7 +260,7 @@ const listAllProjects = Effect.fn("cli.thread.listAllProjects")(function* (tools
   let cursor: number | null = 0;
   while (cursor !== null) {
     const page: typeof ProjectListResult.Type = yield* tools.call(
-      "t3_project_list",
+      "vekrel_project_list",
       { cursor, limit: 100 },
       ProjectListResult,
     );
@@ -315,7 +315,7 @@ const readTimeline = Effect.fn("cli.thread.readTimeline")(function* (
   let page: OrchestratorMcpThreadReadResult;
   do {
     page = yield* tools.call(
-      "t3_thread_read",
+      "vekrel_thread_read",
       {
         threadId,
         view,
@@ -341,7 +341,7 @@ const readFullText = Effect.fn("cli.thread.readFullText")(function* (
   let nextTextOffset = item.textTruncated ? (item.nextTextOffset ?? null) : null;
   while (nextTextOffset !== null) {
     const page = yield* tools.call(
-      "t3_thread_read",
+      "vekrel_thread_read",
       { threadId, itemId: item.itemId, textOffset: nextTextOffset, runLimit: 1 },
       OrchestratorMcpThreadReadResult,
     );
@@ -387,7 +387,7 @@ export const waitForRun = Effect.fn("cli.thread.waitForRun")(function* (
   runId: RunId,
 ) {
   const waitSlice = (timeoutMs: number) =>
-    tools.call("t3_thread_wait", { threadId, runId, timeoutMs }, OrchestratorMcpThreadWaitResult);
+    tools.call("vekrel_thread_wait", { threadId, runId, timeoutMs }, OrchestratorMcpThreadWaitResult);
   const ended = (waited: OrchestratorMcpThreadWaitResult) =>
     ({ type: "ended", runId: waited.runId, status: waited.status }) satisfies WaitOutcome;
   while (true) {
@@ -396,7 +396,7 @@ export const waitForRun = Effect.fn("cli.thread.waitForRun")(function* (
     // A pending request on this run, or on an earlier run this one is queued
     // behind, blocks it until someone answers.
     const { thread } = yield* tools.call(
-      "t3_thread_read",
+      "vekrel_thread_read",
       { threadId, limit: 1, runLimit: 1 },
       OrchestratorMcpThreadReadResult,
     );
@@ -513,7 +513,7 @@ const threadListCommand = Command.make("list", {
         let cursor: number | null = 0;
         while (cursor !== null) {
           const page: OrchestratorMcpThreadListResult = yield* tools.call(
-            "t3_thread_list",
+            "vekrel_thread_list",
             { projectId: project.id, includeSubagents: false, limit: 100, cursor },
             OrchestratorMcpThreadListResult,
           );
@@ -578,7 +578,7 @@ const threadStartCommand = Command.make("start", {
         Effect.fn("cli.thread.start")(function* (tools) {
           const project = yield* resolveProject(tools, flags.project);
           const launched = yield* tools.call(
-            "t3_thread_launch",
+            "vekrel_thread_launch",
             {
               projectId: project.id,
               title,
@@ -628,7 +628,7 @@ const threadSendCommand = Command.make("send", {
         flags,
         Effect.fn("cli.thread.send")(function* (tools) {
           const sent = yield* tools.call(
-            "t3_thread_send",
+            "vekrel_thread_send",
             { threadId, message, mode: "queue" },
             OrchestratorMcpThreadSendResult,
           );

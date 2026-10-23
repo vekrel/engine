@@ -110,7 +110,7 @@ export function handoffSettings(tool: string, args: unknown, result: unknown): F
         targetChosen: threads.some((thread) => asFields(thread).target !== undefined),
       };
     }
-    case "t3_thread_launch":
+    case "vekrel_thread_launch":
       return defined({
         targetChosen: input.modelSelection !== undefined,
         workspace:
@@ -122,9 +122,9 @@ export function handoffSettings(tool: string, args: unknown, result: unknown): F
                 "existing_worktree",
               ]) ?? "root"),
       });
-    case "t3_thread_send":
+    case "vekrel_thread_send":
       return defined({ delivery: stringField(output, "delivery") });
-    case "t3_thread_send_attachments":
+    case "vekrel_thread_send_attachments":
       return { delivery: "auto" };
     case "schedule_task":
       return { bindToCurrentThread: input.bindToCurrentThread !== false };

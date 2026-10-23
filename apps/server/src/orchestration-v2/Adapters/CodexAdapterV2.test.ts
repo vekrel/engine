@@ -200,7 +200,7 @@ describe("CodexAdapterV2 runtime policy", () => {
         kind: "untrusted",
         value: "Filtered to overdue",
       });
-      assert.isDefined(withT3.additionalContext?.["t3_code_runtime"]);
+      assert.isDefined(withT3.additionalContext?.["vekrel_runtime"]);
     }),
   );
 });
@@ -1697,7 +1697,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           hasT3Mcp: true,
         });
         assert.include(
-          params.additionalContext?.t3_code_orchestration_01?.value ?? "",
+          params.additionalContext?.vekrel_orchestration_01?.value ?? "",
           "delegate_task",
         );
         const entries = codexReplayPreamble({ nativeThreadId, nativeTurnId, prompt: "work" });
@@ -4526,7 +4526,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
               type: "mcpToolCall",
               id: COMPLETED_WAIT_ITEM,
               server: "vekrel",
-              tool: "t3_thread_wait",
+              tool: "vekrel_thread_wait",
               status: "inProgress",
               arguments: { threadId: "thread:completed-wait", timeoutMs: 30000 },
             },
@@ -4546,7 +4546,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
               type: "mcpToolCall",
               id: COMPLETED_WAIT_ITEM,
               server: "vekrel",
-              tool: "t3_thread_wait",
+              tool: "vekrel_thread_wait",
               status: "completed",
               arguments: { threadId: "thread:completed-wait", timeoutMs: 30000 },
               result: { content: [{ type: "text", text: "idle" }] },
@@ -4567,7 +4567,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
               type: "mcpToolCall",
               id: ORPHAN_WAIT_ITEM,
               server: "vekrel",
-              tool: "t3_thread_wait",
+              tool: "vekrel_thread_wait",
               status: "inProgress",
               arguments: {
                 threadId:

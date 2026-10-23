@@ -1798,7 +1798,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       readonly knownOriginDefaultBranch?: string | null;
     },
   ) {
-    const configuredBaseRef = yield* readConfigValue(cwd, `branch.${refName}.t3-merge-base-ref`);
+    const configuredBaseRef = yield* readConfigValue(cwd, `branch.${refName}.vekrel-merge-base-ref`);
     if (
       configuredBaseRef?.startsWith("refs/heads/") ||
       configuredBaseRef?.startsWith("refs/remotes/")
@@ -2645,10 +2645,10 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
             `branch.${branch}.gh-merge-base`,
             currentUpstream.branchName,
           ]);
-          if (!(yield* readConfigValue(cwd, `branch.${branch}.t3-merge-base-ref`))) {
+          if (!(yield* readConfigValue(cwd, `branch.${branch}.vekrel-merge-base-ref`))) {
             yield* runGit("GitVcsDriver.pushCurrentBranch.recordComparisonRef", cwd, [
               "config",
-              `branch.${branch}.t3-merge-base-ref`,
+              `branch.${branch}.vekrel-merge-base-ref`,
               `refs/remotes/${currentUpstream.upstreamRef}`,
             ]);
           }
@@ -3789,7 +3789,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
                     const file = parseT3ProjectFile(contents);
                     return file === null
                       ? Effect.logWarning(
-                          "t3.json is invalid; initializing submodules recursively",
+                          "vekrel.json is invalid; initializing submodules recursively",
                           {
                             worktreePath,
                           },
@@ -3801,7 +3801,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         );
     if (hasSubmodules && submoduleMode.value === "none" && progress?.onSubmodulesDisabled) {
       yield* progress.onSubmodulesDisabled({
-        source: submoduleMode.source === "t3.json" ? "t3.json" : "settings",
+        source: submoduleMode.source === "vekrel.json" ? "vekrel.json" : "settings",
       });
     }
     if (submoduleMode.value !== "none") {
@@ -3855,7 +3855,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
             // gh consumes its key as a provider branch; T3 also needs the selected remote.
             yield* runGit("GitVcsDriver.createWorktree.configureComparisonRef", input.cwd, [
               "config",
-              `branch.${input.newRefName}.t3-merge-base-ref`,
+              `branch.${input.newRefName}.vekrel-merge-base-ref`,
               base.baseRef,
             ]);
           }

@@ -170,7 +170,7 @@ export class PullRequestProjectNotFoundError extends Schema.TaggedError<PullRequ
   { repository: Schema.String },
 ) {
   override get message(): string {
-    return `No project in this machine is a checkout of ${this.repository}, so its pull requests cannot be read here. Add one with t3_project_create.`;
+    return `No project in this machine is a checkout of ${this.repository}, so its pull requests cannot be read here. Add one with vekrel_project_create.`;
   }
 }
 

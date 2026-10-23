@@ -57,7 +57,7 @@ export const layer = HttpApiBuilder.group(
       const tooLarge = (error: string) =>
         Metrics.increment(Metrics.webhookDeliveriesTotal, {
           outcome: "body_too_large",
-          source: request.headers["x-t3-relay-delivery-id"] ? "relay" : "direct",
+          source: request.headers["x-vekrel-relay-delivery-id"] ? "relay" : "direct",
         }).pipe(Effect.as(json(413, { error }, "body_too_large")));
       if (Option.isNone(body)) return yield* tooLarge("body_too_large_or_unreadable");
       if (body.value.byteLength > WEBHOOK_MAX_BODY_BYTES) {

@@ -133,7 +133,7 @@ export interface CreateWorktreeProgress {
   }) => Effect.Effect<void, never>;
   readonly onSubmodulesStarted?: () => Effect.Effect<void, never>;
   readonly onSubmodulesDisabled?: (input: {
-    source: "settings" | "t3.json";
+    source: "settings" | "vekrel.json";
   }) => Effect.Effect<void, never>;
   readonly onSubmoduleLine?: (line: string) => Effect.Effect<void, never>;
   readonly onSubmodulesFinished?: (input: {
@@ -146,7 +146,7 @@ export interface CreateWorktreeOptions {
   readonly progress?: CreateWorktreeProgress;
   /**
    * Null (or omitted, for callers without settings access) defers to the
-   * checkout's own t3.json.
+   * checkout's own vekrel.json.
    */
   readonly submodules?: WorktreeSubmodules | null;
   readonly worktreesDirectory?: string;

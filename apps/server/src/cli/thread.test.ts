@@ -22,18 +22,18 @@ it.effect("--wait follows the sent run to its continuation's terminal status", (
   Effect.gen(function* () {
     const continuation = RunId.make("run-2");
     const { tools, calls } = scriptedTools({
-      t3_thread_wait: [
+      vekrel_thread_wait: [
         { threadId, runId, status: "running", timedOut: true },
         { threadId, runId: continuation, status: "failed", timedOut: false },
       ],
-      t3_thread_read: [{ thread: { pendingRequestCount: 0 } }],
+      vekrel_thread_read: [{ thread: { pendingRequestCount: 0 } }],
     });
 
     const outcome = yield* waitForRun(tools, threadId, runId);
 
     assert.deepStrictEqual(outcome, { type: "ended", runId: continuation, status: "failed" });
     assert.deepStrictEqual(
-      calls.filter((entry) => entry.tool === "t3_thread_wait").map((entry) => entry.args),
+      calls.filter((entry) => entry.tool === "vekrel_thread_wait").map((entry) => entry.args),
       [
         { threadId, runId, timeoutMs: 15_000 },
         { threadId, runId, timeoutMs: 15_000 },
@@ -45,11 +45,11 @@ it.effect("--wait follows the sent run to its continuation's terminal status", (
 it.effect("--wait stops when the thread waits for an answer instead of polling forever", () =>
   Effect.gen(function* () {
     const { tools } = scriptedTools({
-      t3_thread_wait: [
+      vekrel_thread_wait: [
         { threadId, runId, status: "queued", timedOut: true },
         { threadId, runId, status: "queued", timedOut: true },
       ],
-      t3_thread_read: [{ thread: { pendingRequestCount: 1 } }],
+      vekrel_thread_read: [{ thread: { pendingRequestCount: 1 } }],
     });
 
     assert.deepStrictEqual(yield* waitForRun(tools, threadId, runId), { type: "needs_input" });
@@ -59,11 +59,11 @@ it.effect("--wait stops when the thread waits for an answer instead of polling f
 it.effect("--wait reports its run's result when a later run is the one waiting", () =>
   Effect.gen(function* () {
     const { tools } = scriptedTools({
-      t3_thread_wait: [
+      vekrel_thread_wait: [
         { threadId, runId, status: "running", timedOut: true },
         { threadId, runId, status: "completed", timedOut: false },
       ],
-      t3_thread_read: [{ thread: { pendingRequestCount: 1 } }],
+      vekrel_thread_read: [{ thread: { pendingRequestCount: 1 } }],
     });
 
     assert.deepStrictEqual(yield* waitForRun(tools, threadId, runId), {

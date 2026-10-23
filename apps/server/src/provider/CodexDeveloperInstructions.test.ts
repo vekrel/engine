@@ -45,7 +45,7 @@ describe("buildCodexAdditionalContext", () => {
       reasoningEffort: "high",
     });
     const sections = Object.keys(context)
-      .filter((key) => key.startsWith("t3_code_orchestration_"))
+      .filter((key) => key.startsWith("vekrel_orchestration_"))
       .sort()
       .map((key) => context[key]!);
 
@@ -73,5 +73,5 @@ describe("buildCodexDeveloperInstructions", () => {
 });
 
 function runtimeInstructions(runtime: Parameters<typeof buildCodexAdditionalContext>[0]) {
-  return buildCodexAdditionalContext(runtime).t3_code_runtime!.value;
+  return buildCodexAdditionalContext(runtime).vekrel_runtime!.value;
 }

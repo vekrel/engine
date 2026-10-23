@@ -17,7 +17,7 @@
 # instead of fetching the release again.
 set -eu
 
-repo="pingdotgg/t3code"
+repo="vekrel/engine"
 base_url="${VEKREL_RELEASE_BASE_URL:-https://github.com/${repo}/releases/download}"
 t3_home="${VEKREL_HOME:-$HOME/.t3}"
 bin_dir="${VEKREL_INSTALL_BIN_DIR:-$HOME/.local/bin}"
@@ -193,7 +193,7 @@ else
   fetch_status=0
   fetch "${base_url}/v${version}/SHA256SUMS" "${staging}/SHA256SUMS" || fetch_status=$?
   if [ "$fetch_status" -eq 44 ]; then
-    fail "vekrel ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g t3@${version}\`"
+    fail "vekrel ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g vekrel@${version}\`"
   elif [ "$fetch_status" -ne 0 ]; then
     fail "could not download the release checksums"
   fi
