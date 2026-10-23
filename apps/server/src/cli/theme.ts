@@ -3,11 +3,7 @@
 // not expose atomically.
 import * as NodeFS from "node:fs";
 
-import {
-  MachineThemeFile,
-  MachineThemeId,
-  machineThemeFileHasColors,
-} from "@vekrel/contracts";
+import { MachineThemeFile, MachineThemeId, machineThemeFileHasColors } from "@vekrel/contracts";
 import { fromJsonStringPretty, fromLenientJson } from "@vekrel/shared/schemaJson";
 import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@vekrel/shared/themePalettes";
 import * as Config from "effect/Config";
@@ -33,9 +29,7 @@ import { baseDirFlag } from "./config.ts";
 const SparseSettings = Schema.Record(Schema.String, Schema.Unknown);
 const decodeSettingsJson = Schema.decodeUnknownEffect(fromLenientJson(SparseSettings));
 const encodeSettingsJson = Schema.encodeEffect(fromJsonStringPretty(SparseSettings));
-const decodeThemeFileJsonExit = Schema.decodeUnknownExit(
-  Schema.fromJsonString(MachineThemeFile),
-);
+const decodeThemeFileJsonExit = Schema.decodeUnknownExit(Schema.fromJsonString(MachineThemeFile));
 const isMachineThemeId = Schema.is(MachineThemeId);
 
 export class ThemeSettingsUnreadableError extends Schema.TaggedError<ThemeSettingsUnreadableError>()(
@@ -154,7 +148,7 @@ export class ThemeTargetMissingError extends Schema.TaggedError<ThemeTargetMissi
   {},
 ) {
   override get message(): string {
-    return "Provide a theme id or file, or run `t3 theme clear` to remove the theme.";
+    return "Provide a theme id or file, or run `vekrel-engine theme clear` to remove the theme.";
   }
 }
 
@@ -423,7 +417,7 @@ const themeSetCommand = Command.make("set", {
       const paths = yield* resolveThemePaths(flags.baseDir);
 
       // Path-shaped first, existence second. Deciding on existence alone would
-      // make `t3 theme set ocean` publish ./ocean whenever the cwd happens to
+      // make `vekrel-engine theme set ocean` publish ./ocean whenever the cwd happens to
       // hold a file by that name, instead of selecting the built-in.
       const looksLikePath =
         target.endsWith(".json") ||
@@ -497,9 +491,7 @@ const themeShowCommand = Command.make("show", { baseDir: baseDirFlag }).pipe(
         .toSorted();
 
       yield* Console.log(
-        defaultTheme === null
-          ? "Machine theme: not set.\n"
-          : `Machine theme: "${defaultTheme}".\n`,
+        defaultTheme === null ? "Machine theme: not set.\n" : `Machine theme: "${defaultTheme}".\n`,
       );
       yield* Console.log(
         published.length === 0

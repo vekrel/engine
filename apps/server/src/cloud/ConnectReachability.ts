@@ -65,13 +65,13 @@ export function classifyReachability(
     fix: string,
     hint: string | null = null,
   ): Unreachable => ({ status: "unreachable", checkedAt, cause, reason, hint, fix });
-  const restart = "Restart Vekrel. If it stays, run `t3 connect` again.";
+  const restart = "Restart Vekrel. If it stays, run `vekrel-engine connect` again.";
 
   if (!facts.managedTunnelConfigured) {
     return fail(
       "not_linked",
       "The server has not set up a Vekrel Connect tunnel.",
-      "Run `t3 connect`, then restart the server (`t3 service restart`) so it applies the link.",
+      "Run `vekrel-engine connect`, then restart the server (`vekrel-engine service restart`) so it applies the link.",
     );
   }
   if (connector === null) {

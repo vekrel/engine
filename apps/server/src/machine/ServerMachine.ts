@@ -119,9 +119,7 @@ const makeIdentity = Effect.gen(function* () {
   const persistMachineId = Effect.fn("ServerMachineIdentity.persistMachineId")(
     function* (value: string, mode: "create" | "recover") {
       const destinationPath =
-        mode === "recover"
-          ? `${serverConfig.machineIdPath}.recovery`
-          : serverConfig.machineIdPath;
+        mode === "recover" ? `${serverConfig.machineIdPath}.recovery` : serverConfig.machineIdPath;
       const tempPath = yield* fileSystem.makeTempFileScoped({
         directory: serverConfig.stateDir,
         prefix: ".machine-id-",
@@ -271,7 +269,7 @@ export const make = Effect.gen(function* () {
 
   return ServerMachine.of({
     getMachineId: Effect.succeed(machineId),
-    // The publish opt-in and relay link change at runtime (`t3 connect
+    // The publish opt-in and relay link change at runtime (`vekrel-engine connect
     // publish`, the client settings toggle), so the capability is read per
     // descriptor request rather than baked in at startup.
     getDescriptor: readAgentActivityPublishingActive(secrets).pipe(

@@ -68,7 +68,7 @@ function recoveryHint(error: RelayProtectedError): string {
     case "RelayMachineLinkLimitExceededError":
       return "Unlink an unused machine in Vekrel Connect, then restart Vekrel on this machine.";
     case "RelayAuthInvalidError":
-      return "Run `t3 connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `t3 connect logout`, then run `t3 connect` again. Restart Vekrel after signing in.";
+      return "Run `vekrel-engine connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `vekrel-engine connect logout`, then run `vekrel-engine connect` again. Restart Vekrel after signing in.";
     case "RelayMachineLinkProofExpiredError":
     case "RelayMachineLinkProofInvalidError":
       return "Check this machine's date and time, update Vekrel, then restart it.";

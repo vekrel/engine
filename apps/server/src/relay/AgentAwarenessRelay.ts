@@ -388,9 +388,7 @@ export const make = Effect.gen(function* () {
       readSecretString(RELAY_ISSUER_SECRET),
       readSecretString(RELAY_MACHINE_CREDENTIAL_SECRET),
     ]);
-    return url && machineCredential
-      ? { url, issuer: issuer ?? url, machineCredential }
-      : null;
+    return url && machineCredential ? { url, issuer: issuer ?? url, machineCredential } : null;
   });
 
   const readPublishAgentActivityEnabled = readSecretString(PUBLISH_AGENT_ACTIVITY_SECRET).pipe(
@@ -728,7 +726,7 @@ export const make = Effect.gen(function* () {
   });
 
   // Many machines never link, so while unlinked the retry backs off from 5
-  // s to 60 s. A linked machine keeps the 5 s retry, because `t3 connect
+  // s to 60 s. A linked machine keeps the 5 s retry, because `vekrel-engine connect
   // publish` can turn publishing on from another process. Keep this untraced:
   // an unlinked machine can retry for the lifetime of the process.
   const publishActiveThreadsOnceWhenConfigured = Effect.fnUntraced(function* (
@@ -788,7 +786,9 @@ export const make = Effect.gen(function* () {
           );
           break;
         case "disabled":
-          yield* Effect.logInfo("agent activity publishing disabled by Vekrel Connect configuration");
+          yield* Effect.logInfo(
+            "agent activity publishing disabled by Vekrel Connect configuration",
+          );
           break;
         case "enabled":
           yield* Effect.logInfo("agent activity publishing enabled", {

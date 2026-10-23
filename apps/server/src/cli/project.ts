@@ -222,7 +222,7 @@ const withProjectCliSessionToken = <A, E, R>(
   Effect.acquireUseRelease(
     machineAuth.issueSession({
       scopes: AuthStandardClientScopes,
-      label: "t3 project cli",
+      label: "vekrel-engine project cli",
     }),
     (issued) => run(issued.token),
     (issued) => machineAuth.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),

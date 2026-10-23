@@ -16,7 +16,7 @@ export const PersistedServerRuntimeState = Schema.Struct({
   host: Schema.optional(Schema.String),
   port: Schema.Int,
   origin: Schema.String,
-  // Vekrel: what `t3 pair` prints (VEKREL_ADVERTISED_ORIGIN); `origin` stays the connect address.
+  // Vekrel: what `vekrel-engine pair` prints (VEKREL_ADVERTISED_ORIGIN); `origin` stays the connect address.
   advertisedOrigin: Schema.optional(Schema.String),
   // Dev is single-origin: browsers must pair through this URL, not `origin`.
   devUrl: Schema.optional(Schema.String),

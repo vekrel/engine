@@ -10,7 +10,7 @@ import * as HostProcess from "@vekrel/shared/HostProcess";
  * `ELECTRON_RUN_AS_NODE`, and Electron's Windows executable is a GUI program:
  * on start it points stdout and stderr at the parent's console but leaves
  * stdin unset, so prompts see no terminal and children such as the agent
- * `t3 triage` starts inherit nothing to read from. Input the user piped or
+ * `vekrel-engine triage` starts inherit nothing to read from. Input the user piped or
  * redirected is a valid descriptor and is left alone, as is any run whose
  * output is not a console (the desktop backend, scripts).
  */

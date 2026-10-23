@@ -188,7 +188,7 @@ export class CloudLinkAuthorizationMissingError extends Schema.TaggedError<Cloud
   {},
 ) {
   override get message(): string {
-    return "Run `t3 connect link` to authorize this machine.";
+    return "Run `vekrel-engine connect link` to authorize this machine.";
   }
 }
 

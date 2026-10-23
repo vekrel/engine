@@ -6,7 +6,7 @@ import * as SqlClient from "effect/sql/SqlClient";
  * projections after the copy. The V1 transcript import still reads threads,
  * messages and pull request links, so those stay. Builds before 0.1.0 read
  * `state.sqlite`, never this file, so dropping them does not affect a rollback.
- * The freed pages are reported as reclaimable space for `t3 doctor`.
+ * The freed pages are reported as reclaimable space for `vekrel-engine doctor`.
  */
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;

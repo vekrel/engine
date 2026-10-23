@@ -72,7 +72,7 @@ function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: 
     return "Vekrel service\n  Status: unavailable on this machine\n  Supported on: Linux with systemd, macOS with launchd";
   }
   if (!status.installed) {
-    return "Vekrel service\n  Status: not installed\n  Next: Run `t3 service install`.";
+    return "Vekrel service\n  Status: not installed\n  Next: Run `vekrel-engine service install`.";
   }
   const installedVersion = status.installedVersion ?? cliVersion;
   const problems = (status.problems ?? []).map(
@@ -89,7 +89,7 @@ function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: 
       `  Unit: ${status.unitPath}`,
       `  Logs: ${status.logPath}`,
       ...problems,
-      `  Next: Run \`t3 update ${installedVersion}\` to match it, or pass \`--allow-downgrade\` to \`t3 service install\` explicitly.`,
+      `  Next: Run \`vekrel-engine update ${installedVersion}\` to match it, or pass \`--allow-downgrade\` to \`vekrel-engine service install\` explicitly.`,
     ].join("\n");
   }
   return [
@@ -98,7 +98,7 @@ function formatServiceStatus(status: BootService.BootServiceStatus, cliVersion: 
     `  Unit: ${status.unitPath}`,
     `  Logs: ${status.logPath}`,
     ...problems,
-    ...(status.current ? [] : ["  Next: Run `t3 service install` to repair it."]),
+    ...(status.current ? [] : ["  Next: Run `vekrel-engine service install` to repair it."]),
   ].join("\n");
 }
 
@@ -127,9 +127,7 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
       Effect.gen(function* () {
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
-          yield* Console.log(
-            `Vekrel service is already installed with t3@${packageJson.version}.`,
-          );
+          yield* Console.log(`Vekrel service is already installed with t3@${packageJson.version}.`);
           return;
         }
         yield* Console.log(formatServiceChange(result));
@@ -139,14 +137,14 @@ const serviceInstallCommand = Command.make("install", serviceReconcileFlags).pip
 );
 
 const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
-  Command.withDescription("Deprecated. Run `t3 update` to move to a newer release."),
+  Command.withDescription("Deprecated. Run `vekrel-engine update` to move to a newer release."),
   Command.unlisted,
   Command.withHandler((flags) =>
     runServiceCommand(
       flags,
       Effect.gen(function* () {
         yield* Console.log(
-          "`t3 service update` is deprecated: run `t3 update` to move to a newer release, or `t3 service install` to repair the service. Repairing now.",
+          "`vekrel-engine service update` is deprecated: run `vekrel-engine update` to move to a newer release, or `vekrel-engine service install` to repair the service. Repairing now.",
         );
         const result = yield* reconcileService({ allowDowngrade: flags.allowDowngrade });
         if (!result.changed) {
@@ -161,7 +159,7 @@ const serviceUpdateCommand = Command.make("update", serviceReconcileFlags).pipe(
 
 const serviceRestartCommand = Command.make("restart", projectLocationFlags).pipe(
   Command.withDescription(
-    "Restart the background service. Picks up a version installed by `t3 update` that was not restarted at the time.",
+    "Restart the background service. Picks up a version installed by `vekrel-engine update` that was not restarted at the time.",
   ),
   Command.withHandler((flags) =>
     runServiceCommand(

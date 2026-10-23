@@ -217,14 +217,13 @@ const withThreadTools = Effect.fn("cli.thread.withThreadTools")(function* <A, E,
     const machineAuth = yield* MachineAuth.MachineAuth;
     const issued = yield* Effect.acquireRelease(
       machineAuth.issueMcpClientSession({
-        label: "t3 thread cli",
+        label: "vekrel-engine thread cli",
         // The CLI runs as the machine's owner. New threads still start at
         // the project's default mode, never at this ceiling by default.
         access: "full-access",
         client: { deviceType: "bot" },
       }),
-      (session) =>
-        machineAuth.revokeSession(session.sessionId).pipe(Effect.ignore({ log: true })),
+      (session) => machineAuth.revokeSession(session.sessionId).pipe(Effect.ignore({ log: true })),
     );
     const session = yield* mcpToolSession({
       endpoint: new URL("/mcp", origin).href,
