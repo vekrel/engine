@@ -137,7 +137,7 @@ function headline(host: string, located: Located, failure: ConnectionAttemptErro
 }
 
 function steps(host: string, located: Located, failure: ConnectionAttemptError | null): string[] {
-  const checkHost = `On ${host}, check Settings > Connections or run \`t3 connect status\`.`;
+  const checkHost = `On ${host}, check Settings > Connections or run \`vekrel connect status\`.`;
   switch (located.cause) {
     case "offline":
       return ["Connect this device to the internet. Vekrel reconnects on its own."];
