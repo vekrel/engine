@@ -1,5 +1,5 @@
 /**
- * A linked git worktree gets its own (gitignored) `.t3`: feature work in a
+ * A linked git worktree gets its own (gitignored) `.vekrel`: feature work in a
  * throwaway branch must not share a database with the real app, and an ambient
  * `VEKREL_HOME` counts as an explicit base dir — flipping the state directory
  * from `<base>/dev` to `<base>/userdata`, the live production database.
@@ -72,5 +72,5 @@ export const resolveWorktreeT3Home = Effect.fn("devHome.resolveWorktreeT3Home")(
     return undefined;
   }
   const path = yield* Path.Path;
-  return path.join(worktreePath, ".t3");
+  return path.join(worktreePath, ".vekrel");
 });

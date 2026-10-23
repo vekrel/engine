@@ -626,8 +626,8 @@ function acpMcpContext(
         args: [...selfInvocationArgs(self, ["acp-mcp-bridge"])],
         env: [
           { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-          { name: "T3_ACP_MCP_ENDPOINT", value: session.endpoint },
-          { name: "T3_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
+          { name: "VEKREL_ACP_MCP_ENDPOINT", value: session.endpoint },
+          { name: "VEKREL_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
         ],
       },
     ],
@@ -635,10 +635,10 @@ function acpMcpContext(
     endpoint: session.endpoint,
     authorization: session.authorizationHeader,
     processEnvironment: {
-      T3_ACP_MCP_ENDPOINT: session.endpoint,
-      T3_ACP_MCP_AUTHORIZATION: session.authorizationHeader,
-      T3_ACP_MCP_NODE: self.command,
-      ...(self.entrypoint === undefined ? {} : { T3_ACP_MCP_ENTRYPOINT: self.entrypoint }),
+      VEKREL_ACP_MCP_ENDPOINT: session.endpoint,
+      VEKREL_ACP_MCP_AUTHORIZATION: session.authorizationHeader,
+      VEKREL_ACP_MCP_NODE: self.command,
+      ...(self.entrypoint === undefined ? {} : { VEKREL_ACP_MCP_ENTRYPOINT: self.entrypoint }),
     },
   };
 }
