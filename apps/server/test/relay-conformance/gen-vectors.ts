@@ -522,6 +522,32 @@ const dpopCases: Array<[string, DpopCase]> = [
     "bad_signature_before_time_window",
     { proof: dproof({}, {}, { key: otherEc }), now: NOW + 1000 },
   ],
+  // htu normalization (Task 3 review carry-over): default port, host/scheme case, dot segments,
+  // percent-encoding, on the proof side and on the request side.
+  ...((): Array<[string, DpopCase]> => {
+    const path = `/v1/machines/${MACHINE_ID}/connect`;
+    const variants: Array<[string, string]> = [
+      ["default_port", `https://relay.example.test:443${path}`],
+      ["other_port", `https://relay.example.test:8443${path}`],
+      ["host_case", `https://RELAY.Example.TEST${path}`],
+      ["scheme_case", `HTTPS://relay.example.test${path}`],
+      ["dot_segments", `${RELAY}/v1/./machines/x/../${MACHINE_ID}/connect`],
+      ["percent_unreserved", `${RELAY}/v1/machines/machine%2Dfixture%2D1/connect`],
+      ["percent_lowercase", `${RELAY}/v1/machines/machine%2dfixture%2d1/connect`],
+      ["percent_slash", `${RELAY}/v1/machines%2F${MACHINE_ID}/connect`],
+      ["percent_space", `${RELAY}/v1/machines/${MACHINE_ID}%20/connect`],
+      ["raw_unicode", `${RELAY}/v1/machines/${MACHINE_ID}\u00e9/connect`],
+      ["trailing_slash", `${URL1}/`],
+      ["userinfo", `https://u:p@relay.example.test${path}`],
+      ["query_and_fragment", `${URL1}?a=1#f`],
+      ["http_scheme", `http://relay.example.test${path}`],
+      ["empty_port", `https://relay.example.test:${path}`],
+    ];
+    return variants.flatMap(([name, url]): Array<[string, DpopCase]> => [
+      [`htu_${name}_in_proof`, { proof: dproof({}, { htu: url }) }],
+      [`htu_${name}_in_request`, { proof: v1, url }],
+    ]);
+  })(),
   ["method_mismatch", { proof: v1, method: "GET" }],
   ["url_mismatch", { proof: v1, url: `${RELAY}/v1/machines/other/connect` }],
   ["key_mismatch", { proof: v1, expectedThumbprint: "other-thumbprint" }],
