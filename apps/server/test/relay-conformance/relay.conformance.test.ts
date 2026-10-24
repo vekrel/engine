@@ -386,7 +386,7 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
       Effect.runPromise(
         Effect.flatMap(ManagedRelay.ManagedRelayClient, f).pipe(Effect.provide(layer)),
       );
-    return { key, call, clerkToken: token.access_token };
+    return { key, call, accountToken: token.access_token };
   };
 
   beforeAll(async () => {
@@ -542,13 +542,13 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
 
   it("managedRelay: token exchange, list machines, connect (mint) and status (health)", async () => {
     const phone = mobile(alice);
-    const listed = await phone.call((c) => c.listMachines({ clerkToken: phone.clerkToken }));
+    const listed = await phone.call((c) => c.listMachines({ accountToken: phone.accountToken }));
     expect(listed.map((m) => m.machineId)).toEqual([a.id]);
 
     const before = machineRequests.length;
     const connected = await phone.call((c) =>
       c.connectMachine({
-        clerkToken: phone.clerkToken,
+        accountToken: phone.accountToken,
         scopes: [RelayMachineConnectScope],
         machineId: MachineId.make(a.id),
         deviceId: "t13-phone",
@@ -558,7 +558,7 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
     expect(connected.endpoint.httpBaseUrl).toBe(`https://${cloudflare.records[0]!.name}/`);
     const status = await phone.call((c) =>
       c.getMachineStatus({
-        clerkToken: phone.clerkToken,
+        accountToken: phone.accountToken,
         scopes: [RelayMachineStatusScope],
         machineId: MachineId.make(a.id),
       }),
@@ -612,13 +612,13 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
     ] as const) {
       await phone.call((c) =>
         c.registerDevice({
-          clerkToken: phone.clerkToken,
+          accountToken: phone.accountToken,
           payload: { ...payload, preferences } as never,
         }),
       );
     }
     // The phone app reads v2; installed v1 clients decode iOS only.
-    const v2 = await phone.call((c) => c.listDevices({ clerkToken: phone.clerkToken }));
+    const v2 = await phone.call((c) => c.listDevices({ accountToken: phone.accountToken }));
     expect(v2.map((d) => d.deviceId)).toEqual(["iphone", "android"]);
     const v1 = await relayFetch(`${RELAY_URL}/v1/client/devices`, {
       headers: { authorization: `Bearer ${alice.access_token}` },
@@ -677,12 +677,12 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
     expect(cloudflare.tunnels).toHaveLength(1);
 
     const phone = mobile(bob);
-    const listed = await phone.call((c) => c.listMachines({ clerkToken: phone.clerkToken }));
+    const listed = await phone.call((c) => c.listMachines({ accountToken: phone.accountToken }));
     expect(listed.map((m) => m.machineId)).toEqual([b.id]);
     const refused = await phone.call((c) =>
       c
         .connectMachine({
-          clerkToken: phone.clerkToken,
+          accountToken: phone.accountToken,
           scopes: [RelayMachineConnectScope],
           machineId: MachineId.make(a.id),
         })
@@ -744,7 +744,7 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
   it("unlink: the relay removes tunnel and CNAME, the old credential is refused", async () => {
     const phone = mobile(alice);
     const ok = await phone.call((c) =>
-      c.unlinkMachine({ clerkToken: phone.clerkToken, machineId: MachineId.make(a.id) }),
+      c.unlinkMachine({ accountToken: phone.accountToken, machineId: MachineId.make(a.id) }),
     );
     expect(ok).toEqual({ ok: true });
     expect(cloudflare.tunnels).toHaveLength(0);
@@ -756,7 +756,7 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
     expect((await withLink(a, (l) => l.linkState())).linkRevoked).toBe(true);
     await withLink(a, (l) => l.unlink());
     expect((await withLink(a, (l) => l.linkState())).linked).toBe(false);
-    const phoneList = await phone.call((c) => c.listMachines({ clerkToken: phone.clerkToken }));
+    const phoneList = await phone.call((c) => c.listMachines({ accountToken: phone.accountToken }));
     expect(phoneList).toEqual([]);
   });
 
@@ -856,7 +856,7 @@ describe.skipIf(!enabled)("relay conformance (plan 6A Task 13)", () => {
   const phoneUnlink = async (token: AccountTokens, machineId: string) => {
     const phone = mobile(token);
     await phone.call((c) =>
-      c.unlinkMachine({ clerkToken: phone.clerkToken, machineId: MachineId.make(machineId) }),
+      c.unlinkMachine({ accountToken: phone.accountToken, machineId: MachineId.make(machineId) }),
     );
   };
 });

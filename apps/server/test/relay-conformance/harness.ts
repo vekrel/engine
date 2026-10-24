@@ -85,7 +85,7 @@ export const relayFetch: typeof globalThis.fetch = async (input, init) => {
 };
 
 const STRICT = { onExcessProperty: "error" } as const;
-// Account routes are Vekrel's own (T3 used Clerk); every other route is T3's contract.
+// Account routes are Vekrel's own; every other route is T3's contract.
 const ACCOUNT_ROUTE =
   /^\/(oauth|auth|device|\.well-known\/(jwks\.json|openid-configuration))(\/|$)/u;
 const SEG = "[^/]+";
