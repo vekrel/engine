@@ -3,6 +3,7 @@ import * as NodeCrypto from "node:crypto";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
+import * as Clock from "effect/Clock";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
@@ -22,6 +23,7 @@ import * as Terminal from "effect/Terminal";
 import packageJson from "../../package.json" with { type: "json" };
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
+import * as ServerConfig from "../config.ts";
 import * as ExternalLauncher from "../process/externalLauncher.ts";
 import * as CliTokenManager from "./CliTokenManager.ts";
 
@@ -119,13 +121,35 @@ const layerDeviceFlow = (server: DeviceFlowServer) =>
 const tokenRequests = (requests: ReadonlyArray<RecordedTokenRequest>) =>
   requests.filter((request) => request.url.endsWith("/oauth/token"));
 
+const REFRESH_LOCK = "cloud-cli-oauth-token.lock";
+
+/** Secret store mock with an in-memory refresh lock (single holder: tests here never contend). */
+const mockSecrets = (impl: Partial<ServerSecretStore.ServerSecretStore["Service"]>) => {
+  const locks = new Map<string, Uint8Array>();
+  return Layer.mock(ServerSecretStore.ServerSecretStore)({
+    ...impl,
+    get: (name) =>
+      name === REFRESH_LOCK
+        ? Effect.sync(() => Option.fromNullishOr(locks.get(name)))
+        : (impl.get?.(name) ?? Effect.succeedNone),
+    create: (name, value) =>
+      name === REFRESH_LOCK
+        ? Effect.sync(() => void locks.set(name, value))
+        : (impl.create?.(name, value) ?? Effect.void),
+    remove: (name) =>
+      name === REFRESH_LOCK
+        ? Effect.sync(() => void locks.delete(name))
+        : (impl.remove?.(name) ?? Effect.void),
+  });
+};
+
 const expiredStoredToken = new TextEncoder().encode(
   JSON.stringify({ accessToken: "expired", refreshToken: "refresh-token-1", expiresAtEpochMs: 0 }),
 );
 
 const provideRefreshManager = (
   httpClient: HttpClient.HttpClient,
-  secrets = Layer.mock(ServerSecretStore.ServerSecretStore)({
+  secrets = mockSecrets({
     get: () => Effect.succeedSome(expiredStoredToken),
   }),
 ) =>
@@ -168,7 +192,7 @@ it.effect(
           );
         }),
       );
-      const secrets = Layer.mock(ServerSecretStore.ServerSecretStore)({
+      const secrets = mockSecrets({
         get: () =>
           Effect.sync(() => {
             reads++;
@@ -196,7 +220,8 @@ it.effect(
           Effect.forkChild({ startImmediately: true }),
         );
         yield* Fiber.interrupt(waiter);
-        assert.equal(reads, 1, "queued caller must not read credentials during refresh");
+        // One read to see the token is due, one re-read under the cross-process lock.
+        assert.equal(reads, 2, "queued caller must not read credentials during refresh");
         const interruption = yield* Fiber.interrupt(refresh).pipe(
           Effect.forkChild({ startImmediately: true }),
         );
@@ -209,7 +234,7 @@ it.effect(
         const reader = yield* manager.getExisting.pipe(
           Effect.forkChild({ startImmediately: true }),
         );
-        assert.equal(reads, 1, "credential lock must cover persistence");
+        assert.equal(reads, 2, "credential lock must cover persistence");
         yield* Deferred.succeed(releasePersist, undefined);
         yield* Fiber.join(interruption);
         const token = Option.getOrThrow(yield* Fiber.join(reader));
@@ -348,7 +373,7 @@ it.effect.each([200, 500])(
           return HttpClientResponse.fromWeb(request, new Response("", { status }));
         }),
       );
-      const secrets = Layer.mock(ServerSecretStore.ServerSecretStore)({
+      const secrets = mockSecrets({
         get: () => Effect.succeedSome(storedToken("refresh-to-revoke")),
         remove: (name) => Effect.sync(() => void removed.push(name)),
       });
@@ -405,7 +430,7 @@ it.effect("loopback PKCE sign-in exchanges the code at the relay and writes the 
         );
       }),
     );
-    const secrets = Layer.mock(ServerSecretStore.ServerSecretStore)({
+    const secrets = mockSecrets({
       get: () => Effect.succeedNone,
       set: (name, value) =>
         Effect.sync(() => void written.set(name, new TextDecoder().decode(value))),
@@ -461,4 +486,106 @@ it.effect("loopback PKCE sign-in exchanges the code at the relay and writes the 
     assert.equal(file.refreshToken, "refresh-token-1");
     assert.equal(file.identity, "theo@example.test");
   }),
+);
+
+// Two processes (the server and a `vekrel connect` command) share one token file; each has its
+// own manager. These use the real file-backed secret store in a temp dir.
+const layerFileSecrets = ServerSecretStore.layer.pipe(
+  Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "vekrel-cli-lock-" })),
+  Layer.provideMerge(NodeServices.layer),
+);
+
+const rotatingTokenEndpoint = (onRequest: Effect.Effect<void>) => {
+  const tokenRequests: Array<RecordedTokenRequest> = [];
+  const httpClient = HttpClient.make((request) =>
+    Effect.gen(function* () {
+      tokenRequests.push(recordRequest(request));
+      yield* onRequest;
+      return HttpClientResponse.fromWeb(
+        request,
+        Response.json({
+          access_token: "rotated-access",
+          refresh_token: "rotated-refresh",
+          expires_in: 3600,
+          token_type: "bearer",
+        }),
+      );
+    }),
+  );
+  return { tokenRequests, httpClient };
+};
+
+const makeManager = (
+  secrets: ServerSecretStore.ServerSecretStore["Service"],
+  httpClient: HttpClient.HttpClient,
+) =>
+  CliTokenManager.make.pipe(
+    Effect.provideService(ServerSecretStore.ServerSecretStore, secrets),
+    Effect.provideService(HttpClient.HttpClient, httpClient),
+    Effect.provide(Layer.mock(ExternalLauncher.ExternalLauncher)({})),
+  );
+
+it.live("two managers sharing the token file refresh it once and both get the new token", () =>
+  Effect.gen(function* () {
+    const store = yield* ServerSecretStore.ServerSecretStore;
+    yield* store.set("cloud-cli-oauth-token", expiredStoredToken);
+    const firstRequestStarted = yield* Deferred.make<void>();
+    const releaseFirstRequest = yield* Deferred.make<void>();
+    const secondWaitsForLock = yield* Deferred.make<void>();
+    const endpoint = rotatingTokenEndpoint(
+      Effect.gen(function* () {
+        yield* Deferred.succeed(firstRequestStarted, undefined);
+        yield* Deferred.await(releaseFirstRequest);
+      }),
+    );
+    const contendedStore = ServerSecretStore.ServerSecretStore.of({
+      ...store,
+      create: (name, value) =>
+        store
+          .create(name, value)
+          .pipe(
+            Effect.tapError((error) =>
+              name === REFRESH_LOCK && ServerSecretStore.isSecretAlreadyExistsError(error)
+                ? Deferred.succeed(secondWaitsForLock, undefined)
+                : Effect.void,
+            ),
+          ),
+    });
+    const server = yield* makeManager(contendedStore, endpoint.httpClient);
+    const cli = yield* makeManager(contendedStore, endpoint.httpClient);
+
+    const first = yield* server.getExisting.pipe(Effect.forkChild);
+    yield* Deferred.await(firstRequestStarted);
+    const second = yield* cli.getExisting.pipe(Effect.forkChild);
+    yield* Deferred.await(secondWaitsForLock);
+    yield* Deferred.succeed(releaseFirstRequest, undefined);
+
+    const [a, b] = yield* Effect.all([Fiber.join(first), Fiber.join(second)]);
+    assert.lengthOf(endpoint.tokenRequests, 1);
+    assert.equal(endpoint.tokenRequests[0]!.params.get("refresh_token"), "refresh-token-1");
+    assert.equal(Option.getOrThrow(a).refreshToken, "rotated-refresh");
+    assert.equal(Option.getOrThrow(b).refreshToken, "rotated-refresh");
+    assert.isTrue(Option.isNone(yield* store.get(REFRESH_LOCK)), "lock released");
+  }).pipe(provideTestEnv, Effect.timeout(Duration.seconds(20)), Effect.provide(layerFileSecrets)),
+);
+
+it.live("takes over a stale lock left by a process that died while refreshing", () =>
+  Effect.gen(function* () {
+    const store = yield* ServerSecretStore.ServerSecretStore;
+    const now = yield* Clock.currentTimeMillis;
+    yield* store.set("cloud-cli-oauth-token", expiredStoredToken);
+    yield* store.set(
+      REFRESH_LOCK,
+      new TextEncoder().encode(
+        JSON.stringify({ owner: "dead-process", acquiredAtEpochMs: now - 60_000 }),
+      ),
+    );
+    const endpoint = rotatingTokenEndpoint(Effect.void);
+    const manager = yield* makeManager(store, endpoint.httpClient);
+
+    const token = yield* manager.getExisting;
+    assert.lengthOf(endpoint.tokenRequests, 1);
+    assert.equal(Option.getOrThrow(token).refreshToken, "rotated-refresh");
+    assert.isTrue(Option.isNone(yield* store.get(REFRESH_LOCK)), "lock released");
+  }).pipe(provideTestEnv, Effect.timeout(Duration.seconds(20)), Effect.provide(layerFileSecrets)),
 );

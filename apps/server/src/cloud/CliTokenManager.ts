@@ -35,6 +35,15 @@ import { cloudCliOAuthConfig, type CloudCliOAuthConfig } from "./publicConfig.ts
 import { renderLoopbackAuthorizationCompleteHtml } from "./cliAuthHtml.ts";
 
 const CLOUD_CLI_OAUTH_TOKEN_SECRET = "cloud-cli-oauth-token";
+// Cross-process refresh lock, next to the token file. The relay revokes the whole refresh
+// family when a rotated token is reused, so the server and `vekrel connect` commands must
+// never refresh the same token at once.
+const CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET = "cloud-cli-oauth-token.lock";
+// Longer than one refresh (OAUTH_REQUEST_TIMEOUT) plus persistence; a lock this old was
+// left by a process that died while holding it.
+const CLOUD_CLI_OAUTH_REFRESH_LOCK_STALE_MS = Duration.toMillis(Duration.seconds(30));
+const CLOUD_CLI_OAUTH_REFRESH_LOCK_RETRY_MIN = Duration.millis(50);
+const CLOUD_CLI_OAUTH_REFRESH_LOCK_RETRY_MAX = Duration.seconds(1);
 const CLOUD_CLI_OAUTH_CALLBACK_TIMEOUT = Duration.minutes(10);
 const CLOUD_CLI_OAUTH_REFRESH_EARLY_MS = Duration.toMillis(Duration.minutes(5));
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
@@ -129,6 +138,12 @@ const PersistedToken = Schema.Struct({
   identity: Schema.optional(Schema.String),
 });
 export type PersistedToken = typeof PersistedToken.Type;
+
+const RefreshLockJson = Schema.fromJsonString(
+  Schema.Struct({ owner: Schema.String, acquiredAtEpochMs: Schema.Number }),
+);
+const decodeRefreshLock = Schema.decodeUnknownOption(RefreshLockJson);
+const encodeRefreshLock = Schema.encodeSync(RefreshLockJson);
 
 const PersistedTokenJson = Schema.fromJsonString(PersistedToken);
 const decodePersistedToken = Schema.decodeUnknownEffect(PersistedTokenJson);
@@ -579,17 +594,71 @@ export const make = Effect.gen(function* () {
     return { _tag: "Authorized", token } as const;
   });
 
+  const isDue = (token: PersistedToken) =>
+    Clock.currentTimeMillis.pipe(
+      Effect.map((now) => token.expiresAtEpochMs - CLOUD_CLI_OAUTH_REFRESH_EARLY_MS <= now),
+    );
+
+  const releaseRefreshLock = (owner: string) =>
+    secrets.get(CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET).pipe(
+      Effect.flatMap((held) =>
+        Option.isSome(held) &&
+        Option.getOrUndefined(decodeRefreshLock(bytesToString(held.value)))?.owner === owner
+          ? secrets.remove(CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET)
+          : Effect.void,
+      ),
+      Effect.ignore,
+    );
+
+  // `create` is exclusive (link or AlreadyExists), so one process at a time holds the lock.
+  const acquireRefreshLock = Effect.fn("cloud.cli_token.acquire_refresh_lock")(function* () {
+    const owner = Base64Url.encode(yield* crypto.randomBytes(16));
+    let retry = CLOUD_CLI_OAUTH_REFRESH_LOCK_RETRY_MIN;
+    while (true) {
+      const now = yield* Clock.currentTimeMillis;
+      const acquired = yield* secrets
+        .create(
+          CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET,
+          stringToBytes(encodeRefreshLock({ owner, acquiredAtEpochMs: now })),
+        )
+        .pipe(
+          Effect.as(true),
+          Effect.catchIf(ServerSecretStore.isSecretAlreadyExistsError, () => Effect.succeed(false)),
+        );
+      if (acquired) return owner;
+      const held = yield* secrets.get(CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET);
+      if (Option.isNone(held)) continue;
+      const lock = decodeRefreshLock(bytesToString(held.value));
+      if (
+        Option.isNone(lock) ||
+        Math.abs(now - lock.value.acquiredAtEpochMs) > CLOUD_CLI_OAUTH_REFRESH_LOCK_STALE_MS
+      ) {
+        // shortcut: read-then-remove is not atomic; two processes taking over the same stale
+        // lock within that gap could both proceed. Only reachable after a holder crashed;
+        // upgrade to rename-based takeover if it shows up.
+        yield* secrets.remove(CLOUD_CLI_OAUTH_REFRESH_LOCK_SECRET);
+        continue;
+      }
+      yield* Effect.sleep(retry);
+      retry = Duration.min(Duration.times(retry, 2), CLOUD_CLI_OAUTH_REFRESH_LOCK_RETRY_MAX);
+    }
+  });
+
   const getExistingNoLock = Effect.fn("cloud.cli_token.get_existing_no_lock")(function* () {
     const token = yield* read();
-    if (Option.isNone(token)) return token;
-    const now = yield* Clock.currentTimeMillis;
-    if (token.value.expiresAtEpochMs - CLOUD_CLI_OAUTH_REFRESH_EARLY_MS > now) {
-      return token;
-    }
-    return Option.some(
-      // The endpoint can rotate the refresh token before shutdown interrupts us.
-      // Keep the lock through persistence; the exchange still times out internally.
-      yield* refresh(token.value).pipe(Effect.flatMap(persist), Effect.uninterruptible),
+    if (Option.isNone(token) || !(yield* isDue(token.value))) return token;
+    // Waiting for the lock stays interruptible; once held, re-read, refresh and persist run
+    // to completion: the endpoint can rotate the refresh token before shutdown interrupts us.
+    return yield* Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function* () {
+        const owner = yield* restore(acquireRefreshLock());
+        return yield* Effect.gen(function* () {
+          // Another process may have refreshed (or signed out) while we waited.
+          const current = yield* read();
+          if (Option.isNone(current) || !(yield* isDue(current.value))) return current;
+          return Option.some(yield* refresh(current.value).pipe(Effect.flatMap(persist)));
+        }).pipe(Effect.ensuring(releaseRefreshLock(owner)));
+      }),
     );
   });
 
