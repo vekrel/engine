@@ -123,6 +123,10 @@
       "types": "./src/t3ToolSummary.ts",
       "default": "./src/t3ToolSummary.ts"
     },
+    "./account-auth": {
+      "types": "./src/accountAuth.ts",
+      "default": "./src/accountAuth.ts"
+    },
     "./relay": {
       "types": "./src/relay/index.ts",
       "default": "./src/relay/index.ts"

@@ -23,23 +23,21 @@ import { relayProtectedErrorMessage } from "./errorPresentation.ts";
 
 const DEFAULT_STALE_TIME_MS = 15_000;
 const DEFAULT_IDLE_TTL_MS = 5 * 60_000;
-const CLERK_TOKEN_EXPIRY_SKEW_MS = 5_000;
+const ACCOUNT_TOKEN_EXPIRY_SKEW_MS = 5_000;
 const isManagedRelayRequestFailedError = Schema.is(ManagedRelay.ManagedRelayRequestFailedError);
 
 export interface ManagedRelaySession {
   readonly accountId: string;
-  readonly readClerkToken: () => Effect.Effect<string | null, ManagedRelaySessionError>;
+  readonly readToken: () => Effect.Effect<string | null, ManagedRelaySessionError>;
 }
 
 export interface ManagedRelaySessionInput {
   readonly accountId: string;
-  readonly readClerkToken: () => Promise<string | null>;
+  readonly readToken: () => Promise<string | null>;
 }
 
 interface ManagedRelaySessionControl {
-  readonly updateReadClerkToken: (
-    readClerkToken: ManagedRelaySessionInput["readClerkToken"],
-  ) => void;
+  readonly updateReadToken: (readToken: ManagedRelaySessionInput["readToken"]) => void;
 }
 
 export interface ManagedRelaySnapshotState<A> {
@@ -51,7 +49,7 @@ export interface ManagedRelaySnapshotState<A> {
 
 export interface ManagedRelayQueryEvent {
   readonly operation: "machines" | "devices" | "machine-status";
-  readonly stage: "clerk-token" | "relay-request" | "validation";
+  readonly stage: "account-token" | "relay-request" | "validation";
   readonly phase: "start" | "success" | "failure";
   readonly accountId: string;
   readonly machineId?: string;
@@ -78,11 +76,11 @@ const managedRelaySessionControls = new WeakMap<ManagedRelaySession, ManagedRela
 export function createManagedRelaySession(input: ManagedRelaySessionInput): ManagedRelaySession {
   let cachedToken: { readonly token: string; readonly expiresAtMillis: number } | null = null;
   let pendingToken: Promise<string | null> | null = null;
-  let readClerkToken = input.readClerkToken;
+  let readToken = input.readToken;
   let tokenProviderGeneration = 0;
 
-  const readCachedClerkToken = async (nowMillis: number): Promise<string | null> => {
-    if (cachedToken && cachedToken.expiresAtMillis > nowMillis + CLERK_TOKEN_EXPIRY_SKEW_MS) {
+  const readCachedToken = async (nowMillis: number): Promise<string | null> => {
+    if (cachedToken && cachedToken.expiresAtMillis > nowMillis + ACCOUNT_TOKEN_EXPIRY_SKEW_MS) {
       return cachedToken.token;
     }
     if (pendingToken) {
@@ -90,7 +88,7 @@ export function createManagedRelaySession(input: ManagedRelaySessionInput): Mana
     }
 
     const operationGeneration = tokenProviderGeneration;
-    const operation = readClerkToken().then((token) => {
+    const operation = readToken().then((token) => {
       if (operationGeneration !== tokenProviderGeneration) {
         return token;
       }
@@ -121,10 +119,10 @@ export function createManagedRelaySession(input: ManagedRelaySessionInput): Mana
 
   const session: ManagedRelaySession = {
     accountId: input.accountId,
-    readClerkToken: Effect.fn("clientRuntime.managedRelaySession.readClerkToken")(function* () {
+    readToken: Effect.fn("clientRuntime.managedRelaySession.readToken")(function* () {
       const nowMillis = yield* Clock.currentTimeMillis;
       return yield* Effect.tryPromise({
-        try: () => readCachedClerkToken(nowMillis),
+        try: () => readCachedToken(nowMillis),
         catch: (cause) =>
           new ManagedRelaySessionError({
             message: "Could not obtain the Vekrel Connect session token.",
@@ -134,8 +132,8 @@ export function createManagedRelaySession(input: ManagedRelaySessionInput): Mana
     }),
   };
   managedRelaySessionControls.set(session, {
-    updateReadClerkToken: (nextReadClerkToken) => {
-      readClerkToken = nextReadClerkToken;
+    updateReadToken: (nextReadToken) => {
+      readToken = nextReadToken;
       tokenProviderGeneration += 1;
       pendingToken = null;
     },
@@ -157,9 +155,9 @@ export function setManagedRelaySession(
   if (current?.accountId === input.accountId) {
     const control = managedRelaySessionControls.get(current);
     if (control) {
-      // Clerk can replace its token reader during routine same-account refreshes.
+      // The auth provider can replace its token reader during routine same-account refreshes.
       // Keep the session stable so those refreshes do not invalidate queries or reconnect leases.
-      control.updateReadClerkToken(input.readClerkToken);
+      control.updateReadToken(input.readToken);
       return;
     }
   }
@@ -176,10 +174,10 @@ export function managedRelayAccountChanges(
   );
 }
 
-function readSessionClerkToken(
+function readSessionToken(
   session: ManagedRelaySession,
 ): Effect.Effect<string, ManagedRelaySessionError> {
-  return session.readClerkToken().pipe(
+  return session.readToken().pipe(
     Effect.filterOrFail(
       (token): token is string => Boolean(token),
       () =>
@@ -202,12 +200,12 @@ export const deregisterManagedRelayMachine = Effect.fn(
       message: "Sign in to Vekrel Connect before deregistering a machine.",
     });
   }
-  const clerkToken = yield* readSessionClerkToken(session);
+  const accountToken = yield* readSessionToken(session);
   const relay = yield* ManagedRelay.ManagedRelayClient;
-  yield* relay.unlinkMachine({ clerkToken, machineId: input.machineId });
+  yield* relay.unlinkMachine({ accountToken, machineId: input.machineId });
 });
 
-function requireClerkToken(
+function requireToken(
   get: Atom.AtomContext,
   accountId: string,
 ): Effect.Effect<string, ManagedRelaySessionError> {
@@ -219,7 +217,7 @@ function requireClerkToken(
       }),
     );
   }
-  return readSessionClerkToken(session);
+  return readSessionToken(session);
 }
 
 function statusKey(input: {
@@ -340,14 +338,14 @@ export function createManagedRelayQueryManager(
       .atom((get) =>
         Effect.gen(function* () {
           const base = { operation: "machines" as const, accountId };
-          const clerkToken = yield* observe(
-            { ...base, stage: "clerk-token" },
-            requireClerkToken(get, accountId),
+          const accountToken = yield* observe(
+            { ...base, stage: "account-token" },
+            requireToken(get, accountId),
           );
           const relay = yield* ManagedRelay.ManagedRelayClient;
           return yield* observe(
             { ...base, stage: "relay-request" },
-            relay.listMachines({ clerkToken }),
+            relay.listMachines({ accountToken }),
           );
         }),
       )
@@ -363,14 +361,14 @@ export function createManagedRelayQueryManager(
       .atom((get) =>
         Effect.gen(function* () {
           const base = { operation: "devices" as const, accountId };
-          const clerkToken = yield* observe(
-            { ...base, stage: "clerk-token" },
-            requireClerkToken(get, accountId),
+          const accountToken = yield* observe(
+            { ...base, stage: "account-token" },
+            requireToken(get, accountId),
           );
           const relay = yield* ManagedRelay.ManagedRelayClient;
           return yield* observe(
             { ...base, stage: "relay-request" },
-            relay.listDevices({ clerkToken }),
+            relay.listDevices({ accountToken }),
           );
         }),
       )
@@ -391,15 +389,15 @@ export function createManagedRelayQueryManager(
             accountId,
             machineId: machine.machineId,
           };
-          const clerkToken = yield* observe(
-            { ...base, stage: "clerk-token" },
-            requireClerkToken(get, accountId),
+          const accountToken = yield* observe(
+            { ...base, stage: "account-token" },
+            requireToken(get, accountId),
           );
           const relay = yield* ManagedRelay.ManagedRelayClient;
           const status = yield* observe(
             { ...base, stage: "relay-request" },
             relay.getMachineStatus({
-              clerkToken,
+              accountToken,
               scopes: [RelayMachineStatusScope, RelayMachineConnectScope],
               machineId: machine.machineId,
             }),

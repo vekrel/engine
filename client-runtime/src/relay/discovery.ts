@@ -92,9 +92,9 @@ function validateStatus(
   return Effect.succeed(status);
 }
 
-function relayAccountId(clerkToken: string): Option.Option<string> {
+function relayAccountId(accountToken: string): Option.Option<string> {
   try {
-    return Option.fromNullishOr(decodeRelayJwt(clerkToken).sub).pipe(
+    return Option.fromNullishOr(decodeRelayJwt(accountToken).sub).pipe(
       Option.filter((subject) => subject.length > 0),
     );
   } catch {
@@ -150,12 +150,12 @@ export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
 
   const refreshStatus = Effect.fn("RelayMachineDiscovery.refreshStatus")(function* (
     generation: number,
-    clerkToken: string,
+    accountToken: string,
     machine: RelayClientMachineRecord,
   ) {
     const result = yield* relay
       .getMachineStatus({
-        clerkToken,
+        accountToken,
         scopes: [RelayMachineStatusScope, RelayMachineConnectScope],
         machineId: machine.machineId,
       })
@@ -228,7 +228,7 @@ export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
       // clean empty list. Only the session-level "no credentials" error is
       // benign — relay-side auth failures (expired/invalid tokens) happen
       // after this point and must surface as errors.
-      const tokenResult = yield* Effect.result(session.clerkToken);
+      const tokenResult = yield* Effect.result(session.accountToken);
       if (tokenResult._tag === "Failure") {
         const failure = tokenResult.failure;
         if (failure._tag === "ConnectionBlockedError" && failure.reason === "authentication") {
@@ -243,11 +243,11 @@ export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
         }
         return yield* failure;
       }
-      const clerkToken = tokenResult.success;
+      const accountToken = tokenResult.success;
       if ((yield* Ref.get(accountGeneration)) !== generation) {
         return;
       }
-      const accountId = relayAccountId(clerkToken);
+      const accountId = relayAccountId(accountToken);
       const previousAccountId = yield* Ref.get(activeAccountId);
       if (
         Option.isSome(previousAccountId) &&
@@ -259,7 +259,7 @@ export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
       yield* Ref.set(activeAccountId, accountId);
 
       const machines = yield* relay
-        .listMachines({ clerkToken })
+        .listMachines({ accountToken })
         .pipe(Effect.mapError(mapManagedRelayError));
       if ((yield* Ref.get(accountGeneration)) !== generation) {
         return;
@@ -280,7 +280,7 @@ export const make = Effect.fn("RelayMachineDiscovery.make")(function* () {
 
       yield* Effect.forEach(
         machines,
-        (machine) => refreshStatus(generation, clerkToken, machine),
+        (machine) => refreshStatus(generation, accountToken, machine),
         {
           concurrency: "unbounded",
           discard: true,
