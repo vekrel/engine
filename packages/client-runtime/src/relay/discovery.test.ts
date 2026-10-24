@@ -61,7 +61,7 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
   const listCalls = yield* Ref.make(0);
   const listFailure = yield* Ref.make<ManagedRelay.ManagedRelayClientError | null>(null);
   const secondListCall = yield* Deferred.make<void>();
-  const clerkToken = yield* Ref.make<string | null>("clerk-token");
+  const accountToken = yield* Ref.make<string | null>("account-token");
   const sessionIdentity = { accountId: "account-1" };
   const wakeups = yield* SubscriptionRef.make<{
     readonly sequence: number;
@@ -128,12 +128,12 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
         Layer.succeed(
           ClientCapabilities.CloudSession,
           ClientCapabilities.CloudSession.of({
-            identity: Ref.get(clerkToken).pipe(
+            identity: Ref.get(accountToken).pipe(
               Effect.map((token) =>
                 token === null ? Option.none() : Option.some(sessionIdentity),
               ),
             ),
-            clerkToken: Ref.get(clerkToken).pipe(
+            accountToken: Ref.get(accountToken).pipe(
               Effect.filterOrFail(
                 (token) => token !== null,
                 () =>
@@ -163,7 +163,7 @@ const makeHarness = Effect.fn("RelayDiscoveryTest.makeHarness")(function* () {
     layer,
     listCalls,
     listFailure,
-    clerkToken,
+    accountToken,
     networkStatus,
     secondListCall,
     statusRequests,
@@ -288,7 +288,7 @@ describe("RelayMachineDiscovery", () => {
             Layer.succeed(ManagedRelay.ManagedRelayClient, client),
             Layer.succeed(ClientCapabilities.CloudSession, {
               identity: Effect.succeedSome({ accountId: "account-1" }),
-              clerkToken: Effect.succeed("clerk-token"),
+              accountToken: Effect.succeed("account-token"),
             }),
             Layer.succeed(Connectivity.Connectivity, {
               status: SubscriptionRef.get(networkStatus),
@@ -384,7 +384,7 @@ describe("RelayMachineDiscovery", () => {
       const harness = yield* makeHarness();
       yield* Effect.gen(function* () {
         const discovery = yield* RelayMachineDiscovery.RelayMachineDiscovery;
-        yield* Ref.set(harness.clerkToken, null);
+        yield* Ref.set(harness.accountToken, null);
         yield* discovery.refresh;
 
         const state = yield* SubscriptionRef.get(discovery.state);
@@ -406,7 +406,7 @@ describe("RelayMachineDiscovery", () => {
           Stream.runHead,
         );
 
-        yield* Ref.set(harness.clerkToken, null);
+        yield* Ref.set(harness.accountToken, null);
         yield* harness.wake("credentials-changed");
         yield* SubscriptionRef.changes(discovery.state).pipe(
           Stream.filter((state) => state.machines.size === 0),

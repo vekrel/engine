@@ -106,7 +106,7 @@ const makeHarness = Effect.fn("TestRemoteAuthorization.makeHarness")(function* (
   readonly bootstrap?: RelayMachineConnectResponse;
   readonly beforeBootstrap?: Effect.Effect<void, ManagedRelay.ManagedRelayClientError>;
   readonly beforePut?: Effect.Effect<void>;
-  readonly clerkToken?: ClientCapabilities.CloudSession["Service"]["clerkToken"];
+  readonly accountToken?: ClientCapabilities.CloudSession["Service"]["accountToken"];
 }) {
   const tokens = yield* Ref.make(
     new Map(
@@ -193,7 +193,7 @@ const makeHarness = Effect.fn("TestRemoteAuthorization.makeHarness")(function* (
         Layer.succeed(ManagedRelay.ManagedRelayClient, relay),
         Layer.succeed(ClientCapabilities.CloudSession, {
           identity: Ref.get(session),
-          clerkToken: input.clerkToken ?? Effect.succeed("clerk-session"),
+          accountToken: input.accountToken ?? Effect.succeed("account-session"),
         }),
         Layer.succeed(ClientCapabilities.RelayDeviceIdentity, {
           deviceId: Effect.succeedSome("device-1"),

@@ -1,51 +1,52 @@
+import { sha256 } from "@noble/hashes/sha2";
+import * as Base64Url from "effect/encoding/Base64Url";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  buildConnectAuthorizeRequestUrl,
+  buildRelayAuthorizeUrl,
   connectLoopbackRedirectUri,
-  readConnectAuthorizeRequest,
+  createOAuthState,
+  createPkcePair,
 } from "./connectAuth.ts";
 
 describe("connectAuth", () => {
-  it("round-trips state, challenge, and loopback port through the authorize URL fragment", () => {
-    const url = buildConnectAuthorizeRequestUrl({
-      hostedAppUrl: "https://app.t3.codes",
-      state: "q7mK9xV2pL4nR8sT6wYzAQ",
-      challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
-      loopbackPort: 34338,
-    });
-    const parsed = new URL(url);
+  it("makes an RFC 7636 S256 verifier and challenge pair", () => {
+    const pair = createPkcePair();
 
-    expect(parsed.origin).toBe("https://app.t3.codes");
-    expect(parsed.pathname).toBe("/connect");
-    expect(parsed.search).toBe("");
-    expect(readConnectAuthorizeRequest(parsed)).toEqual({
-      state: "q7mK9xV2pL4nR8sT6wYzAQ",
-      challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
-      loopbackPort: 34338,
-    });
-    expect(connectLoopbackRedirectUri(34338)).toBe("http://127.0.0.1:34338/callback");
+    expect(pair.verifier).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    expect(pair.challenge).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    expect(pair.challenge).toBe(Base64Url.encode(sha256(new TextEncoder().encode(pair.verifier))));
+    expect(createPkcePair().verifier).not.toBe(pair.verifier);
+    expect(createOAuthState()).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    expect(createOAuthState()).not.toBe(createOAuthState());
   });
 
-  it("rejects authorize requests missing state, challenge, or port", () => {
-    expect(readConnectAuthorizeRequest(new URL("https://app.t3.codes/connect"))).toBeNull();
-    expect(
-      readConnectAuthorizeRequest(new URL("https://app.t3.codes/connect#state=abc&port=34338")),
-    ).toBeNull();
-    expect(
-      readConnectAuthorizeRequest(new URL("https://app.t3.codes/connect#challenge=abc&port=34338")),
-    ).toBeNull();
-    expect(
-      readConnectAuthorizeRequest(new URL("https://app.t3.codes/connect#state=abc&challenge=abc")),
-    ).toBeNull();
+  it("matches the RFC 7636 appendix B example", () => {
+    const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+    expect(Base64Url.encode(sha256(new TextEncoder().encode(verifier)))).toBe(
+      "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+    );
   });
 
-  it("rejects authorize requests whose loopback port is corrupted", () => {
-    for (const port of ["", "abc", "-1", "0", "65536", "34338x", "34 38"]) {
-      const url = new URL(
-        `https://app.t3.codes/connect#state=state-1&challenge=challenge-1&port=${encodeURIComponent(port)}`,
-      );
-      expect(readConnectAuthorizeRequest(url), port).toBeNull();
-    }
+  it("builds the relay authorize URL with PKCE S256 and state", () => {
+    const url = new URL(
+      buildRelayAuthorizeUrl({
+        relayUrl: "https://relay.example.test/",
+        clientId: "vekrel-cli",
+        redirectUri: connectLoopbackRedirectUri(34338),
+        state: "state-1",
+        challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      }),
+    );
+
+    expect(url.origin + url.pathname).toBe("https://relay.example.test/oauth/authorize");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      response_type: "code",
+      client_id: "vekrel-cli",
+      redirect_uri: "http://127.0.0.1:34338/callback",
+      state: "state-1",
+      code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+      code_challenge_method: "S256",
+    });
   });
 });

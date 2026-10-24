@@ -191,10 +191,6 @@
       "types": "./src/telemetryId.ts",
       "import": "./src/telemetryId.ts"
     },
-    "./relayAuth": {
-      "types": "./src/relayAuth.ts",
-      "import": "./src/relayAuth.ts"
-    },
     "./relayUrl": {
       "types": "./src/relayUrl.ts",
       "import": "./src/relayUrl.ts"

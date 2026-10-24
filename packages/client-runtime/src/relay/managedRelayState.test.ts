@@ -83,11 +83,11 @@ function createClient(overrides?: Partial<ManagedRelay.ManagedRelayClient["Servi
 function setSession() {
   setManagedRelaySession(registry, {
     accountId: "account-1",
-    readClerkToken: () => Promise.resolve("clerk-token"),
+    readToken: () => Promise.resolve("account-token"),
   });
 }
 
-function clerkToken(expiresAtSeconds: number): string {
+function accountToken(expiresAtSeconds: number): string {
   const encode = (value: unknown) =>
     btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
   return `${encode({ alg: "none" })}.${encode({ exp: expiresAtSeconds })}.signature`;
@@ -114,11 +114,11 @@ describe("createManagedRelayQueryManager", () => {
     }),
   );
 
-  it.effect("deduplicates concurrent Clerk token reads and reuses the token until JWT expiry", () =>
+  it.effect("deduplicates concurrent account token reads and reuses the token until JWT expiry", () =>
     Effect.gen(function* () {
-      const token = clerkToken(4_102_444_800);
+      const token = accountToken(4_102_444_800);
       let resolveToken!: (value: string) => void;
-      const readClerkToken = vi.fn(
+      const readToken = vi.fn(
         () =>
           new Promise<string>((resolve) => {
             resolveToken = resolve;
@@ -126,19 +126,19 @@ describe("createManagedRelayQueryManager", () => {
       );
       const session = createManagedRelaySession({
         accountId: "account-1",
-        readClerkToken,
+        readToken,
       });
 
-      const readsFiber = yield* Effect.all([session.readClerkToken(), session.readClerkToken()], {
+      const readsFiber = yield* Effect.all([session.readToken(), session.readToken()], {
         concurrency: "unbounded",
       }).pipe(Effect.forkChild);
       yield* Effect.yieldNow;
-      expect(readClerkToken).toHaveBeenCalledTimes(1);
+      expect(readToken).toHaveBeenCalledTimes(1);
 
       resolveToken(token);
       expect(yield* Fiber.join(readsFiber)).toEqual([token, token]);
-      expect(yield* session.readClerkToken()).toBe(token);
-      expect(readClerkToken).toHaveBeenCalledTimes(1);
+      expect(yield* session.readToken()).toBe(token);
+      expect(readToken).toHaveBeenCalledTimes(1);
     }),
   );
 
@@ -147,20 +147,20 @@ describe("createManagedRelayQueryManager", () => {
       const firstRead = vi.fn(() => Promise.resolve<string | null>(null));
       setManagedRelaySession(registry, {
         accountId: "account-1",
-        readClerkToken: firstRead,
+        readToken: firstRead,
       });
       const firstSession = registry.get(managedRelaySessionAtom);
       expect(firstSession).not.toBeNull();
-      expect(yield* firstSession!.readClerkToken()).toBeNull();
+      expect(yield* firstSession!.readToken()).toBeNull();
 
       const secondRead = vi.fn(() => Promise.resolve<string | null>("refreshed-token"));
       setManagedRelaySession(registry, {
         accountId: "account-1",
-        readClerkToken: secondRead,
+        readToken: secondRead,
       });
 
       expect(registry.get(managedRelaySessionAtom)).toBe(firstSession);
-      expect(yield* firstSession!.readClerkToken()).toBe("refreshed-token");
+      expect(yield* firstSession!.readToken()).toBe("refreshed-token");
       expect(firstRead).toHaveBeenCalledTimes(1);
       expect(secondRead).toHaveBeenCalledTimes(1);
     }),
@@ -171,21 +171,21 @@ describe("createManagedRelayQueryManager", () => {
       let resolveFirst!: (token: string) => void;
       setManagedRelaySession(registry, {
         accountId: "account-1",
-        readClerkToken: () =>
+        readToken: () =>
           new Promise<string>((resolve) => {
             resolveFirst = resolve;
           }),
       });
       const session = registry.get(managedRelaySessionAtom);
-      const firstRead = yield* session!.readClerkToken().pipe(Effect.forkChild);
+      const firstRead = yield* session!.readToken().pipe(Effect.forkChild);
       yield* Effect.yieldNow;
 
       setManagedRelaySession(registry, {
         accountId: "account-1",
-        readClerkToken: () => Promise.resolve("refreshed-token"),
+        readToken: () => Promise.resolve("refreshed-token"),
       });
 
-      expect(yield* session!.readClerkToken()).toBe("refreshed-token");
+      expect(yield* session!.readToken()).toBe("refreshed-token");
       resolveFirst("older-token");
       expect(yield* Fiber.join(firstRead)).toBe("older-token");
     }),
