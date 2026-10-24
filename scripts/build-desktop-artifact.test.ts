@@ -30,7 +30,6 @@ import {
   createBuildConfig,
   DESKTOP_FILE_EXCLUSIONS,
   InvalidMacPasskeyRpDomainError,
-  InvalidMacPasskeyPublishableKeyError,
   UnsupportedDesktopBuildArchitectureError,
   MacPasskeySigningConfigurationResolutionError,
   MissingMacPasskeyProvisioningProfileError,
@@ -1307,40 +1306,32 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it("derives macOS passkey signing configuration from the Clerk publishable key", () => {
-    const configuration = resolveMacPasskeySigningConfiguration({
-      VEKREL_APPLE_TEAM_ID: "abc1234567",
-      VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      VEKREL_CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("example.clerk.accounts.dev$")}`,
-    });
-
-    assert.deepStrictEqual(configuration, {
-      appId: "com.t3tools.t3code",
-      teamId: "ABC1234567",
-      rpDomains: ["example.clerk.accounts.dev"],
-      provisioningProfilePath: "/tmp/t3code.provisionprofile",
-    });
+  it("requires explicit macOS passkey RP domains", () => {
+    assert.throws(
+      () =>
+        resolveMacPasskeySigningConfiguration({
+          VEKREL_APPLE_TEAM_ID: "abc1234567",
+          VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+        }),
+      "VEKREL_PASSKEY_RP_DOMAINS is required for signed macOS passkey builds.",
+    );
   });
 
   it("normalizes explicit macOS passkey RP domains and renders required entitlements", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
       VEKREL_APPLE_TEAM_ID: "ABC1234567",
       VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      VEKREL_CLERK_PASSKEY_RP_DOMAINS:
-        " Clerk.Example.com,example.clerk.accounts.dev,clerk.example.com ",
+      VEKREL_PASSKEY_RP_DOMAINS: " Auth.Example.com,example.vekrel.test,auth.example.com ",
     });
     const entitlements = renderMacPasskeyEntitlements(configuration, {
       touchIdKeychainAccessGroup: undefined,
       browserPasskeys: false,
     });
 
-    assert.deepStrictEqual(configuration.rpDomains, [
-      "clerk.example.com",
-      "example.clerk.accounts.dev",
-    ]);
+    assert.deepStrictEqual(configuration.rpDomains, ["auth.example.com", "example.vekrel.test"]);
     assert.include(entitlements, "<string>ABC1234567.com.t3tools.t3code</string>");
-    assert.include(entitlements, "<string>webcredentials:clerk.example.com</string>");
-    assert.include(entitlements, "<string>webcredentials:example.clerk.accounts.dev</string>");
+    assert.include(entitlements, "<string>webcredentials:auth.example.com</string>");
+    assert.include(entitlements, "<string>webcredentials:example.vekrel.test</string>");
     assert.include(entitlements, "<key>com.apple.security.cs.allow-jit</key>");
     assert.match(entitlements, /<key>com\.apple\.security\.device\.camera<\/key>\s*<true\/>/u);
     assert.match(entitlements, /<key>com\.apple\.security\.device\.audio-input<\/key>\s*<true\/>/u);
@@ -1397,7 +1388,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
 
     const entitlements = renderMacPasskeyEntitlements(
-      { ...configuration, rpDomains: ["clerk.example.com"], provisioningProfilePath: "" },
+      { ...configuration, rpDomains: ["auth.example.com"], provisioningProfilePath: "" },
       resolveMacWebAuthnEntitlements(
         profile(
           `${teamWildcardGroups}<key>com.apple.developer.web-browser.public-key-credential</key><true/>`,
@@ -1427,7 +1418,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
     const missingProfileError = captureError({
       VEKREL_APPLE_TEAM_ID: "ABC1234567",
-      VEKREL_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev",
+      VEKREL_PASSKEY_RP_DOMAINS: "example.vekrel.test",
     });
     assert.instanceOf(missingProfileError, MissingMacPasskeyProvisioningProfileError);
     assert.equal(
@@ -1436,11 +1427,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
 
     const unsafeDomain =
-      "https://domain-user:domain-secret@example.clerk.accounts.dev/path?token=query-secret";
+      "https://domain-user:domain-secret@example.vekrel.test/path?token=query-secret";
     const invalidDomainError = captureError({
       VEKREL_APPLE_TEAM_ID: "ABC1234567",
       VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      VEKREL_CLERK_PASSKEY_RP_DOMAINS: unsafeDomain,
+      VEKREL_PASSKEY_RP_DOMAINS: unsafeDomain,
     });
     assert.instanceOf(invalidDomainError, InvalidMacPasskeyRpDomainError);
     assert.equal(invalidDomainError.reason, "scheme-not-allowed");
@@ -1458,20 +1449,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         resolveMacPasskeySigningConfiguration({
           VEKREL_APPLE_TEAM_ID: "ABC1234567",
           VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-          VEKREL_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev:8443",
+          VEKREL_PASSKEY_RP_DOMAINS: "example.vekrel.test:8443",
         }),
       /Invalid passkey RP domain/u,
     );
-    const invalidPublishableKeyError = captureError({
-      VEKREL_APPLE_TEAM_ID: "ABC1234567",
-      VEKREL_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      VEKREL_CLERK_PUBLISHABLE_KEY: "pk_test_%",
-    });
-    assert.instanceOf(invalidPublishableKeyError, InvalidMacPasskeyPublishableKeyError);
-    assert.ok(invalidPublishableKeyError.cause);
-    assert.equal(invalidPublishableKeyError.message, "VEKREL_CLERK_PUBLISHABLE_KEY is invalid.");
-    assert.notProperty(invalidPublishableKeyError, "publishableKey");
-    assert.notInclude(invalidPublishableKeyError.message, "pk_test_%");
   });
 
   it("wraps unknown passkey signing configuration defects without copying cause text", () => {
