@@ -25,22 +25,20 @@ import * as HttpRouter from "effect/http/HttpRouter";
 import * as HttpServerRequest from "effect/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 
-import { buildConnectAuthorizeRequestUrl } from "@vekrel/shared/connectAuth";
+import { buildRelayAuthorizeUrl } from "@vekrel/shared/connectAuth";
+
+import packageJson from "../../package.json" with { type: "json" };
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ExternalLauncher from "../process/externalLauncher.ts";
-import {
-  cloudCliOAuthConfig,
-  hostedAppUrlConfig,
-  type CloudCliOAuthConfig,
-} from "./publicConfig.ts";
+import { cloudCliOAuthConfig, type CloudCliOAuthConfig } from "./publicConfig.ts";
 import { renderLoopbackAuthorizationCompleteHtml } from "./cliAuthHtml.ts";
 
 const CLOUD_CLI_OAUTH_TOKEN_SECRET = "cloud-cli-oauth-token";
 const CLOUD_CLI_OAUTH_CALLBACK_TIMEOUT = Duration.minutes(10);
 const CLOUD_CLI_OAUTH_REFRESH_EARLY_MS = Duration.toMillis(Duration.minutes(5));
 const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
-// RFC 8628 defaults, used only when Clerk omits the field.
+// RFC 8628 defaults, used only when the relay omits the field.
 const DEVICE_AUTHORIZATION_DEFAULT_INTERVAL = Duration.seconds(5);
 // RFC 8628 §3.5: a slow_down response means "add 5 seconds to the interval".
 const DEVICE_AUTHORIZATION_SLOW_DOWN_INCREMENT = Duration.seconds(5);
@@ -48,6 +46,8 @@ const DEVICE_AUTHORIZATION_SLOW_DOWN_INCREMENT = Duration.seconds(5);
 // body. A stalled refresh holds the manager's semaphore and blocks every
 // other credential call.
 const OAUTH_REQUEST_TIMEOUT = Duration.seconds(10);
+// The relay shows this (labelled unverified) on the device approval page.
+const CLI_USER_AGENT = `vekrel-engine/${packageJson.version}`;
 const boldTerminalText = (value: string): string => `\u001b[1m${value}\u001b[22m`;
 
 function formatLoopbackAuthorizationPrompt(authorizationUrl: string): string {
@@ -284,6 +284,8 @@ export class CloudCliTokenManager extends Context.Service<
     readonly hasCredential: Effect.Effect<boolean, CloudCliTokenManagerError>;
     readonly store: (token: PersistedToken) => Effect.Effect<void, CloudCliTokenManagerError>;
     readonly clear: Effect.Effect<void, CloudCliTokenManagerError>;
+    /** Revokes the stored refresh token at the relay (best effort), then clears it. */
+    readonly signOut: Effect.Effect<void, CloudCliTokenManagerError>;
   }
 >()("vekrel-engine/cloud/CliTokenManager/CloudCliTokenManager") {}
 
@@ -443,6 +445,7 @@ export const deviceAuthorizationLogin = Effect.fn("cloud.cli_token.device_author
     const metadata = yield* cloudCliOAuthConfig;
     const httpClient = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
     const authorization = yield* HttpClientRequest.post(metadata.deviceAuthorizationEndpoint).pipe(
+      HttpClientRequest.setHeader("user-agent", CLI_USER_AGENT),
       HttpClientRequest.bodyUrlParams({
         client_id: metadata.clientId,
         scope: metadata.scopes.join(" "),
@@ -512,7 +515,6 @@ export const make = Effect.gen(function* () {
 
   const login = Effect.fn("cloud.cli_token.login")(function* () {
     const metadata = yield* cloudCliOAuthConfig;
-    const hostedAppUrl = yield* hostedAppUrlConfig;
     const { verifier, challenge, state } = yield* makePkceRequest;
     const callback = yield* Deferred.make<string>();
     const layerCallbackRoute = HttpRouter.add(
@@ -544,15 +546,13 @@ export const make = Effect.gen(function* () {
       ),
       Layer.build,
     );
-    // The hosted /connect page establishes a Clerk session before forwarding
-    // the request to /oauth/authorize with the loopback redirect URI. Sending
-    // a signed-out browser to /oauth/authorize directly loses the authorize
-    // parameters across Clerk's sign-in redirect (#5051).
-    const authorizationUrl = buildConnectAuthorizeRequestUrl({
-      hostedAppUrl,
+    // The relay's /oauth/authorize keeps the request across its own sign-in page.
+    const authorizationUrl = buildRelayAuthorizeUrl({
+      relayUrl: metadata.authorizationBaseUrl,
+      clientId: metadata.clientId,
+      redirectUri: metadata.redirectUri,
       state,
       challenge,
-      loopbackPort: metadata.loopbackPort,
     });
     yield* Console.log(formatLoopbackAuthorizationPrompt(authorizationUrl));
     const authorization = yield* waitForLoopbackAuthorization({
@@ -643,7 +643,37 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  return CloudCliTokenManager.of({ get, getExisting, hasCredential, store, clear });
+  const revoke = Effect.fn("cloud.cli_token.revoke")(function* (token: PersistedToken) {
+    const metadata = yield* cloudCliOAuthConfig;
+    yield* HttpClientRequest.post(metadata.revocationEndpoint).pipe(
+      HttpClientRequest.bodyUrlParams({
+        token: token.refreshToken,
+        token_type_hint: "refresh_token",
+        client_id: metadata.clientId,
+      }),
+      HttpClient.filterStatusOk(httpClient).execute,
+      Effect.flatMap((response) => response.text),
+      Effect.timeout(OAUTH_REQUEST_TIMEOUT),
+    );
+  });
+  const signOut = semaphore.withPermits(1)(
+    Effect.gen(function* () {
+      const token = yield* read().pipe(Effect.orElseSucceed(() => Option.none<PersistedToken>()));
+      if (Option.isSome(token)) {
+        // A failed revoke must not keep the user signed in locally.
+        yield* revoke(token.value).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning(
+              "Could not revoke the Vekrel Connect CLI credential at the relay.",
+            ).pipe(Effect.annotateLogs({ cause: Cause.pretty(cause) })),
+          ),
+        );
+      }
+      yield* clear;
+    }),
+  );
+
+  return CloudCliTokenManager.of({ get, getExisting, hasCredential, store, clear, signOut });
 });
 
 export const layer = Layer.effect(CloudCliTokenManager, make);

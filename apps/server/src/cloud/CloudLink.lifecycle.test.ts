@@ -215,6 +215,7 @@ describe("releaseManagedTunnelOnShutdown", () => {
             hasCredential: unusedSecretStoreOperation(),
             store: () => unusedSecretStoreOperation(),
             clear: unusedSecretStoreOperation(),
+            signOut: unusedSecretStoreOperation(),
           }),
         ),
         Effect.provideService(

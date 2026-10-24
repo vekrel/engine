@@ -114,12 +114,6 @@ export default mergeConfig(
         __VEKREL_BUILD_CHANNEL__: JSON.stringify(cliBuildChannel),
         __VEKREL_TELEMETRY_CHANNEL__: JSON.stringify(telemetryChannel),
         __VEKREL_BUILD_RELAY_URL__: JSON.stringify(repoEnv.VEKREL_RELAY_URL?.trim() ?? ""),
-        __VEKREL_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
-          repoEnv.VEKREL_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
-        ),
-        __VEKREL_BUILD_CLERK_CLI_OAUTH_CLIENT_ID__: JSON.stringify(
-          repoEnv.VEKREL_CLERK_CLI_OAUTH_CLIENT_ID?.trim() ?? "",
-        ),
         __VEKREL_BUILD_RELAY_CLIENT_OTLP_TRACES_URL__: JSON.stringify(
           repoEnv.VEKREL_RELAY_CLIENT_OTLP_TRACES_URL?.trim() ?? "",
         ),

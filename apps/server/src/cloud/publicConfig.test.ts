@@ -4,7 +4,6 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 
 import {
-  hostedAppUrlConfig,
   makeCloudCliOAuthConfig,
   makeRelayUrlConfig,
   resolveRelayClientTracingConfig,
@@ -20,34 +19,40 @@ it.effect("rejects an insecure runtime relay URL override", () =>
   ),
 );
 
-it.effect("rejects malformed or insecure hosted app URLs", () =>
+it.effect("CLI sign-in accepts an https or http loopback relay origin and refuses the rest", () =>
   Effect.gen(function* () {
     for (const value of [
-      "app.t3.codes",
-      "http://app.t3.codes",
-      "https://app.t3.codes/nested",
-      "https://app.t3.codes?alias=true",
+      "relay.example.test",
+      "http://relay.example.test",
+      "https://relay.example.test/nested",
+      "https://relay.example.test?alias=true",
+      "https://user:pass@relay.example.test",
     ]) {
-      const result = yield* hostedAppUrlConfig.pipe(
-        provideEnv({ VEKREL_HOSTED_APP_URL: value }),
+      const result = yield* makeCloudCliOAuthConfig({ relayUrlFallback: "" }).pipe(
+        provideEnv({ VEKREL_RELAY_URL: value }),
         Effect.result,
       );
       assert.isTrue(Result.isFailure(result), value);
     }
+    const local = yield* makeCloudCliOAuthConfig({ relayUrlFallback: "" }).pipe(
+      provideEnv({ VEKREL_RELAY_URL: "http://127.0.0.1:4000" }),
+    );
+    assert.equal(local.tokenEndpoint, "http://127.0.0.1:4000/oauth/token");
   }),
 );
 
-it.effect("derives direct Clerk OAuth endpoints from statically injected public config", () =>
+it.effect("derives the relay's OAuth endpoints and the vekrel-cli client", () =>
   Effect.gen(function* () {
     const config = yield* makeCloudCliOAuthConfig({
-      clerkPublishableKeyFallback: "pk_test_Y2xlcmsuZXhhbXBsZS50ZXN0JA==",
-      clerkCliOAuthClientIdFallback: "oauth_client_embedded",
+      relayUrlFallback: "https://relay.example.test",
     }).pipe(provideEnv({}));
 
     assert.deepEqual(config, {
-      tokenEndpoint: "https://clerk.example.test/oauth/token",
-      deviceAuthorizationEndpoint: "https://clerk.example.test/oauth/device_authorization",
-      clientId: "oauth_client_embedded",
+      authorizationBaseUrl: "https://relay.example.test",
+      tokenEndpoint: "https://relay.example.test/oauth/token",
+      deviceAuthorizationEndpoint: "https://relay.example.test/oauth/device_authorization",
+      revocationEndpoint: "https://relay.example.test/oauth/revoke",
+      clientId: "vekrel-cli",
       loopbackPort: 34338,
       redirectUri: "http://127.0.0.1:34338/callback",
       scopes: ["openid", "profile", "email", "offline_access"],

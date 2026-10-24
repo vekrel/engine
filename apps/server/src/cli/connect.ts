@@ -491,7 +491,7 @@ const disconnectCloud = Effect.fn("cloud.cli.disconnect")(function* (options: {
 
   if (options.clearAuthorization) {
     const tokens = yield* CliTokenManager.CloudCliTokenManager;
-    yield* tokens.clear;
+    yield* tokens.signOut;
   }
 
   yield* reportCloudDisconnectResults({
