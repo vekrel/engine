@@ -182,6 +182,23 @@ function sharedWebLocks() {
   };
 }
 
+/** A Web Locks `LockManager` that grants nothing until `grant` is called. */
+function heldWebLocks() {
+  let grant!: () => void;
+  const granted = new Promise<void>((resolve) => {
+    grant = resolve;
+  });
+  return {
+    locks: {
+      request: async <T>(_name: string, callback: () => Promise<T>): Promise<T> => {
+        await granted;
+        return callback();
+      },
+    },
+    grant,
+  };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -461,6 +478,81 @@ describe("createAccountSession", () => {
 
     expect(store.value).toBe(signedInRefresh);
     expect(store.value).toMatch(/^refresh-\d+$/u);
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(await session.getAccessToken()).toMatch(/^access-/u);
+  });
+
+  it("a refresh queued on the lock before a web sign-in does not sign the new session out", async () => {
+    const relay = fakeRelay();
+    const lock = heldWebLocks();
+    vi.stubGlobal("navigator", { locks: lock.locks });
+    let openExchange!: () => void;
+    const exchangeGate = new Promise<void>((resolve) => {
+      openExchange = resolve;
+    });
+    const onSignedOut = vi.fn();
+    const session = createAccountSession({
+      relayUrl: RELAY,
+      clientId: AccountClientId.web,
+      fetch: async (input, init) => {
+        if (String(init.body).includes("authorization_code")) await exchangeGate;
+        return relay.fetch(input, init);
+      },
+      onSignedOut,
+    });
+    const redirectUri = "https://app.example.test/auth/callback";
+    const { pending } = beginSignIn({
+      relayUrl: RELAY,
+      clientId: AccountClientId.web,
+      redirectUri,
+    });
+    relay.addCode("code-1", await challengeOf(pending.verifier), redirectUri);
+
+    // The refresh waits on the lock; the sign-in starts meanwhile, and the refresh then
+    // reaches the relay before the sign-in's cookie exists.
+    const staleRefresh = session.refresh();
+    const signingIn = session.completeSignIn(
+      `${redirectUri}?code=code-1&state=${pending.state}`,
+      pending,
+    );
+    lock.grant();
+    await staleRefresh;
+    openExchange();
+    await signingIn;
+
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(await session.getAccessToken()).toMatch(/^access-/u);
+  });
+
+  it("a refresh queued on the lock before a sign-in does not rotate the new session's token", async () => {
+    const relay = fakeRelay();
+    const lock = heldWebLocks();
+    vi.stubGlobal("navigator", { locks: lock.locks });
+    const store = memoryStore(null);
+    const onSignedOut = vi.fn();
+    const session = createAccountSession({
+      relayUrl: RELAY,
+      clientId: AccountClientId.desktop,
+      store,
+      fetch: relay.fetch,
+      onSignedOut,
+    });
+    const { pending } = beginSignIn({
+      relayUrl: RELAY,
+      clientId: AccountClientId.desktop,
+      redirectUri: APP_REDIRECT,
+    });
+    relay.addCode("code-1", await challengeOf(pending.verifier), APP_REDIRECT);
+
+    const staleRefresh = session.refresh();
+    await session.completeSignIn(`${APP_REDIRECT}?code=code-1&state=${pending.state}`, pending);
+    const signedIn = store.value;
+    lock.grant();
+    await staleRefresh;
+
+    expect(relay.tokenRequests()).toHaveLength(1);
+    expect(relay.revokedFamilies.size).toBe(0);
+    expect(store.value).toBe(signedIn);
     expect(onSignedOut).not.toHaveBeenCalled();
     expect(await session.getAccessToken()).toMatch(/^access-/u);
   });

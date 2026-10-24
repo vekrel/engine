@@ -285,11 +285,15 @@ export function createAccountSession(options: AccountSessionOptions): AccountSes
     return access?.token ?? null;
   };
 
-  const refreshOnce = async (): Promise<string | null> => {
+  // `startedAt` is taken when the refresh is requested, not after the lock wait: a sign-in or
+  // sign-out during the wait supersedes it, so it must not touch the relay or the session.
+  const refreshOnce = async (startedAt: number): Promise<string | null> => {
+    if (startedAt !== generation) {
+      return access?.token ?? null;
+    }
     if (status === "out") {
       return null;
     }
-    const startedAt = generation;
     const refreshToken = store ? await store.read() : null;
     if (store && !refreshToken) {
       if (startedAt === generation) status = "out";
@@ -324,7 +328,8 @@ export function createAccountSession(options: AccountSessionOptions): AccountSes
   };
 
   const refresh = (): Promise<string | null> => {
-    inFlight ??= withLock(refreshOnce).finally(() => {
+    const requestedAt = generation;
+    inFlight ??= withLock(() => refreshOnce(requestedAt)).finally(() => {
       inFlight = null;
     });
     return inFlight;
