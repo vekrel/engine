@@ -72,7 +72,7 @@ different code depending on it:
 
 - How is Vekrel running on this machine: \`npx t3 serve\` in a terminal, the
   background service, or the desktop app?
-- Which surface is the user connecting from: the website (app.t3.codes), the
+- Which surface is the user connecting from: the website (rc.vekrel.com), the
   desktop app against a local server, the desktop app against a remote server,
   or the mobile app?
 
