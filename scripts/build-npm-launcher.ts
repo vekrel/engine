@@ -48,7 +48,7 @@ export function npmLauncherPackageManifest(version: string) {
     name: NPM_LAUNCHER_PACKAGE_NAME,
     version,
     description:
-      "T3 Code CLI. Downloads the self-contained executable for this platform from the GitHub Release.",
+      "Vekrel CLI. Downloads the self-contained executable for this platform from the GitHub Release.",
     license: serverPackageJson.license,
     repository: serverPackageJson.repository,
     bin: { vekrel: "./bin/vekrel.mjs" },

@@ -113,7 +113,10 @@ export default mergeConfig(
       define: {
         __VEKREL_BUILD_CHANNEL__: JSON.stringify(cliBuildChannel),
         __VEKREL_TELEMETRY_CHANNEL__: JSON.stringify(telemetryChannel),
-        __VEKREL_BUILD_RELAY_URL__: JSON.stringify(repoEnv.VEKREL_RELAY_URL?.trim() ?? ""),
+        // Published builds talk to production; VEKREL_RELAY_URL (build or runtime) overrides.
+        __VEKREL_BUILD_RELAY_URL__: JSON.stringify(
+          repoEnv.VEKREL_RELAY_URL?.trim() || "https://relay.vekrel.com",
+        ),
         __VEKREL_BUILD_RELAY_CLIENT_OTLP_TRACES_URL__: JSON.stringify(
           repoEnv.VEKREL_RELAY_CLIENT_OTLP_TRACES_URL?.trim() ?? "",
         ),
