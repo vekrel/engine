@@ -1,0 +1,252 @@
+name: Release
+
+# CLI-only port of T3 Code's release workflow: builds the `vekrel` CLI archive
+# per platform, publishes them with SHA256SUMS as a GitHub Release, then
+# publishes the npm launcher that downloads them (scripts/npm-launcher).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build the archives and launcher, but skip the GitHub Release and npm publish"
+        required: false
+        default: true
+        type: boolean
+      version:
+        description: "Version override (for example 1.2.3). Defaults to apps/server/package.json."
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.release_meta.outputs.version }}
+      tag: ${{ steps.release_meta.outputs.tag }}
+      cli_dist_tag: ${{ steps.release_meta.outputs.cli_dist_tag }}
+      is_prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
+      dry_run: ${{ steps.release_meta.outputs.dry_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - id: release_meta
+        name: Resolve release version
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          DISPATCH_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            raw="${DISPATCH_VERSION:-$(node -p 'require("./apps/server/package.json").version')}"
+            dry_run="${DISPATCH_DRY_RUN}"
+          else
+            raw="${GITHUB_REF_NAME}"
+            dry_run=false
+          fi
+
+          version="${raw#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $raw" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=next" >> "$GITHUB_OUTPUT"
+          fi
+
+  # One job per archive the launcher supports (SUPPORTED in
+  # scripts/npm-launcher/vekrel.mjs). No darwin-x64: Node single-executables
+  # are unsupported on x64 macOS. Windows cross-builds on Linux, as upstream.
+  cli_archive:
+    name: CLI ${{ matrix.key }}
+    needs: [preflight]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { key: darwin-arm64, runner: macos-15, platform: mac, arch: arm64, smoke: true }
+          - { key: linux-x64, runner: ubuntu-24.04, platform: linux, arch: x64, smoke: true }
+          - { key: linux-arm64, runner: ubuntu-24.04-arm, platform: linux, arch: arm64, smoke: true }
+          - { key: win32-x64, runner: ubuntu-24.04, platform: win, arch: x64, smoke: false }
+          - { key: win32-arm64, runner: ubuntu-24.04, platform: win, arch: arm64, smoke: false }
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # The web client lives in vekrel/web; the server build bundles
+      # apps/web/dist into dist/client when it exists.
+      - name: Checkout web client
+        uses: actions/checkout@v6
+        with:
+          repository: vekrel/web
+          path: vekrel-web
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: false
+
+      - name: Build web client
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd vekrel-web && vp install --filter=@vekrel/web... && cd apps/web && vp build)
+          mkdir -p apps/web
+          cp -R vekrel-web/apps/web/dist apps/web/dist
+
+      - name: Install dependencies
+        run: vp install --filter=vekrel-engine... --filter=@vekrel/scripts...
+
+      - name: Align server version to release version
+        working-directory: apps/server
+        run: npm pkg set version="$VERSION"
+
+      - name: Build server bundle
+        working-directory: apps/server
+        run: node scripts/cli.ts build
+
+      - name: Apply web client branding
+        run: node scripts/apply-web-brand-assets.ts production apps/server/dist/client
+
+      - name: Build CLI single-executable
+        run: node apps/server/scripts/cli.ts build-exe --verbose ${{ matrix.platform == 'win' && format('--target win-{0}', matrix.arch) || '' }}
+
+      # shortcut: native/resource-monitor is not in this repo (it lives in
+      # vekrel/desktop), so archives ship without it and resource telemetry is
+      # off. Build it here once the crate is vendored.
+      - name: Build CLI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/cli-resource-monitor"
+          node scripts/build-cli-archive.ts \
+            --platform "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --version "$VERSION" \
+            --resource-monitor-dir "$RUNNER_TEMP/cli-resource-monitor" \
+            --output-dir release-cli
+
+      - name: Smoke-test CLI archive
+        if: matrix.smoke
+        shell: bash
+        run: node scripts/smoke-cli-archive.ts --archive release-cli/* --expect-version "$VERSION"
+
+      - name: Upload CLI archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.key }}
+          path: release-cli/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [preflight, cli_archive]
+    if: needs.preflight.outputs.dry_run != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download all CLI archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: release-assets
+
+      # The launcher verifies archives against this file, so it is written from
+      # the exact bytes that get uploaded.
+      - name: Write CLI archive checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          shopt -s nullglob
+          archives=(vekrel-*.tar.gz vekrel-*.zip)
+          if [[ ${#archives[@]} -eq 0 ]]; then
+            echo "No CLI archives were produced." >&2
+            exit 1
+          fi
+          sha256sum "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Vekrel v${{ needs.preflight.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ needs.preflight.outputs.is_prerelease }}
+          make_latest: ${{ needs.preflight.outputs.is_prerelease == 'false' }}
+          files: |
+            release-assets/*.tar.gz
+            release-assets/*.zip
+            release-assets/SHA256SUMS
+          fail_on_unmatched_files: true
+          token: ${{ github.token }}
+
+  # The launcher downloads this version's archives from the GitHub Release, so
+  # it publishes only after that release exists. A dry run still builds it and
+  # runs `npm publish --dry-run`.
+  publish_cli:
+    name: Publish CLI to npm
+    needs: [preflight, release]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=vekrel-engine...
+              - --filter=@vekrel/scripts...
+
+      - name: Build the npm launcher
+        run: node scripts/build-npm-launcher.ts --version "${{ needs.preflight.outputs.version }}" --output-dir npm-packages
+
+      - name: Publish the npm launcher
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
+        run: |
+          echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
+          node apps/server/scripts/cli.ts publish --packages-dir npm-packages \
+            --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --provenance --verbose \
+            $([[ "$DRY_RUN" == "true" ]] && echo --dry-run)
