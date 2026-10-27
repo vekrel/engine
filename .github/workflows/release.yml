@@ -241,12 +241,11 @@ jobs:
       - name: Build the npm launcher
         run: node scripts/build-npm-launcher.ts --version "${{ needs.preflight.outputs.version }}" --output-dir npm-packages
 
+      # npm trusted publishing (OIDC via id-token: write); no npm token is stored.
       - name: Publish the npm launcher
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
         run: |
-          echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
           node apps/server/scripts/cli.ts publish --packages-dir npm-packages \
             --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --provenance --verbose \
             $([[ "$DRY_RUN" == "true" ]] && echo --dry-run)
