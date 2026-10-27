@@ -3,7 +3,7 @@ import * as Base64Url from "effect/encoding/Base64Url";
 
 const CONNECT_LOOPBACK_CALLBACK_PATH = "/callback";
 
-export const DEFAULT_HOSTED_APP_URL = "https://app.t3.codes";
+export const DEFAULT_HOSTED_APP_URL = "https://rc.vekrel.com";
 
 export const CONNECT_OAUTH_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
 

@@ -7,7 +7,7 @@ export function providerAuthReturnUrl(value: string | undefined): string | undef
     const desktop = ["vekrel:", "vekrel-dev:"].includes(url.protocol) && url.host === "app";
     const web =
       ["http:", "https:"].includes(url.protocol) &&
-      (isLoopbackHost(url.hostname) || url.origin === "https://app.t3.codes");
+      (isLoopbackHost(url.hostname) || url.origin === "https://rc.vekrel.com");
     if (
       url.username ||
       url.password ||

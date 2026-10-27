@@ -23,7 +23,7 @@ const authorizationUrl = () => {
 };
 const input = {
   authorizationUrl: authorizationUrl(),
-  returnUrl: "https://app.t3.codes/welcome#agents:remote-machine",
+  returnUrl: "https://rc.vekrel.com/welcome#agents:remote-machine",
   machineId: MachineId.make("remote-machine"),
   instanceId: ProviderInstanceId.make("work-codex"),
   flowId: "flow-one",
