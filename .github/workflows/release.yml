@@ -3,37 +3,103 @@ name: Release
 # CLI-only port of T3 Code's release workflow: builds the `vekrel` CLI archive
 # per platform, publishes them with SHA256SUMS as a GitHub Release, then
 # publishes the npm launcher that downloads them (scripts/npm-launcher).
+# Channels, as upstream minus preview: stable (`vX.Y.Z` tag, npm `latest`) and
+# nightly (daily from main when it has new commits, prerelease, npm `nightly`).
 on:
   push:
     tags:
       - "v*.*.*"
+      - "!v*-nightly.*"
+  schedule:
+    # Once a day; off minute zero, when GitHub scheduled jobs are busiest.
+    - cron: "17 2 * * *"
   workflow_dispatch:
     inputs:
+      channel:
+        description: "Release channel"
+        required: false
+        default: nightly
+        type: choice
+        options:
+          - nightly
+          - stable
       dry_run:
         description: "Build the archives and launcher, but skip the GitHub Release and npm publish"
         required: false
         default: true
         type: boolean
       version:
-        description: "Version override (for example 1.2.3). Defaults to apps/server/package.json."
+        description: "Stable version override (for example 1.2.3). Defaults to apps/server/package.json."
         required: false
         type: string
 
+# Nightlies (scheduled and manual) share one group so they never build twice or
+# publish out of order; stable gets its own so a nightly never blocks it.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ (github.event_name == 'schedule' || inputs.channel == 'nightly') && 'nightly' || 'stable' }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
 
 jobs:
-  preflight:
-    name: Preflight
+  # Release source guard, and for scheduled runs whether a nightly is due
+  # (new commits on main since the last nightly).
+  resolve_commit:
+    name: Resolve release commit
+    if: github.repository == 'vekrel/engine'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
+      has_changes: ${{ steps.resolve.outputs.has_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+
+      - id: resolve
+        name: Resolve release commit
+        uses: actions/github-script@v8
+        env:
+          DISPATCH_CHANNEL: ${{ inputs.channel }}
+          DISPATCH_DRY_RUN: ${{ inputs.dry_run }}
+        with:
+          script: |
+            const {
+              assertReleaseSource,
+              shouldReleaseNightly,
+            } = require('./.github/scripts/check-nightly-release.cjs');
+
+            const releaseChannel = context.eventName === 'schedule'
+              ? 'nightly'
+              : context.eventName === 'workflow_dispatch'
+                ? (process.env.DISPATCH_CHANNEL || 'nightly')
+                : 'stable';
+
+            // Dry runs publish nothing, so any branch may build one (upstream
+            // uses its preview channel for this).
+            if (!(context.eventName === 'workflow_dispatch' && process.env.DISPATCH_DRY_RUN === 'true')) {
+              await assertReleaseSource({ github, context, releaseChannel });
+            }
+
+            if (context.eventName === 'schedule') {
+              core.setOutput('has_changes', await shouldReleaseNightly({ github, context, core }));
+            }
+
+  preflight:
+    name: Preflight
+    needs: [resolve_commit]
+    if: |
+      needs.resolve_commit.result == 'success' &&
+      (github.event_name != 'schedule' || needs.resolve_commit.outputs.has_changes == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
       version: ${{ steps.release_meta.outputs.version }}
       tag: ${{ steps.release_meta.outputs.tag }}
+      release_name: ${{ steps.release_meta.outputs.name }}
       cli_dist_tag: ${{ steps.release_meta.outputs.cli_dist_tag }}
       is_prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
       dry_run: ${{ steps.release_meta.outputs.dry_run }}
@@ -41,20 +107,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=@vekrel/scripts...
+
       - id: release_meta
         name: Resolve release version
         shell: bash
         env:
+          DISPATCH_CHANNEL: ${{ inputs.channel }}
           DISPATCH_VERSION: ${{ inputs.version }}
           DISPATCH_DRY_RUN: ${{ inputs.dry_run }}
+          NIGHTLY_DATE: ${{ github.run_started_at }}
+          NIGHTLY_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            raw="${DISPATCH_VERSION:-$(node -p 'require("./apps/server/package.json").version')}"
             dry_run="${DISPATCH_DRY_RUN}"
           else
-            raw="${GITHUB_REF_NAME}"
             dry_run=false
+          fi
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" || ( "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_CHANNEL:-nightly}" == "nightly" ) ]]; then
+            # X.Y.Z-nightly.YYYYMMDD.N, X.Y.Z = next patch after apps/server/package.json.
+            node scripts/resolve-nightly-release.ts \
+              --date "$(date -u -d "$NIGHTLY_DATE" +%Y%m%d)" \
+              --run-number "$NIGHTLY_RUN_NUMBER" \
+              --sha "$GITHUB_SHA" \
+              --github-output
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "cli_dist_tag=nightly" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            raw="${DISPATCH_VERSION:-$(node -p 'require("./apps/server/package.json").version')}"
+          else
+            raw="${GITHUB_REF_NAME}"
           fi
 
           version="${raw#v}"
@@ -65,7 +160,7 @@ jobs:
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+          echo "name=Vekrel v$version" >> "$GITHUB_OUTPUT"
           if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
             echo "cli_dist_tag=latest" >> "$GITHUB_OUTPUT"
@@ -201,7 +296,7 @@ jobs:
         with:
           tag_name: ${{ needs.preflight.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Vekrel v${{ needs.preflight.outputs.version }}
+          name: ${{ needs.preflight.outputs.release_name }}
           generate_release_notes: true
           prerelease: ${{ needs.preflight.outputs.is_prerelease }}
           make_latest: ${{ needs.preflight.outputs.is_prerelease == 'false' }}
