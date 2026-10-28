@@ -3,11 +3,13 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as SchemaTransformation from "effect/SchemaTransformation";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as SqlSchema from "effect/sql/SqlSchema";
 
 import {
   AuthClientMetadataDeviceType,
+  AuthMachineScope,
   AuthMachineScopes,
   AuthSessionId,
   ClientSurface,
@@ -20,6 +22,23 @@ import {
   type PersistenceErrorCorrelation,
   PersistenceSqlError,
 } from "./Errors.ts";
+
+// Rows issued before the environment -> machine rename still say "environment:maintain".
+const PersistedAuthMachineScope = Schema.Union([
+  AuthMachineScope,
+  Schema.Literal("environment:maintain"),
+]).pipe(
+  Schema.decodeTo(
+    AuthMachineScope,
+    SchemaTransformation.transform({
+      decode: (scope) => (scope === "environment:maintain" ? "machine:maintain" : scope),
+      encode: (scope) => scope,
+    }),
+  ),
+);
+export const PersistedAuthMachineScopes = Schema.fromJsonString(
+  Schema.Array(PersistedAuthMachineScope),
+);
 
 export const AuthSessionClientMetadataRecord = Schema.Struct({
   label: Schema.NullOr(Schema.String),
@@ -135,7 +154,7 @@ export class AuthSessionRepository extends Context.Service<
 const AuthSessionDbRow = Schema.Struct({
   sessionId: AuthSessionId,
   subject: Schema.String,
-  scopes: Schema.fromJsonString(AuthMachineScopes),
+  scopes: PersistedAuthMachineScopes,
   method: ServerAuthSessionMethod,
   clientLabel: Schema.NullOr(Schema.String),
   clientIpAddress: Schema.NullOr(Schema.String),

@@ -8,6 +8,7 @@ import * as SqlSchema from "effect/sql/SqlSchema";
 
 import { AuthMachineScopes } from "@vekrel/contracts";
 
+import { PersistedAuthMachineScopes } from "./AuthSessions.ts";
 import {
   type AuthPairingLinkRepositoryError,
   PersistenceDecodeError,
@@ -19,7 +20,7 @@ export const AuthPairingLinkRecord = Schema.Struct({
   id: Schema.String,
   credential: Schema.String,
   method: Schema.Literals(["desktop-bootstrap", "one-time-token"]),
-  scopes: Schema.fromJsonString(AuthMachineScopes),
+  scopes: PersistedAuthMachineScopes,
   subject: Schema.String,
   label: Schema.NullOr(Schema.String),
   proofKeyThumbprint: Schema.NullOr(Schema.String),
